@@ -30,8 +30,10 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (Firebase config/credentials land here — never commit)
+.env
 .env*.local
+!.env.example
 
 # typescript
 *.tsbuildinfo
