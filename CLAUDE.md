@@ -125,4 +125,4 @@ Don't defer testing wholesale — split by volatility, not by "do it all at the 
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **2 — Expo + react-native-web project scaffold**
+Stage: **3 — Configure Firestore with offline persistence + security rules (owner-only access)**
