@@ -8,6 +8,9 @@ export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
+    // Intentional: flips the render from the SSR-safe 'light' default to the
+    // real client color scheme post-hydration, not syncing external state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasHydrated(true);
   }, []);
 

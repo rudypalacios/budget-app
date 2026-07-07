@@ -61,12 +61,7 @@ export interface Category {
 
 // --- Recurring definitions — §5 ---
 
-export type BudgetRecommendationStatus =
-  | 'none'
-  | 'pending'
-  | 'dismissed'
-  | 'accepted'
-  | 'stale'; // set in bulk when defaultCurrency changes — see §3, §9
+export type BudgetRecommendationStatus = 'none' | 'pending' | 'dismissed' | 'accepted' | 'stale'; // set in bulk when defaultCurrency changes — see §3, §9
 
 export interface BudgetRecommendation {
   rollingAverageAmount: number | null;

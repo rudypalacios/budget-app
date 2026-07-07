@@ -67,6 +67,18 @@ testable and shared cleanly between native and web.
   refactors within an already-agreed structure, writing tests.
 
 ## Code style
+- **Priority order when these trade off against each other: readability and
+  maintainability > simplicity > cleverness/performance.** Optimize for
+  someone unfamiliar with this codebase understanding it in 3 years, not for
+  the fewest lines or the most elegant abstraction. If a simpler, slightly
+  more verbose version is easier to follow than a clever one-liner, prefer
+  the verbose one.
+- Follow DRY, but don't force it — a little duplication is better than a
+  premature or wrong abstraction. Don't extract a shared helper until the
+  same logic actually appears 3+ times.
+- Follow KISS — solve the problem actually in front of you, not the general
+  case you can imagine needing later. No speculative flexibility, config
+  options, or abstraction layers for requirements that don't exist yet.
 - TypeScript strict mode, no `any` unless truly unavoidable (comment why if used)
 - Functional components, hooks — no class components
 - Prefer small, focused components and hooks over large files
