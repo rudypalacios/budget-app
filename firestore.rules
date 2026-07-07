@@ -1,0 +1,126 @@
+rules_version = '2';
+
+// Source of truth for this schema: docs/data-model.md
+// Every collection lives under users/{uid} (NFR-7): ownership is enforced
+// once here and inherited by every nested match block below.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // True if `field` is not among the keys changed by this update (FR-16:
+    // exchange rates and budget snapshots must never drift after the fact).
+    function unchanged(field) {
+      return !(field in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    function isLifecycleEnum(state) {
+      return state in ['active', 'archived', 'trashed'];
+    }
+
+    // Applies to create: only checks the new document's own consistency,
+    // since `resource` (the prior document) doesn't exist yet on create.
+    function isValidNewLifecycle() {
+      let after = request.resource.data;
+      return isLifecycleEnum(after.lifecycleState)
+        && (after.lifecycleState != 'trashed' || (
+          after.trashedAt is timestamp &&
+          after.purgeAt is timestamp &&
+          after.trashedFromState in ['active', 'archived']
+        ));
+    }
+
+    // Applies to update: enforces the archive/trash state machine (FR-4a-4e)
+    // - entering 'trashed' must carry trashedAt/purgeAt/trashedFromState
+    // - leaving 'trashed' must restore exactly to trashedFromState and clear
+    //   the trash metadata, so a client bug can't invent an arbitrary target
+    //   state or leave stale trash fields behind after a restore
+    function isValidLifecycleTransition() {
+      let after = request.resource.data;
+      let before = resource.data;
+      return isLifecycleEnum(after.lifecycleState)
+        && (after.lifecycleState != 'trashed' || (
+          after.trashedAt is timestamp &&
+          after.purgeAt is timestamp &&
+          after.trashedFromState in ['active', 'archived']
+        ))
+        && (before.lifecycleState != 'trashed' || after.lifecycleState == 'trashed' || (
+          after.lifecycleState == before.trashedFromState &&
+          after.trashedAt == null &&
+          after.purgeAt == null &&
+          after.trashedFromState == null
+        ));
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      // Categories: Active/Archived only, no Trash (docs/data-model.md §4) —
+      // purging one would orphan categoryId references in historical records.
+      match /categories/{categoryId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.lifecycleState in ['active', 'archived'];
+        allow update: if isOwner(uid)
+          && request.resource.data.lifecycleState in ['active', 'archived'];
+        allow delete: if isOwner(uid);
+      }
+
+      match /recurringExpenses/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidNewLifecycle();
+        allow update: if isOwner(uid) && isValidLifecycleTransition();
+        // Permanent delete only from Trash (FR-4b/4c) — archived/active
+        // definitions must go through trash first, never deleted directly.
+        allow delete: if isOwner(uid) && resource.data.lifecycleState == 'trashed';
+      }
+
+      match /recurringIncomes/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidNewLifecycle();
+        allow update: if isOwner(uid) && isValidLifecycleTransition();
+        allow delete: if isOwner(uid) && resource.data.lifecycleState == 'trashed';
+      }
+
+      // expenses: one-time expenses + recurring expense instances.
+      // exchangeRateToDefault and budgetedAmount/budgetedCurrency are
+      // snapshotted once (generation time or entry time) and must never be
+      // rewritten afterward (FR-16) — only the recurring *definition*'s
+      // live template amount/rate is editable, not an already-written record.
+      // kind and recurringExpenseId are locked too: allowing either to
+      // change post-creation would let an instance be silently reparented
+      // to a different recurring definition, corrupting the rolling-average
+      // query in docs/data-model.md §9 without any visible error.
+      match /expenses/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidNewLifecycle();
+        allow update: if isOwner(uid)
+          && isValidLifecycleTransition()
+          && unchanged('exchangeRateToDefault')
+          && unchanged('budgetedAmount')
+          && unchanged('budgetedCurrency')
+          && unchanged('kind')
+          && unchanged('recurringExpenseId');
+        allow delete: if isOwner(uid) && resource.data.lifecycleState == 'trashed';
+      }
+
+      // incomes: one-time income + recurring income instances.
+      // No budgetedAmount/budgetedCurrency fields on this collection
+      // (docs/data-model.md §6) — exchange rate, kind, and
+      // recurringIncomeId are locked for the same reasons as expenses above.
+      match /incomes/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidNewLifecycle();
+        allow update: if isOwner(uid)
+          && isValidLifecycleTransition()
+          && unchanged('exchangeRateToDefault')
+          && unchanged('kind')
+          && unchanged('recurringIncomeId');
+        allow delete: if isOwner(uid) && resource.data.lifecycleState == 'trashed';
+      }
+    }
+  }
+}
