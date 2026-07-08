@@ -14,7 +14,18 @@ assumed here.
 - **Web:** react-native-web, same codebase as mobile (see SRS NFR-5 for the one
   condition under which we'd reconsider this)
 - **Backend/DB:** Firebase — Firestore for data, with offline persistence enabled as
-  the local cache (no separate local DB)
+  the local cache (no separate local DB). **SDK is platform-split** (Stage 3
+  decision): `@react-native-firebase/firestore` on iOS/Android (full native
+  persistent offline cache, survives app restart) + `firebase` JS SDK on web
+  (IndexedDB persistent cache). The JS-SDK-only path was rejected because
+  Firestore's persistent local cache doesn't support React Native — only an
+  in-memory cache, which risks losing offline-entered data if the app is
+  killed before reconnecting. This means **native dev requires a custom dev
+  client, not Expo Go** — `expo prebuild` + `expo run:ios`/`expo run:android`
+  (or EAS Build). `npm run web` still works standalone. Firestore access is
+  behind a shared interface in `src/lib/firebase/` (`firestore.ts` native,
+  `firestore.web.ts` web) — feature/store code should never import either
+  SDK directly.
 - **Auth:** Firebase Authentication — email/password, Google, Facebook
 - **State management:** Zustand
 - **Charts:** react-native-svg or Victory Native (decide at implementation time, note

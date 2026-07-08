@@ -42,6 +42,12 @@ yarn-error.*
 # Staging area for credential files dropped in ahead of being wired in
 /docs/resources/
 
+# Firebase emulator
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
+
 # typescript
 *.tsbuildinfo
 
