@@ -30,8 +30,23 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (Firebase config/credentials land here — never commit)
+.env
 .env*.local
+!.env.example
+
+# Firebase native config (contains project credentials — never commit)
+/google-services.json
+/GoogleService-Info.plist
+
+# Staging area for credential files dropped in ahead of being wired in
+/docs/resources/
+
+# Firebase emulator
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
 
 # typescript
 *.tsbuildinfo

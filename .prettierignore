@@ -1,0 +1,11 @@
+node_modules
+.expo
+dist
+web-build
+package-lock.json
+
+# Hand-formatted docs / pre-existing template files, not app code
+docs/
+CLAUDE.md
+scripts/
+assets/expo.icon/icon.json

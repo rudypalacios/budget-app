@@ -11,20 +11,39 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      labelStyle={{ selected: { color: colors.text } }}
+    >
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Budget</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="expenses">
+        <NativeTabs.Trigger.Label>Expenses</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
+          sf={{ default: 'creditcard', selected: 'creditcard.fill' }}
+          md="credit_card"
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="income">
+        <NativeTabs.Trigger.Label>Income</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          sf={{ default: 'dollarsign.circle', selected: 'dollarsign.circle.fill' }}
+          md="attach_money"
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="history">
+        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="clock.arrow.circlepath" md="history" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="settings">
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'gearshape', selected: 'gearshape.fill' }}
+          md="settings"
         />
       </NativeTabs.Trigger>
     </NativeTabs>
