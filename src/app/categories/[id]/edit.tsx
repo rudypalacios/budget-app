@@ -4,11 +4,11 @@ import { CategoryForm, type CategoryFormValues } from '@/components/category-for
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { categoriesStore } from '@/lib/mock-stores';
+import { updateCategory, useCategoriesStore } from '@/store/categories';
 
 export default function EditCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { items, updateItem } = categoriesStore.useStore();
+  const items = useCategoriesStore((state) => state.items);
   const category = items.find((item) => item.id === id);
 
   if (!category) {
@@ -21,7 +21,7 @@ export default function EditCategoryScreen() {
   }
 
   function handleSubmit(values: CategoryFormValues) {
-    updateItem(id, { name: values.name, type: values.type });
+    updateCategory(id, { name: values.name, type: values.type });
     router.back();
   }
 

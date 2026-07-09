@@ -4,11 +4,11 @@ import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { expensesStore } from '@/lib/mock-stores';
+import { updateExpense, useExpensesStore } from '@/store/expenses';
 
 export default function EditExpenseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { items, updateItem } = expensesStore.useStore();
+  const items = useExpensesStore((state) => state.items);
   const expense = items.find((item) => item.id === id);
 
   if (!expense) {
@@ -20,29 +20,21 @@ export default function EditExpenseScreen() {
     );
   }
 
-  const currentDate = expense.date;
-
   const handleSubmit = (values: ExpenseFormValues) => {
-    const date = values.isRecurring
-      ? new Date(new Date().getFullYear(), new Date().getMonth(), Number(values.dueDay) || 1)
-      : currentDate;
-
-    updateItem(id, {
+    updateExpense(id, {
       name: values.name,
       categoryId: values.categoryId,
-      kind: values.isRecurring ? 'recurringInstance' : 'oneTime',
       amount: Number(values.amount),
-      date,
     });
     router.back();
   };
 
   const initialValues: ExpenseFormValues = {
     name: expense.name,
-    amount: String(expense.amount),
+    amount: String(expense.amount ?? 0),
     categoryId: expense.categoryId,
     isRecurring: expense.kind === 'recurringInstance',
-    dueDay: String(expense.date.getDate()),
+    dueDay: String(expense.date.toDate().getDate()),
   };
 
   return (

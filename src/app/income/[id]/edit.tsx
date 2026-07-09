@@ -4,11 +4,11 @@ import { IncomeForm, type IncomeFormValues } from '@/components/income-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { incomesStore } from '@/lib/mock-stores';
+import { updateIncome, useIncomesStore } from '@/store/incomes';
 
 export default function EditIncomeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { items, updateItem } = incomesStore.useStore();
+  const items = useIncomesStore((state) => state.items);
   const income = items.find((item) => item.id === id);
 
   if (!income) {
@@ -21,10 +21,9 @@ export default function EditIncomeScreen() {
   }
 
   function handleSubmit(values: IncomeFormValues) {
-    updateItem(id, {
+    updateIncome(id, {
       name: values.name,
       categoryId: values.categoryId,
-      kind: values.isRecurring ? 'recurringInstance' : 'oneTime',
       amount: Number(values.amount),
     });
     router.back();

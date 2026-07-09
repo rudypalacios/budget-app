@@ -7,7 +7,7 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { categoriesStore } from '@/lib/mock-stores';
+import { useCategoriesStore } from '@/store/categories';
 
 export type ExpenseFormValues = {
   name: string;
@@ -25,7 +25,7 @@ export type ExpenseFormProps = {
 };
 
 export function ExpenseForm({ initialValues, submitLabel, onSubmit, onCancel }: ExpenseFormProps) {
-  const { items: categories } = categoriesStore.useStore();
+  const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
   );
@@ -66,6 +66,9 @@ export function ExpenseForm({ initialValues, submitLabel, onSubmit, onCancel }: 
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
+      {/* Inert until recurringExpenses definitions + generation exist (a
+          later stage) — see CLAUDE.md Known Issues. Every submit currently
+          writes kind: 'oneTime' regardless of this toggle. */}
       <View style={styles.switchRow}>
         <Switch
           value={values.isRecurring}

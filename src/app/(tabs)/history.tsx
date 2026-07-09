@@ -8,9 +8,13 @@ import { Divider } from '@/components/ui/divider';
 import { LineChart } from '@/components/ui/line-chart';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
-import { sampleMonthlyTotals, type SampleCategory, type SampleExpense, type SampleIncome } from '@/constants/sample-data';
-import { categoriesStore, expensesStore, incomesStore } from '@/lib/mock-stores';
+import { sampleMonthlyTotals } from '@/constants/sample-data';
 import { formatCurrency } from '@/lib/format-currency';
+import type { WithId } from '@/lib/firebase/firestore.types';
+import { useCategoriesStore } from '@/store/categories';
+import { useExpensesStore } from '@/store/expenses';
+import { useIncomesStore } from '@/store/incomes';
+import type { Category, ExpenseRecord, IncomeRecord } from '@/types/firestore';
 
 const MONTH_FORMATTER = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 
@@ -25,9 +29,9 @@ type HistoryRow = {
 };
 
 function buildHistoryRows(
-  expenses: SampleExpense[],
-  incomes: SampleIncome[],
-  categories: SampleCategory[],
+  expenses: WithId<ExpenseRecord>[],
+  incomes: WithId<IncomeRecord>[],
+  categories: WithId<Category>[],
 ): HistoryRow[] {
   const expenseRows: HistoryRow[] = expenses
     .filter((expense) => expense.paid)
@@ -35,9 +39,11 @@ function buildHistoryRows(
       id: expense.id,
       name: expense.name,
       categoryName: categories.find((c) => c.id === expense.categoryId)?.name,
-      amount: expense.amount,
+      // amount is only null for an unpaid RecurringExpenseInstance
+      // (data-model.md §6) — filtered out by `paid` above already.
+      amount: expense.amount ?? 0,
       currency: expense.currency,
-      date: expense.date,
+      date: expense.date.toDate(),
       direction: 'expense',
     }));
 
@@ -49,7 +55,7 @@ function buildHistoryRows(
       categoryName: categories.find((c) => c.id === income.categoryId)?.name,
       amount: income.amount,
       currency: income.currency,
-      date: income.date,
+      date: income.date.toDate(),
       direction: 'income',
     }));
 
@@ -68,9 +74,9 @@ function groupByMonth(rows: HistoryRow[]) {
 }
 
 export default function HistoryScreen() {
-  const { items: expenses } = expensesStore.useStore();
-  const { items: incomes } = incomesStore.useStore();
-  const { items: categories } = categoriesStore.useStore();
+  const expenses = useExpensesStore((state) => state.items);
+  const incomes = useIncomesStore((state) => state.items);
+  const categories = useCategoriesStore((state) => state.items);
   const rows = buildHistoryRows(expenses, incomes, categories);
   const groups = groupByMonth(rows);
 

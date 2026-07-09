@@ -146,6 +146,12 @@ These were discussed and deliberately deferred rather than overlooked — worth 
 4. Design system: theming (light/dark), layout, and component library
 5. Port/build UI screens per the new UI direction, including persistent sync-status indicator in nav bar
 6. State layer (Zustand) wired to Firestore
+6b. Recurring definitions: management UI (create/edit recurringExpenses and
+    recurringIncomes) + instance generation, including the generation-lookahead
+    catch-up logic and month-end `dueDay` clamping (FR-1, FR-2, FR-5, FR-5b;
+    see docs/data-model.md §9). Must land before Stage 12, since that stage's
+    rolling-average query depends on recurring instances already existing in
+    `expenses`/`incomes`.
 7. Firestore sync validation (no custom sync code needed)
 8. Firebase Auth integration (email/password + Google + Facebook)
 9. Localization setup (Spanish + English) and default currency setting

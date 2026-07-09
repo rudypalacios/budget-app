@@ -166,9 +166,36 @@ actually resolved.)_
   component to do properly, which is the same missing primitive as the web
   modal-overlay gap above — worth solving both together rather than building a
   one-off. Revisit once that primitive exists.
+- **Anonymous auth is per-device/per-browser-profile, no cross-device sync
+  yet** (Stage 6) — `bootstrapSession` signs in anonymously with no linked
+  credential, so each device/browser profile gets its own separate uid and
+  therefore its own separate data; there is no shared account across devices
+  until Stage 8 links a real credential (email/Google/Facebook) via
+  `linkWithCredential`, at which point that one anonymous account's data
+  carries over intact. Until then, FR-12 ("same account accessible from
+  mobile and web") does not hold — data entered on one device/browser is
+  invisible on any other.
+- **`users/{uid}` settings-doc store deferred to Stage 9** (Stage 6) — the
+  approved Stage 6 plan included a `createDocumentStore` for `UserSettings`
+  alongside the collection stores; deliberately cut instead, since
+  `settings.tsx` still uses local `useState` placeholders (no real consumer
+  exists until Stage 9 wires localization/default-currency to it) and Stage 9
+  is already the roadmap's named home for this data. Not a silent cut this
+  time — flagged and confirmed before proceeding.
+- **"Recurring" toggle in Expense/Income forms is inert** (Stage 6) — the
+  Stage 5 UI lets a user flag an expense/income as recurring at entry time,
+  but every write now goes to real Firestore as `kind: 'oneTime'` regardless
+  of the toggle. A real `kind: 'recurringInstance'` document needs a
+  `recurringExpenseId`/`recurringIncomeId` pointing at a `recurringExpenses`/
+  `recurringIncomes` definition doc; Stage 6 added the store primitives for
+  those two collections (`src/store/recurring-expenses.ts`/
+  `recurring-incomes.ts`, both subscribed in `_layout.tsx`), but no screen
+  creates a definition yet, and the instance-generation logic
+  (docs/data-model.md §9) doesn't exist yet either — that's Stage 6b now
+  (see SRS §11). Revisit the toggle's wiring once Stage 6b lands.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **5 — Port/build UI screens per the new UI direction, including persistent sync-status indicator in nav bar**
+Stage: **6 — State layer (Zustand) wired to Firestore**

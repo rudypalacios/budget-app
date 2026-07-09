@@ -8,17 +8,18 @@ import { Chip } from '@/components/ui/chip';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
 import { sampleBudgets } from '@/constants/sample-data';
-import { categoriesStore, expensesStore } from '@/lib/mock-stores';
 import { formatCurrency } from '@/lib/format-currency';
+import { useCategoriesStore } from '@/store/categories';
+import { useExpensesStore } from '@/store/expenses';
 
 export default function BudgetScreen() {
-  const { items: expenses } = expensesStore.useStore();
-  const { items: categories } = categoriesStore.useStore();
+  const expenses = useExpensesStore((state) => state.items);
+  const categories = useCategoriesStore((state) => state.items);
 
   function actualForCategory(categoryId: string) {
     return expenses
       .filter((expense) => expense.categoryId === categoryId && expense.paid)
-      .reduce((sum, expense) => sum + expense.amount, 0);
+      .reduce((sum, expense) => sum + (expense.amount ?? 0), 0);
   }
 
   const totalBudgeted = sampleBudgets.reduce((sum, line) => sum + line.budgeted, 0);

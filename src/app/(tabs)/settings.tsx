@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { categoriesStore } from '@/lib/mock-stores';
+import { useCategoriesStore } from '@/store/categories';
 
 const CURRENCIES = [
   { value: 'GTQ', label: 'GTQ — Guatemalan Quetzal' },
@@ -25,13 +25,13 @@ const LANGUAGES = [
 ] as const;
 const THEMES = ['light', 'dark', 'system'] as const;
 
-// Local-only for Stage 5 — these pickers don't yet change the app's active
-// theme/language/currency. That wiring is Stage 6 (state layer) and
-// Stage 9 (localization); this screen is just the settings UI shell.
-// Categories are the exception — FR-9's centrally managed list is genuinely
-// UI/CRUD work, not state-layer wiring, so it's wired to the same mock
-// store the Expenses/Income pickers read from. Management itself lives on
-// its own /categories screen; Settings is just the entry point.
+// Local-only still — these pickers don't yet change the app's active
+// theme/language/currency. That's Stage 9 (localization) plus a
+// users/{uid} settings-doc store this stage didn't need (no screen reads
+// UserSettings yet); this screen is just the settings UI shell.
+// Categories are the exception — FR-9's centrally managed list reads from
+// the real categoriesStore (Stage 6). Management itself lives on its own
+// /categories screen; Settings is just the entry point.
 export default function SettingsScreen() {
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]['value']>('GTQ');
   const [language, setLanguage] = useState<(typeof LANGUAGES)[number]['value']>('en');
@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   const [leadDays, setLeadDays] = useState('1');
   const [trashRetentionDays, setTrashRetentionDays] = useState('30');
 
-  const { items: categories } = categoriesStore.useStore();
+  const categories = useCategoriesStore((state) => state.items);
 
   return (
     <ScreenScroll>

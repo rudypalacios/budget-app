@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { categoriesStore } from '@/lib/mock-stores';
+import { useCategoriesStore } from '@/store/categories';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
 
@@ -28,7 +28,7 @@ export type IncomeFormProps = {
 };
 
 export function IncomeForm({ initialValues, submitLabel, onSubmit, onCancel }: IncomeFormProps) {
-  const { items: categories } = categoriesStore.useStore();
+  const categories = useCategoriesStore((state) => state.items);
   const incomeCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'income' || category.type === 'both'),
   );
@@ -69,6 +69,9 @@ export function IncomeForm({ initialValues, submitLabel, onSubmit, onCancel }: I
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
+      {/* Inert until recurringIncomes definitions + generation exist (a
+          later stage) — see CLAUDE.md Known Issues. Every submit currently
+          writes kind: 'oneTime' regardless of this toggle. */}
       <View style={styles.switchRow}>
         <Switch
           value={values.isRecurring}

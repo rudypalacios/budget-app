@@ -10,18 +10,19 @@ import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
-import { categoriesStore, incomesStore } from '@/lib/mock-stores';
 import { formatCurrency } from '@/lib/format-currency';
+import { useCategoriesStore } from '@/store/categories';
+import { setIncomeReceived, useIncomesStore } from '@/store/incomes';
 
 export default function IncomeScreen() {
-  const { items: incomes, updateItem } = incomesStore.useStore();
-  const { items: categories } = categoriesStore.useStore();
+  const incomes = useIncomesStore((state) => state.items);
+  const categories = useCategoriesStore((state) => state.items);
 
   function toggleReceived(id: string, paid: boolean) {
-    updateItem(id, { paid: !paid });
+    setIncomeReceived(id, !paid);
   }
 
-  const sortedIncomes = [...incomes].sort((a, b) => b.date.getTime() - a.date.getTime());
+  const sortedIncomes = [...incomes].sort((a, b) => b.date.toMillis() - a.date.toMillis());
 
   return (
     <ScreenScroll>
