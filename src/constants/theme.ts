@@ -77,6 +77,11 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+// Web's tab bar (app-tabs.web.tsx) is an absolutely-positioned floating
+// pill that overlays the top of the content instead of reserving its own
+// layout space (unlike native's NativeTabs, a real native container) — screen
+// content needs matching top clearance so titles don't render underneath it.
+export const TopBarInset = Platform.select({ web: 72 }) ?? 0;
 export const MaxContentWidth = 800;
 
 // SRS §4 — touch targets should match patterns users already recognize;

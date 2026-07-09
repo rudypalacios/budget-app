@@ -28,8 +28,11 @@ assumed here.
   SDK directly.
 - **Auth:** Firebase Authentication — email/password, Google, Facebook
 - **State management:** Zustand
-- **Charts:** react-native-svg or Victory Native (decide at implementation time, note
-  the choice here once picked)
+- **Charts:** react-native-svg (Stage 5 decision) — the History line chart (FR-7) is
+  drawn manually with `Svg`/`Path`/`Line`/`Circle` primitives in
+  `src/components/ui/line-chart.tsx`, styled directly from theme tokens. Victory
+  Native was passed over to avoid a heavier dependency with less direct control
+  over styling and less certain react-native-web support.
 - **Language:** TypeScript, strict mode
 - **i18n:** structured translation files, Spanish + English at launch, extensible
 - **Currency:** never hardcoded — always driven by user's default currency setting
@@ -131,6 +134,42 @@ Don't defer testing wholesale — split by volatility, not by "do it all at the 
   `feat: implement archive/trash flow (Stage 11, FR-4a-4c)`
 - No direct commits to `main` — even solo, work through branches so stages can be
   reviewed/reverted independently
+
+## Known Issues
+_(Gaps and deferred items that don't already have a home in the SRS §11 roadmap —
+tracked here instead of only living in chat history. Remove an entry once it's
+actually resolved.)_
+
+- **Web nav bar doesn't adapt at narrow widths** (`src/components/app-tabs.web.tsx`)
+  — tabs overflow instead of wrapping or collapsing into a hamburger/drawer menu.
+  Pre-existing Stage 2 gap, surfaced during Stage 5 review, not yet assigned to a
+  specific stage.
+- **Web add/edit modal renders as full-page navigation, not a dialog overlay**
+  — `presentation: 'modal'` (Stage 5) gives native a real slide-up/swipe-to-dismiss
+  modal, but on web, `expo-router`'s Stack navigation replaces the page outright
+  rather than layering a dialog over the previous screen (confirmed via DOM
+  inspection — no `role="dialog"`/`aria-modal`, and the previous route isn't kept
+  mounted underneath). Affects `expenses/new`, `expenses/[id]/edit`, `income/new`,
+  `income/[id]/edit`, `categories/new`, `categories/[id]/edit`.
+- **`eslint-plugin-react-native-a11y` not installed** (Stage 4) — its peer range
+  caps at ESLint 8, conflicts with this project's ESLint 9 flat config.
+  Accessibility props (`accessibilityRole`/`Label`/`State`) are applied by hand
+  across `src/components/ui/*`, not lint-enforced.
+- **Native bottom-tab-bar inset (`BottomTabInset` in theme.ts) unverified
+  on-device** — added defensively so screen content doesn't render under the
+  native tab bar on iOS/Android, but only the web top-bar inset (`TopBarInset`)
+  fix has actually been screenshot-verified; native hasn't been checked on a
+  simulator/device yet.
+- **No "discard changes?" confirmation on form Cancel** (Expense/Income/Category
+  forms) — deliberately deferred, not an oversight. `react-native-web`'s
+  `Alert.alert()` is a literal no-op (`static alert() {}` —
+  `node_modules/react-native-web/src/exports/Alert/index.js`), so a naive
+  `Alert.alert()`-based confirm would silently discard unconditionally on web
+  while showing a real dialog on native — inconsistent cross-platform behavior,
+  worse than no confirmation at all. Needs a real custom confirm-dialog
+  component to do properly, which is the same missing primitive as the web
+  modal-overlay gap above — worth solving both together rather than building a
+  one-off. Revisit once that primitive exists.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without

@@ -8,6 +8,7 @@ import {
 } from 'expo-router/ui';
 import { Pressable, View, StyleSheet } from 'react-native';
 
+import { SyncStatusIndicator } from './sync-status-indicator';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
@@ -63,6 +64,8 @@ export function CustomTabList(props: TabListProps) {
           Budget App
         </ThemedText>
 
+        <SyncStatusIndicator style={styles.syncStatus} />
+
         {props.children}
       </ThemedView>
     </View>
@@ -90,6 +93,9 @@ const styles = StyleSheet.create({
   },
   brandText: {
     marginRight: 'auto',
+  },
+  syncStatus: {
+    marginRight: Spacing.two,
   },
   pressed: {
     opacity: 0.7,
