@@ -140,10 +140,6 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
-- **Web nav bar doesn't adapt at narrow widths** (`src/components/app-tabs.web.tsx`)
-  — tabs overflow instead of wrapping or collapsing into a hamburger/drawer menu.
-  Pre-existing Stage 2 gap, surfaced during Stage 5 review, not yet assigned to a
-  specific stage.
 - **Web add/edit modal renders as full-page navigation, not a dialog overlay**
   — `presentation: 'modal'` (Stage 5) gives native a real slide-up/swipe-to-dismiss
   modal, but on web, `expo-router`'s Stack navigation replaces the page outright

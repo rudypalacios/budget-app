@@ -84,6 +84,13 @@ export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const TopBarInset = Platform.select({ web: 72 }) ?? 0;
 export const MaxContentWidth = 800;
 
+// Below this viewport width, app-tabs.web.tsx's floating pill nav can't fit
+// brand + sync indicator + 5 tab pills on one line (no flexWrap/overflow
+// handling by design — a real hamburger + drawer collapse reads better at
+// phone widths than a wrapped or scrolling pill) and switches to a hamburger
+// + slide-in drawer instead.
+export const NavBreakpoint = 800;
+
 // SRS §4 — touch targets should match patterns users already recognize;
 // 44x44 is the iOS HIG / WCAG 2.5.5 minimum.
 export const MinTouchTarget = 44;
