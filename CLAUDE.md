@@ -136,4 +136,4 @@ Don't defer testing wholesale — split by volatility, not by "do it all at the 
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **4 — Design system: theming (light/dark), layout, and component library**
+Stage: **5 — Port/build UI screens per the new UI direction, including persistent sync-status indicator in nav bar**
