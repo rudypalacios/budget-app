@@ -32,10 +32,6 @@ export type NewRecurringExpenseInput = {
   startDate: Date;
 };
 
-// No screen creates these yet (data-model.md §9's generation-on-launch
-// logic and a management UI aren't built — see CLAUDE.md Known Issues); this
-// is the state-layer primitive Stage 6 called for so that work can plug in
-// without also having to build the store layer at that point.
 export function addRecurringExpense(input: NewRecurringExpenseInput) {
   const doc: Omit<RecurringExpense, 'createdAt' | 'updatedAt'> = {
     name: input.name,

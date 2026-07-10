@@ -1,58 +1,56 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { useCategoriesStore } from '@/store/categories';
 
-export type ExpenseFormValues = {
+export type RecurringExpenseFormValues = {
   name: string;
   amount: string;
   categoryId: string;
-  isRecurring: boolean;
   dueDay: string;
 };
 
-export type ExpenseFormProps = {
-  initialValues?: ExpenseFormValues;
+export type RecurringExpenseFormProps = {
+  initialValues?: RecurringExpenseFormValues;
   submitLabel: string;
-  onSubmit: (values: ExpenseFormValues) => void;
+  onSubmit: (values: RecurringExpenseFormValues) => void;
   onCancel: () => void;
-  // Set on Edit — kind is immutable post-creation (firestore.rules'
-  // unchanged('kind')), so an existing one-time expense can never become
-  // recurring in place, and vice versa. The toggle stays visible as
-  // read-only status instead of being hidden outright.
-  disableRecurringToggle?: boolean;
 };
 
-export function ExpenseForm({
+export function RecurringExpenseForm({
   initialValues,
   submitLabel,
   onSubmit,
   onCancel,
-  disableRecurringToggle,
-}: ExpenseFormProps) {
+}: RecurringExpenseFormProps) {
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
   );
 
-  const [values, setValues] = useState<ExpenseFormValues>(
+  const [values, setValues] = useState<RecurringExpenseFormValues>(
     initialValues ?? {
       name: '',
       amount: '',
       categoryId: expenseCategories[0]?.id ?? '',
-      isRecurring: false,
       dueDay: '1',
     },
   );
 
   const parsedAmount = Number(values.amount);
-  const isValid = !!values.name && !!values.categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const parsedDueDay = Number(values.dueDay);
+  const isValid =
+    !!values.name &&
+    !!values.categoryId &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    Number.isInteger(parsedDueDay) &&
+    parsedDueDay >= 1 &&
+    parsedDueDay <= 31;
 
   return (
     <View style={styles.form}>
@@ -60,7 +58,7 @@ export function ExpenseForm({
         label="Name"
         value={values.name}
         onChangeText={(name) => setValues((current) => ({ ...current, name }))}
-        placeholder="e.g. Groceries"
+        placeholder="e.g. Rent"
       />
       <TextField
         label="Amount (GTQ)"
@@ -77,25 +75,12 @@ export function ExpenseForm({
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
-      <View style={styles.switchRow}>
-        <Switch
-          value={values.isRecurring}
-          onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
-          accessibilityLabel="Recurring expense"
-          disabled={disableRecurringToggle}
-        />
-        <ThemedText>Recurring monthly</ThemedText>
-      </View>
-
-      {values.isRecurring && (
-        <TextField
-          label="Due day of month"
-          value={values.dueDay}
-          onChangeText={(dueDay) => setValues((current) => ({ ...current, dueDay }))}
-          keyboardType="number-pad"
-          editable={!disableRecurringToggle}
-        />
-      )}
+      <TextField
+        label="Due day of month"
+        value={values.dueDay}
+        onChangeText={(dueDay) => setValues((current) => ({ ...current, dueDay }))}
+        keyboardType="number-pad"
+      />
 
       <View style={styles.actionRow}>
         <Button label={submitLabel} onPress={() => onSubmit(values)} disabled={!isValid} style={styles.actionButton} />
@@ -107,11 +92,6 @@ export function ExpenseForm({
 
 const styles = StyleSheet.create({
   form: {
-    gap: Spacing.two,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: Spacing.two,
   },
   actionRow: {

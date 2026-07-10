@@ -45,6 +45,7 @@ export default function EditExpenseScreen() {
         submitLabel="Save changes"
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
+        disableRecurringToggle
       />
     </ScreenScroll>
   );

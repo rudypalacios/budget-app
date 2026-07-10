@@ -182,20 +182,36 @@ actually resolved.)_
   exists until Stage 9 wires localization/default-currency to it) and Stage 9
   is already the roadmap's named home for this data. Not a silent cut this
   time — flagged and confirmed before proceeding.
-- **"Recurring" toggle in Expense/Income forms is inert** (Stage 6) — the
-  Stage 5 UI lets a user flag an expense/income as recurring at entry time,
-  but every write now goes to real Firestore as `kind: 'oneTime'` regardless
-  of the toggle. A real `kind: 'recurringInstance'` document needs a
-  `recurringExpenseId`/`recurringIncomeId` pointing at a `recurringExpenses`/
-  `recurringIncomes` definition doc; Stage 6 added the store primitives for
-  those two collections (`src/store/recurring-expenses.ts`/
-  `recurring-incomes.ts`, both subscribed in `_layout.tsx`), but no screen
-  creates a definition yet, and the instance-generation logic
-  (docs/data-model.md §9) doesn't exist yet either — that's Stage 6b now
-  (see SRS §11). Revisit the toggle's wiring once Stage 6b lands.
+- **Recurring-instance generation only runs on app launch, not on
+  foreground-resume** (Stage 6b) — matches data-model.md §9's literal "On
+  app launch, the generator scans..." wording, but `AppState`-based
+  foreground-resume triggering isn't wired. If a user leaves the app running
+  in the background across a month boundary without a fresh launch, that
+  period's instance won't appear until the next cold start. Cheap follow-up
+  if this turns out to matter in practice — not implemented preemptively.
+- **`amountInDefaultCurrency` isn't recomputed when `amount` is edited**
+  (pre-existing since Stage 6, newly reachable in Stage 6b) — editing an
+  expense/income's `amount` via `updateExpense`/`updateIncome` never
+  recalculates `amountInDefaultCurrency` (`amount * exchangeRateToDefault`),
+  so it goes stale after any edit. Applied equally to one-time records since
+  Stage 6; Stage 6b's generated `RecurringExpenseInstance` docs additionally
+  snapshot `amountInDefaultCurrency` to the *budgeted* amount at generation
+  time (since `amount` is null until paid — data-model.md §6), which is
+  never corrected once a real `amount` is set either. Not user-visible yet
+  (Budget/History screens read `amount` directly, not
+  `amountInDefaultCurrency` — see `src/app/(tabs)/index.tsx`), but will need
+  fixing before Stage 10 (multi-currency) or any feature that aggregates via
+  `amountInDefaultCurrency` instead of `amount`.
+- **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
+  `/recurring-expenses`, `/recurring-incomes` management screens only ever
+  show/create `lifecycleState: 'active'` definitions; archiving is Stage
+  11's job. The generation engine (`src/store/recurring-generation.ts`)
+  already filters `lifecycleState === 'active'` per FR-4e, so archiving will
+  correctly stop regeneration as soon as that UI exists — nothing to change
+  in the generation logic itself when Stage 11 lands.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **6 — State layer (Zustand) wired to Firestore**
+Stage: **6b — Recurring definitions: management UI + instance generation**

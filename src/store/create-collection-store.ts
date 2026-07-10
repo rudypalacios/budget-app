@@ -53,7 +53,7 @@ export function createCollectionStore<T extends { createdAt: unknown; updatedAt:
 
   async function add(data: Omit<T, 'createdAt' | 'updatedAt'>) {
     if (!currentUid) throw new Error(`${collectionName} store: add() called before subscribe()`);
-    await firestoreClient.addDoc<T>(path(currentUid), data);
+    return firestoreClient.addDoc<T>(path(currentUid), data);
   }
 
   async function update(id: string, patch: Partial<Omit<T, 'createdAt' | 'updatedAt'>>) {
@@ -63,5 +63,14 @@ export function createCollectionStore<T extends { createdAt: unknown; updatedAt:
     await firestoreClient.updateDoc(`${path(currentUid)}/${id}`, patch);
   }
 
-  return { useStore, subscribe, add, update };
+  // Deterministic-ID write, distinct from add()'s auto-ID path — used by
+  // recurring-instance generation (Stage 6b), which must write to
+  // `{recurringExpenseId}_{yyyy-MM}`-shaped IDs so two devices generating the
+  // same period both converge on the same document (data-model.md §6/§9).
+  async function setAt(id: string, data: Omit<T, 'createdAt' | 'updatedAt'>) {
+    if (!currentUid) throw new Error(`${collectionName} store: setAt() called before subscribe()`);
+    await firestoreClient.setDoc<T>(`${path(currentUid)}/${id}`, data);
+  }
+
+  return { useStore, subscribe, add, update, setAt };
 }

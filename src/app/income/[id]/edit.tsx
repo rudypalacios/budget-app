@@ -35,6 +35,7 @@ export default function EditIncomeScreen() {
     categoryId: income.categoryId,
     isRecurring: income.kind === 'recurringInstance',
     frequency: 'monthly',
+    dayOfMonth: '1',
   };
 
   return (
@@ -45,6 +46,7 @@ export default function EditIncomeScreen() {
         submitLabel="Save changes"
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
+        disableRecurringToggle
       />
     </ScreenScroll>
   );

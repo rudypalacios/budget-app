@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -28,7 +28,18 @@ export default function IncomeScreen() {
     <ScreenScroll>
       <ScreenHeader title="Income" />
 
-      <Button label="Add income" onPress={() => router.push('/income/new')} />
+      <View style={styles.actionsRow}>
+        <Button label="Add income" onPress={() => router.push('/income/new')} style={styles.actionButton} />
+        <Button
+          label="Manage recurring"
+          variant="secondary"
+          // expo-router's typed-routes generator doesn't emit the collapsed
+          // '/recurring-incomes' alias for a plain (non-group) folder's
+          // index.tsx — same gap as '/categories' (see settings.tsx).
+          onPress={() => router.push('/recurring-incomes' as Href)}
+          style={styles.actionButton}
+        />
+      </View>
 
       <View style={styles.list}>
         {sortedIncomes.map((income, index) => {
@@ -77,6 +88,13 @@ export default function IncomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  actionButton: {
+    flex: 1,
+  },
   list: {
     gap: Spacing.two,
   },

@@ -1,5 +1,12 @@
 import { createCollectionStore } from './create-collection-store';
-import type { CurrencyCode, ExpenseRecord, OneTimeExpense, Timestamp } from '@/types/firestore';
+import { firestoreClient } from '@/lib/firebase/firestore';
+import type {
+  CurrencyCode,
+  ExpenseRecord,
+  OneTimeExpense,
+  RecurringExpenseInstance,
+  Timestamp,
+} from '@/types/firestore';
 
 const store = createCollectionStore<ExpenseRecord>('expenses');
 
@@ -65,4 +72,61 @@ export function updateExpense(id: string, patch: Partial<EditableExpenseFields>)
 
 export function setExpensePaid(id: string, paid: boolean) {
   return store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
+}
+
+export type ExpenseInstanceInput = {
+  recurringExpenseId: string;
+  categoryId: string;
+  name: string;
+  date: Date;
+  currency: CurrencyCode;
+  budgetedAmount: number;
+  budgetedCurrency: CurrencyCode;
+};
+
+// Deterministic-ID write for recurring-instance generation (Stage 6b) — see
+// src/store/recurring-generation.ts, which computes `id` as
+// `{recurringExpenseId}_{yyyy-MM}` per data-model.md §6/§9.
+export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
+  const doc: Omit<RecurringExpenseInstance, 'createdAt' | 'updatedAt'> = {
+    kind: 'recurringInstance',
+    recurringExpenseId: input.recurringExpenseId,
+    name: input.name,
+    categoryId: input.categoryId,
+    date: toTimestamp(input.date),
+    currency: input.currency,
+    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
+    // amount is null until paid (data-model.md §6), so there's no real
+    // "amount in default currency" yet either — the budgeted figure is the
+    // best available estimate until setExpensePaid/updateExpense supply a
+    // real amount.
+    amountInDefaultCurrency: input.budgetedAmount,
+    rateSource: 'manual',
+    budgetedAmount: input.budgetedAmount,
+    budgetedCurrency: input.budgetedCurrency,
+    amount: null,
+    paid: false,
+    paidDate: null,
+    lifecycleState: 'active',
+    trashedFromState: null,
+    archivedAt: null,
+    trashedAt: null,
+    purgeAt: null,
+  };
+  return store.setAt(id, doc);
+}
+
+// Catch-up generation (data-model.md §9) needs "the last period already
+// generated for this definition" to know where to resume from — derived by
+// querying max(date), no extra field required, per the doc.
+export async function getLastExpenseInstanceDate(
+  uid: string,
+  recurringExpenseId: string,
+): Promise<Date | null> {
+  const docs = await firestoreClient.getDocs<ExpenseRecord>(`users/${uid}/expenses`, {
+    where: [['recurringExpenseId', '==', recurringExpenseId]],
+    orderBy: [['date', 'desc']],
+    limit: 1,
+  });
+  return docs[0] ? docs[0].date.toDate() : null;
 }

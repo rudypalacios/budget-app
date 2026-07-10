@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -28,7 +28,18 @@ export default function ExpensesScreen() {
     <ScreenScroll>
       <ScreenHeader title="Expenses" />
 
-      <Button label="Add expense" onPress={() => router.push('/expenses/new')} />
+      <View style={styles.actionsRow}>
+        <Button label="Add expense" onPress={() => router.push('/expenses/new')} style={styles.actionButton} />
+        <Button
+          label="Manage recurring"
+          variant="secondary"
+          // expo-router's typed-routes generator doesn't emit the collapsed
+          // '/recurring-expenses' alias for a plain (non-group) folder's
+          // index.tsx — same gap as '/categories' (see settings.tsx).
+          onPress={() => router.push('/recurring-expenses' as Href)}
+          style={styles.actionButton}
+        />
+      </View>
 
       <View style={styles.list}>
         {sortedExpenses.map((expense, index) => {
@@ -45,8 +56,7 @@ export default function ExpensesScreen() {
                 </View>
                 <View style={styles.rowAmount}>
                   {/* amount is only null for an unpaid RecurringExpenseInstance
-                      (data-model.md §6) — none exist yet since every write
-                      here is kind: 'oneTime' (see CLAUDE.md Known Issues) */}
+                      (data-model.md §6) — see src/store/recurring-generation.ts */}
                   <ThemedText type="smallBold">{formatCurrency(expense.amount ?? 0, expense.currency)}</ThemedText>
                   <View style={styles.switchRow}>
                     <ThemedText type="caption">{expense.paid ? 'Paid' : 'Unpaid'}</ThemedText>
@@ -78,6 +88,13 @@ export default function ExpensesScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  actionButton: {
+    flex: 1,
+  },
   list: {
     gap: Spacing.two,
   },

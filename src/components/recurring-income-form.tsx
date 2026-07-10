@@ -5,59 +5,57 @@ import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Select } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { useCategoriesStore } from '@/store/categories';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
 
-export type IncomeFormValues = {
+export type RecurringIncomeFormValues = {
   name: string;
   amount: string;
   categoryId: string;
-  isRecurring: boolean;
   frequency: (typeof FREQUENCIES)[number];
   dayOfMonth: string;
 };
 
-export type IncomeFormProps = {
-  initialValues?: IncomeFormValues;
+export type RecurringIncomeFormProps = {
+  initialValues?: RecurringIncomeFormValues;
   submitLabel: string;
-  onSubmit: (values: IncomeFormValues) => void;
+  onSubmit: (values: RecurringIncomeFormValues) => void;
   onCancel: () => void;
-  // Set on Edit — kind is immutable post-creation (firestore.rules'
-  // unchanged('kind')), so an existing one-time income can never become
-  // recurring in place, and vice versa. The toggle stays visible as
-  // read-only status instead of being hidden outright.
-  disableRecurringToggle?: boolean;
 };
 
-export function IncomeForm({
+export function RecurringIncomeForm({
   initialValues,
   submitLabel,
   onSubmit,
   onCancel,
-  disableRecurringToggle,
-}: IncomeFormProps) {
+}: RecurringIncomeFormProps) {
   const categories = useCategoriesStore((state) => state.items);
   const incomeCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'income' || category.type === 'both'),
   );
 
-  const [values, setValues] = useState<IncomeFormValues>(
+  const [values, setValues] = useState<RecurringIncomeFormValues>(
     initialValues ?? {
       name: '',
       amount: '',
       categoryId: incomeCategories[0]?.id ?? '',
-      isRecurring: false,
       frequency: 'monthly',
       dayOfMonth: '1',
     },
   );
 
   const parsedAmount = Number(values.amount);
-  const isValid = !!values.name && !!values.categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const parsedDayOfMonth = Number(values.dayOfMonth);
+  const isValid =
+    !!values.name &&
+    !!values.categoryId &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    (values.frequency !== 'monthly' ||
+      (Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31));
 
   return (
     <View style={styles.form}>
@@ -82,46 +80,27 @@ export function IncomeForm({
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
-      <View style={styles.switchRow}>
-        <Switch
-          value={values.isRecurring}
-          onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
-          accessibilityLabel="Recurring income"
-          disabled={disableRecurringToggle}
-        />
-        <ThemedText>Recurring</ThemedText>
+      <ThemedText type="smallBold" themeColor="textSecondary">
+        Frequency
+      </ThemedText>
+      <View style={styles.chipRow}>
+        {FREQUENCIES.map((option) => (
+          <Pressable key={option} onPress={() => setValues((current) => ({ ...current, frequency: option }))}>
+            <Chip label={option} tone={values.frequency === option ? 'success' : 'neutral'} />
+          </Pressable>
+        ))}
       </View>
 
-      {values.isRecurring && (
-        <>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            Frequency
-          </ThemedText>
-          <View style={styles.chipRow}>
-            {FREQUENCIES.map((option) => (
-              <Pressable
-                key={option}
-                disabled={disableRecurringToggle}
-                onPress={() => setValues((current) => ({ ...current, frequency: option }))}
-              >
-                <Chip label={option} tone={values.frequency === option ? 'success' : 'neutral'} />
-              </Pressable>
-            ))}
-          </View>
-          {/* anchorDate (weekly/biweekly) isn't exposed as a field — it
-              defaults to the creation date, same as startDate, rather than
-              introducing a date-picker primitive that doesn't exist
-              elsewhere in this app yet. */}
-          {values.frequency === 'monthly' && (
-            <TextField
-              label="Day of month"
-              value={values.dayOfMonth}
-              onChangeText={(dayOfMonth) => setValues((current) => ({ ...current, dayOfMonth }))}
-              keyboardType="number-pad"
-              editable={!disableRecurringToggle}
-            />
-          )}
-        </>
+      {/* anchorDate (weekly/biweekly) isn't exposed as a field — it defaults
+          to the creation date, same as startDate, rather than introducing a
+          date-picker primitive that doesn't exist elsewhere in this app yet. */}
+      {values.frequency === 'monthly' && (
+        <TextField
+          label="Day of month"
+          value={values.dayOfMonth}
+          onChangeText={(dayOfMonth) => setValues((current) => ({ ...current, dayOfMonth }))}
+          keyboardType="number-pad"
+        />
       )}
 
       <View style={styles.actionRow}>
@@ -139,11 +118,6 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: Spacing.two,
   },
   actionRow: {
