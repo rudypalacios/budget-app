@@ -166,9 +166,52 @@ actually resolved.)_
   component to do properly, which is the same missing primitive as the web
   modal-overlay gap above — worth solving both together rather than building a
   one-off. Revisit once that primitive exists.
+- **Anonymous auth is per-device/per-browser-profile, no cross-device sync
+  yet** (Stage 6) — `bootstrapSession` signs in anonymously with no linked
+  credential, so each device/browser profile gets its own separate uid and
+  therefore its own separate data; there is no shared account across devices
+  until Stage 8 links a real credential (email/Google/Facebook) via
+  `linkWithCredential`, at which point that one anonymous account's data
+  carries over intact. Until then, FR-12 ("same account accessible from
+  mobile and web") does not hold — data entered on one device/browser is
+  invisible on any other.
+- **`users/{uid}` settings-doc store deferred to Stage 9** (Stage 6) — the
+  approved Stage 6 plan included a `createDocumentStore` for `UserSettings`
+  alongside the collection stores; deliberately cut instead, since
+  `settings.tsx` still uses local `useState` placeholders (no real consumer
+  exists until Stage 9 wires localization/default-currency to it) and Stage 9
+  is already the roadmap's named home for this data. Not a silent cut this
+  time — flagged and confirmed before proceeding.
+- **Recurring-instance generation only runs on app launch, not on
+  foreground-resume** (Stage 6b) — matches data-model.md §9's literal "On
+  app launch, the generator scans..." wording, but `AppState`-based
+  foreground-resume triggering isn't wired. If a user leaves the app running
+  in the background across a month boundary without a fresh launch, that
+  period's instance won't appear until the next cold start. Cheap follow-up
+  if this turns out to matter in practice — not implemented preemptively.
+- **`amountInDefaultCurrency` isn't recomputed when `amount` is edited**
+  (pre-existing since Stage 6, newly reachable in Stage 6b) — editing an
+  expense/income's `amount` via `updateExpense`/`updateIncome` never
+  recalculates `amountInDefaultCurrency` (`amount * exchangeRateToDefault`),
+  so it goes stale after any edit. Applied equally to one-time records since
+  Stage 6; Stage 6b's generated `RecurringExpenseInstance` docs additionally
+  snapshot `amountInDefaultCurrency` to the *budgeted* amount at generation
+  time (since `amount` is null until paid — data-model.md §6), which is
+  never corrected once a real `amount` is set either. Not user-visible yet
+  (Budget/History screens read `amount` directly, not
+  `amountInDefaultCurrency` — see `src/app/(tabs)/index.tsx`), but will need
+  fixing before Stage 10 (multi-currency) or any feature that aggregates via
+  `amountInDefaultCurrency` instead of `amount`.
+- **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
+  `/recurring-expenses`, `/recurring-incomes` management screens only ever
+  show/create `lifecycleState: 'active'` definitions; archiving is Stage
+  11's job. The generation engine (`src/store/recurring-generation.ts`)
+  already filters `lifecycleState === 'active'` per FR-4e, so archiving will
+  correctly stop regeneration as soon as that UI exists — nothing to change
+  in the generation logic itself when Stage 11 lands.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **5 — Port/build UI screens per the new UI direction, including persistent sync-status indicator in nav bar**
+Stage: **6b — Recurring definitions: management UI + instance generation**

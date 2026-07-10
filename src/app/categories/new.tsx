@@ -3,18 +3,11 @@ import { router } from 'expo-router';
 import { CategoryForm, type CategoryFormValues } from '@/components/category-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
-import { categoriesStore } from '@/lib/mock-stores';
+import { addCategory } from '@/store/categories';
 
 export default function NewCategoryScreen() {
-  const { addItem } = categoriesStore.useStore();
-
   function handleSubmit(values: CategoryFormValues) {
-    addItem({
-      id: `cat-${Date.now()}`,
-      name: values.name,
-      type: values.type,
-      lifecycleState: 'active',
-    });
+    addCategory({ name: values.name, type: values.type });
     router.back();
   }
 

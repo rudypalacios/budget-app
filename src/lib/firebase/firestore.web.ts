@@ -1,5 +1,5 @@
-import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
+  addDoc as fsAddDoc,
   collection,
   deleteDoc as fsDeleteDoc,
   doc,
@@ -12,26 +12,15 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
   query,
+  serverTimestamp,
   setDoc as fsSetDoc,
   updateDoc as fsUpdateDoc,
   where as fsWhere,
   type QueryConstraint,
 } from 'firebase/firestore';
 
-import type { FirestoreClient, QueryConstraints, WithId } from './firestore.types';
-
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
-};
-
-// getApps() guard avoids "app already exists" on Metro Fast Refresh / re-evaluation.
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+import { app } from './app.web';
+import type { FirestoreClient, QueryConstraints, SnapshotMeta, WithId } from './firestore.types';
 
 // Multi-tab manager: a user could have the web app open in more than one browser tab.
 const db = initializeFirestore(app, {
@@ -58,12 +47,27 @@ export const firestoreClient: FirestoreClient = {
     return snap.exists() ? ({ id: snap.id, ...snap.data() } as WithId<T>) : null;
   },
 
-  async setDoc<T extends object>(path: string, data: T) {
-    await fsSetDoc(doc(db, path), data);
+  async setDoc<T extends { createdAt: unknown; updatedAt: unknown }>(
+    path: string,
+    data: Omit<T, 'createdAt' | 'updatedAt'>,
+  ) {
+    await fsSetDoc(doc(db, path), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  },
+
+  async addDoc<T extends { createdAt: unknown; updatedAt: unknown }>(
+    collectionPath: string,
+    data: Omit<T, 'createdAt' | 'updatedAt'>,
+  ) {
+    const ref = await fsAddDoc(collection(db, collectionPath), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return ref.id;
   },
 
   async updateDoc(path: string, data: Record<string, unknown>) {
-    await fsUpdateDoc(doc(db, path), data);
+    await fsUpdateDoc(doc(db, path), { ...data, updatedAt: serverTimestamp() });
   },
 
   async deleteDoc(path: string) {
@@ -77,21 +81,31 @@ export const firestoreClient: FirestoreClient = {
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<T>);
   },
 
-  subscribeDoc<T extends object>(path: string, onNext: (doc: WithId<T> | null) => void) {
-    return onSnapshot(doc(db, path), (snap) => {
-      onNext(snap.exists() ? ({ id: snap.id, ...snap.data() } as WithId<T>) : null);
+  subscribeDoc<T extends object>(
+    path: string,
+    onNext: (doc: WithId<T> | null, meta: SnapshotMeta) => void,
+  ) {
+    return onSnapshot(doc(db, path), { includeMetadataChanges: true }, (snap) => {
+      onNext(snap.exists() ? ({ id: snap.id, ...snap.data() } as WithId<T>) : null, {
+        fromCache: snap.metadata.fromCache,
+        hasPendingWrites: snap.metadata.hasPendingWrites,
+      });
     });
   },
 
   subscribeCollection<T extends object>(
     collectionPath: string,
-    onNext: (docs: WithId<T>[]) => void,
+    onNext: (docs: WithId<T>[], meta: SnapshotMeta) => void,
     constraints?: QueryConstraints,
   ) {
     return onSnapshot(
       query(collection(db, collectionPath), ...toConstraints(constraints)),
+      { includeMetadataChanges: true },
       (snap) => {
-        onNext(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<T>));
+        onNext(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<T>),
+          { fromCache: snap.metadata.fromCache, hasPendingWrites: snap.metadata.hasPendingWrites },
+        );
       },
     );
   },

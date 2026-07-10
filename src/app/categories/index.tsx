@@ -11,13 +11,13 @@ import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
-import { categoriesStore } from '@/lib/mock-stores';
+import { updateCategory, useCategoriesStore } from '@/store/categories';
 
 export default function CategoriesScreen() {
-  const { items: categories, updateItem } = categoriesStore.useStore();
+  const categories = useCategoriesStore((state) => state.items);
 
   function toggleActive(id: string, lifecycleState: 'active' | 'archived') {
-    updateItem(id, { lifecycleState: lifecycleState === 'active' ? 'archived' : 'active' });
+    updateCategory(id, { lifecycleState: lifecycleState === 'active' ? 'archived' : 'active' });
   }
 
   return (

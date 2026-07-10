@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -10,24 +10,36 @@ import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
-import { categoriesStore, expensesStore } from '@/lib/mock-stores';
 import { formatCurrency } from '@/lib/format-currency';
+import { useCategoriesStore } from '@/store/categories';
+import { setExpensePaid, useExpensesStore } from '@/store/expenses';
 
 export default function ExpensesScreen() {
-  const { items: expenses, updateItem } = expensesStore.useStore();
-  const { items: categories } = categoriesStore.useStore();
+  const expenses = useExpensesStore((state) => state.items);
+  const categories = useCategoriesStore((state) => state.items);
 
   function togglePaid(id: string, paid: boolean) {
-    updateItem(id, { paid: !paid });
+    setExpensePaid(id, !paid);
   }
 
-  const sortedExpenses = [...expenses].sort((a, b) => b.date.getTime() - a.date.getTime());
+  const sortedExpenses = [...expenses].sort((a, b) => b.date.toMillis() - a.date.toMillis());
 
   return (
     <ScreenScroll>
       <ScreenHeader title="Expenses" />
 
-      <Button label="Add expense" onPress={() => router.push('/expenses/new')} />
+      <View style={styles.actionsRow}>
+        <Button label="Add expense" onPress={() => router.push('/expenses/new')} style={styles.actionButton} />
+        <Button
+          label="Manage recurring"
+          variant="secondary"
+          // expo-router's typed-routes generator doesn't emit the collapsed
+          // '/recurring-expenses' alias for a plain (non-group) folder's
+          // index.tsx — same gap as '/categories' (see settings.tsx).
+          onPress={() => router.push('/recurring-expenses' as Href)}
+          style={styles.actionButton}
+        />
+      </View>
 
       <View style={styles.list}>
         {sortedExpenses.map((expense, index) => {
@@ -43,7 +55,9 @@ export default function ExpensesScreen() {
                   </View>
                 </View>
                 <View style={styles.rowAmount}>
-                  <ThemedText type="smallBold">{formatCurrency(expense.amount, expense.currency)}</ThemedText>
+                  {/* amount is only null for an unpaid RecurringExpenseInstance
+                      (data-model.md §6) — see src/store/recurring-generation.ts */}
+                  <ThemedText type="smallBold">{formatCurrency(expense.amount ?? 0, expense.currency)}</ThemedText>
                   <View style={styles.switchRow}>
                     <ThemedText type="caption">{expense.paid ? 'Paid' : 'Unpaid'}</ThemedText>
                     <Switch
@@ -74,6 +88,13 @@ export default function ExpensesScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  actionButton: {
+    flex: 1,
+  },
   list: {
     gap: Spacing.two,
   },
