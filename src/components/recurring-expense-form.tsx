@@ -17,7 +17,7 @@ export type RecurringExpenseFormValues = {
 export type RecurringExpenseFormProps = {
   initialValues?: RecurringExpenseFormValues;
   submitLabel: string;
-  onSubmit: (values: RecurringExpenseFormValues) => void;
+  onSubmit: (values: RecurringExpenseFormValues) => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -52,6 +52,17 @@ export function RecurringExpenseForm({
     parsedDueDay >= 1 &&
     parsedDueDay <= 31;
 
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSubmit(values);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <View style={styles.form}>
       <TextField
@@ -83,8 +94,14 @@ export function RecurringExpenseForm({
       />
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={() => onSubmit(values)} disabled={!isValid} style={styles.actionButton} />
-        <Button label="Cancel" variant="secondary" onPress={onCancel} style={styles.actionButton} />
+        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={onCancel}
+          disabled={isSaving}
+          style={styles.actionButton}
+        />
       </View>
     </View>
   );

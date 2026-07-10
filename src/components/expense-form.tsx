@@ -20,7 +20,7 @@ export type ExpenseFormValues = {
 export type ExpenseFormProps = {
   initialValues?: ExpenseFormValues;
   submitLabel: string;
-  onSubmit: (values: ExpenseFormValues) => void;
+  onSubmit: (values: ExpenseFormValues) => void | Promise<void>;
   onCancel: () => void;
   // Set on Edit — kind is immutable post-creation (firestore.rules'
   // unchanged('kind')), so an existing one-time expense can never become
@@ -53,6 +53,17 @@ export function ExpenseForm({
 
   const parsedAmount = Number(values.amount);
   const isValid = !!values.name && !!values.categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSubmit(values);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <View style={styles.form}>
@@ -98,8 +109,14 @@ export function ExpenseForm({
       )}
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={() => onSubmit(values)} disabled={!isValid} style={styles.actionButton} />
-        <Button label="Cancel" variant="secondary" onPress={onCancel} style={styles.actionButton} />
+        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={onCancel}
+          disabled={isSaving}
+          style={styles.actionButton}
+        />
       </View>
     </View>
   );

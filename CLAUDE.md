@@ -181,7 +181,12 @@ actually resolved.)_
   `settings.tsx` still uses local `useState` placeholders (no real consumer
   exists until Stage 9 wires localization/default-currency to it) and Stage 9
   is already the roadmap's named home for this data. Not a silent cut this
-  time — flagged and confirmed before proceeding.
+  time — flagged and confirmed before proceeding. **Decision for when Stage 9
+  builds this store** (colleague feedback review, Stage 6b): Settings follows
+  the same explicit Save-button pattern as Expenses/Income/Categories — apply
+  and persist on Save, not autosave-on-change, and no separate "pending sync"
+  state. Use the shared `Button` component's built-in pending/disabled state
+  (see `src/components/ui/button.tsx`) rather than inventing a new pattern.
 - **Recurring-instance generation only runs on app launch, not on
   foreground-resume** (Stage 6b) — matches data-model.md §9's literal "On
   app launch, the generator scans..." wording, but `AppState`-based

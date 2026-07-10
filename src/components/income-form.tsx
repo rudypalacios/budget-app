@@ -24,7 +24,7 @@ export type IncomeFormValues = {
 export type IncomeFormProps = {
   initialValues?: IncomeFormValues;
   submitLabel: string;
-  onSubmit: (values: IncomeFormValues) => void;
+  onSubmit: (values: IncomeFormValues) => void | Promise<void>;
   onCancel: () => void;
   // Set on Edit — kind is immutable post-creation (firestore.rules'
   // unchanged('kind')), so an existing one-time income can never become
@@ -58,6 +58,17 @@ export function IncomeForm({
 
   const parsedAmount = Number(values.amount);
   const isValid = !!values.name && !!values.categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSubmit(values);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <View style={styles.form}>
@@ -125,8 +136,14 @@ export function IncomeForm({
       )}
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={() => onSubmit(values)} disabled={!isValid} style={styles.actionButton} />
-        <Button label="Cancel" variant="secondary" onPress={onCancel} style={styles.actionButton} />
+        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={onCancel}
+          disabled={isSaving}
+          style={styles.actionButton}
+        />
       </View>
     </View>
   );

@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
   },
   rowAmount: {
     gap: Spacing.one,
+    alignItems: 'flex-end',
   },
   switchRow: {
     flexDirection: 'row',
