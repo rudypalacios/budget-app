@@ -109,7 +109,15 @@ export default function PaymentsScreen() {
                         <Switch
                           value={row.paid}
                           onValueChange={() => togglePaid(row)}
-                          accessibilityLabel={`Mark ${row.name} as ${row.paid ? 'not ' + paidLabel.toLowerCase() : paidLabel.toLowerCase()}`}
+                          accessibilityLabel={`Mark ${row.name} as ${
+                            row.direction === 'income'
+                              ? row.paid
+                                ? 'expected'
+                                : 'received'
+                              : row.paid
+                                ? 'unpaid'
+                                : 'paid'
+                          }`}
                         />
                       </View>
                     </View>

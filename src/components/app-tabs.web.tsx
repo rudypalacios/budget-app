@@ -21,6 +21,7 @@ const TAB_ITEMS = [
   { name: 'index', href: '/', label: 'Budget' },
   { name: 'expenses', href: '/expenses', label: 'Expenses' },
   { name: 'income', href: '/income', label: 'Income' },
+  { name: 'payments', href: '/payments', label: 'Payments' },
   { name: 'history', href: '/history', label: 'History' },
   { name: 'settings', href: '/settings', label: 'Settings' },
 ] as const;
