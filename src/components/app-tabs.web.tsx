@@ -17,6 +17,8 @@ import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, NavBreakpoint, Spacing } from '@/constants/theme';
 
+// Kept in sync by hand with app-tabs.tsx's NativeTabs.Trigger list (native
+// iOS/Android) — see the comment there. A new tab needs an entry here too.
 const TAB_ITEMS = [
   { name: 'index', href: '/', label: 'Budget' },
   { name: 'expenses', href: '/expenses', label: 'Expenses' },
