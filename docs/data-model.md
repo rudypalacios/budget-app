@@ -1,8 +1,8 @@
 # Firestore Data Model
 
 **Status:** Approved — Stage 1 deliverable (see `docs/SRS-presupuesto-app.md` §11)
-**Version:** 1.4
-**Date:** 2026-07-07
+**Version:** 1.5
+**Date:** 2026-07-11
 
 This document is the source of truth for the Firestore schema. It formalizes the collections, document shapes, and design decisions needed to satisfy the functional requirements in `docs/SRS-presupuesto-app.md` §6 (FR-1 through FR-20). TypeScript types (`src/types/firestore.ts`) and security rules (`firestore.rules`) are derived from this document, not the other way around — if they ever disagree, this document wins and the code should be updated to match.
 
@@ -130,6 +130,7 @@ Both collections share this shape (expenses adds budget-specific fields):
 | `trashedFromState` | `'active' \| 'archived' \| null` | |
 | `archivedAt` / `trashedAt` | `Timestamp \| null` | |
 | `purgeAt` | `Timestamp \| null` | trash auto-purge (§8) |
+| `skipped`, `skippedAt` *(recurring instances only)* | `boolean`, `Timestamp \| null` | `kind === 'recurringInstance'` only — `false`/`null` for `kind === 'oneTime'` (Stage 8, Payments Dashboard, §12). Marks a single generated occurrence as intentionally not going to be paid this period, without affecting the parent definition, its generation schedule, or any other instance. Orthogonal to `paid`/`paidDate`, same relationship those two have to `lifecycleState`: `lifecycleState` governs whether the doc is visible at all (active/archived/trashed), `paid` governs payment status, `skipped` governs whether this occurrence counts toward due/overdue — a skipped instance is still `lifecycleState: 'active'` and still appears in History. Setting `paid: true` on a skipped instance also clears `skipped`/`skippedAt` (paying an occurrence implies it's no longer being skipped); the reverse isn't true (marking unpaid doesn't touch `skipped`). |
 | `createdAt` / `updatedAt` | `Timestamp` | |
 
 **Document ID strategy:** recurring instances use a **deterministic ID** — `expenses/{recurringExpenseId}_{yyyy-MM}` for monthly expenses, `incomes/{recurringIncomeId}_{yyyy-MM-dd}` for income (date-keyed, since weekly/biweekly can produce multiple occurrences per month). Two devices independently generating "this period's instance" both write to the same doc ID — idempotent, consistent with last-write-wins (NFR-6), no server-side dedup/Cloud Functions needed (Spark plan, NFR-2). One-time records use random auto-IDs.
@@ -153,7 +154,7 @@ Single enum `lifecycleState: 'active' | 'archived' | 'trashed'` per document (no
 
 Changing `trashRetentionDays` is **not retroactive** — only items trashed after the change use the new value; items already in Trash keep the `purgeAt` computed at the time they were trashed.
 
-> **Deployment note:** `purgeAt` only auto-deletes documents if a **Firestore TTL policy** is enabled on that field for each collection. This is not something `firestore.rules` or the TypeScript types create automatically — it must be enabled manually per collection (`recurringExpenses`, `recurringIncomes`, `expenses`, `incomes`) via the Firebase console or `gcloud firestore fields ttls update`. See §12 (Deployment checklist).
+> **Deployment note:** `purgeAt` only auto-deletes documents if a **Firestore TTL policy** is enabled on that field for each collection. This is not something `firestore.rules` or the TypeScript types create automatically — it must be enabled manually per collection (`recurringExpenses`, `recurringIncomes`, `expenses`, `incomes`) via the Firebase console or `gcloud firestore fields ttls update`. See §13 (Deployment checklist).
 
 ---
 
@@ -229,7 +230,60 @@ Two-tier config: `users/{uid}.reminders.{enabled, leadDays}` (global default) an
 
 ---
 
-## 12. Deployment checklist
+## 12. Payments Dashboard view logic (Stage 8)
+
+Read-only view logic, not a new collection or write path (skip's schema
+addition is covered in §6). Documented here because the grouping rule has
+real bugs if misread, and because it establishes a **standing product
+principle for this feed going forward**, not just a Stage 8 detail:
+
+> An unpaid `expenses`/`incomes` instance never leaves the dashboard on
+> its own, no matter how old. It only exits via one of exactly four
+> explicit user actions: **paid, archived, deleted, or skipped.**
+
+Given that, the dashboard groups every `lifecycleState: 'active'`
+expense/income row (one-time and recurring instance, merged client-side —
+no new query, see §1's reasoning for why `expenses`/`incomes` are each a
+single top-level collection already) into exactly three groups:
+
+1. **Overdue unpaid** — `date < today && paid === false && skipped !== true`,
+   ascending by `date` (oldest first). Spans every cycle, not just the
+   current one — an unpaid item from 3 cycles ago still appears here.
+2. **Upcoming unpaid** — `date >= today && paid === false && skipped !== true`,
+   ascending by `date` (soonest first).
+3. **Completed this cycle** — `paid === true || skipped === true`, where
+   the **action timestamp** (`paidDate` for paid, `skippedAt` for
+   skipped) falls within the current calendar-month cycle. Sorted
+   descending by that same action timestamp.
+
+**Group 3 is keyed by the action timestamp, never by `date`.** An item
+overdue by 3 months that gets paid today shows in "Completed this cycle"
+*today* (`paidDate = today`), regardless of how old its `date` is — "what
+did I clear this cycle" is about when the money moved, not when it was
+originally due. At cycle rollover, group-3 items simply stop being
+surfaced on this dashboard (paid items remain visible in History via
+`paidDate`, unaffected; `skipped`/`skippedAt` are never cleared, they
+just stop matching "current cycle"). Still-unpaid items are unaffected by
+rollover and continue in groups 1–2 until acted on.
+
+**No document duplication:** a late payment settled today is still one
+document — `date` (original due date) and `paidDate` (when actually paid)
+are two fields on the same doc, never a clone.
+
+**Cycle definition:** calendar month, computed by a single centralized
+`getCurrentCycleRange()` utility (`src/lib/cycle.ts`) rather than inlined
+month-math at each call site — deliberately, so a future configurable
+cycle length (e.g. weekly/quincena, backlogged, not in scope for Stage 8)
+only needs one function's implementation to change.
+
+**Out of scope for Stage 8:** browsing *past* cycles (e.g. "what did I
+pay in April"). That's cash-basis budget-vs-actual reporting, belongs to
+Stage 13, and is computed from `paidDate` at that time — Stage 8's
+dashboard only ever shows the live/current state.
+
+---
+
+## 13. Deployment checklist
 
 Steps that don't happen automatically from `firestore.rules` or app code deploys — must be done manually (once per environment/project):
 
@@ -239,10 +293,11 @@ Steps that don't happen automatically from `firestore.rules` or app code deploys
 
 ---
 
-## 13. Change log
+## 14. Change log
 
 - **1.0 (2026-07-07):** Initial approved model for Stage 1.
 - **1.1 (2026-07-07):** Added TTL deployment note (§7) and deployment checklist (§13) — `purgeAt` requires manually enabling a Firestore TTL policy per collection; this isn't created automatically by rules or app code.
 - **1.2 (2026-07-07):** Fixed §6 field scoping, caught while writing `src/types/firestore.ts` — `amount` was mistakenly tagged "(expenses only)" (incomes need it too, to record the received/expected amount); `paid`/`paidDate` were untagged and read as shared, but income has no paid/unpaid concept (FR-5c's editable `date` already covers "when income arrived").
 - **1.3 (2026-07-07):** SRS FR-5c updated to add a paid/received toggle for income (projection support — expected vs. actually received). `paid`/`paidDate` now apply to `incomes` too, mirroring `expenses` exactly; `date` on income is redefined as the expected/due date only, distinct from `paidDate`. Supersedes 1.2's income-has-no-paid-gate note.
 - **1.4 (2026-07-07):** Doc cleanup — fixed section numbering (skipped straight from §11 to old §13, no §12; renumbered to §12/§13). Added the `(recurringIncomeId, paid, date)` index note alongside the existing `(recurringExpenseId, paid, date)` one in §6 and §12, for consistency now that `incomes` carries `paid` too (v1.3) — not queried by anything yet.
+- **1.5 (2026-07-11):** SRS §11 roadmap change inserted a new Stage 8 (Payments Dashboard) ahead of the former Stage 8 (Auth), pushing everything after it back by one. Added `skipped`/`skippedAt` fields to §6, scoped to `kind === 'recurringInstance'` only on `expenses`/`incomes` (not one-time records, not the recurring definitions themselves) — orthogonal to `paid`/`paidDate` the same way those are orthogonal to `lifecycleState`. Added new §12 documenting the Payments Dashboard's three-group, cycle-based grouping/sort rule (renumbering old §12/§13 Deployment checklist/Change log to §13/§14) — no new collections, no new Firestore indexes; the dashboard is a client-side merge of the already-fully-synced `expenses`/`incomes` listeners.

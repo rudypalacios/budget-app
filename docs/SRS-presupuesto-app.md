@@ -153,14 +153,27 @@ These were discussed and deliberately deferred rather than overlooked — worth 
     rolling-average query depends on recurring instances already existing in
     `expenses`/`incomes`.
 7. Firestore sync validation (no custom sync code needed)
-8. Firebase Auth integration (email/password + Google + Facebook)
-9. Localization setup (Spanish + English) and default currency setting
-10. Multi-currency handling: per-record currency, stored exchange rate, optional live-rate fetch
-11. Archive/Trash flows: archive, soft-delete to Trash, restore, permanent purge with confirmation, regeneration stops on archive/trash
-12. Budget recommendation engine: rolling average calculation and budget-adjustment suggestions
-13. Reminders: configurable due-date notifications (global and per-expense toggle)
-14. Offline/reconnect testing
-15. Deployment (EAS build for mobile, static web export)
+8. Payments Dashboard: unified bank-statement-style feed of expense +
+   income instances (RecurringInstance-generated and one-time, merged),
+   overdue-first ordering. Includes a per-instance "skip" action —
+   marks a single occurrence as skipped (excluded from due/overdue
+   totals and reminders) without affecting its recurring definition,
+   generation schedule, or historical paid records. Consumes existing
+   expenses/incomes collections only — no new collections, but requires
+   a data-model.md update to add the skip concept (see ADR below).
+9. Firebase Auth integration (email/password + Google + Facebook)
+10. Localization setup (Spanish + English) and default currency setting
+11. Multi-currency handling: per-record currency, stored exchange rate,
+    optional live-rate fetch
+12. Archive/Trash flows: archive, soft-delete to Trash, restore,
+    permanent purge with confirmation, regeneration stops on
+    archive/trash
+13. Budget recommendation engine: rolling average calculation and
+    budget-adjustment suggestions
+14. Reminders: configurable due-date notifications (global and
+    per-expense toggle)
+15. Offline/reconnect testing
+16. Deployment (EAS build for mobile, static web export)
 
 ### Backlog — not yet scoped into a numbered stage
 
