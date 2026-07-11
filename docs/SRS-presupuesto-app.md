@@ -162,6 +162,31 @@ These were discussed and deliberately deferred rather than overlooked — worth 
 14. Offline/reconnect testing
 15. Deployment (EAS build for mobile, static web export)
 
+### Backlog — not yet scoped into a numbered stage
+
+Ideas raised but deliberately not assigned a stage number yet — each needs
+its own solution design session before it can be planned, since both touch
+foundational assumptions (the single-owner-`uid` data model; the
+active/upcoming split in what a "current" expense/reminder means):
+
+- **Shared account / multi-user access.** e.g. a husband and wife sharing one
+  account: either person can mark a shared expense as paid, and the other
+  sees it reflected, ideally with per-record assignment (who's responsible
+  for paying it). Current data model scopes every collection under a single
+  `users/{uid}` — supporting a second real person on the same data needs a
+  design pass on the sharing/permission model itself (invite flow? multiple
+  auth `uid`s with access to one shared namespace? per-record assignee
+  field?), not just a UI addition.
+- **Scheduled/deferred future payment.** A one-time expense known about far
+  in advance (e.g. a debt due in 6 months) that should stay out of the
+  current expense list and reminders entirely until it's actually due, but
+  be visible on some kind of future/upcoming view, and start reminding
+  (FR-13) once its time approaches. Distinct from recurring expenses (which
+  regenerate each period) — this is a single future-dated one-time record
+  that needs a "not yet active" state and a view to surface it before that
+  state flips, which the current active/archived/trashed lifecycle model
+  doesn't have a slot for yet.
+
 ---
 
 *This document is a living draft and will be refined as each stage is completed.*

@@ -80,6 +80,24 @@ testable and shared cleanly between native and web.
 - **Don't ask before:** routine scaffolding, boilerplate CRUD screens, standard
   refactors within an already-agreed structure, writing tests.
 
+## Stage Closeout Checklist
+Every stage's completion report must proactively confirm the following,
+without being asked — not just narrate what was built:
+
+1. **tsc/lint/tests results stated explicitly**, not implied (e.g. "`tsc
+   --noEmit`: clean", "`npm run lint`: clean", "`npm test`: 19/19 passed" —
+   not "everything checks out").
+2. **Any deviation from the originally-approved plan, listed explicitly**,
+   even if it seems minor — additions, drops, or changes in approach, not
+   just what was ultimately built.
+3. **All work merged to `develop` with a clean tree confirmed** (branch name
+   + commit hash) — not left sitting on an unmerged branch presented as done.
+4. **Any new external config** (Firestore indexes, security rules, API keys,
+   service setup) **confirmed committed/deployable via a checked-in file**,
+   not just "done" in a console somewhere.
+5. **Known Issues updated** to reflect anything newly discovered or newly
+   resolved this stage.
+
 ## Code style
 - **Priority order when these trade off against each other: readability and
   maintainability > simplicity > cleverness/performance.** Optimize for
@@ -128,6 +146,38 @@ Don't defer testing wholesale — split by volatility, not by "do it all at the 
   stabilized — these churn heavily during active design/layout iteration, so writing
   them early wastes effort re-writing them as things change.
 
+## Manual Verification Procedures
+Steps that can't be automated in CI (real device, real app-kill) but need to
+stay repeatable rather than re-derived from memory each time.
+
+### Offline persistence survives an app kill (Stage 7/14)
+Confirms NFR-1/FR-10/FR-11 hold under the specific failure mode the
+platform-split SDK decision (see Tech stack, `@react-native-firebase/firestore`
+vs. the web `firebase` JS SDK) exists to guard against: losing offline-entered
+data if the app is killed before reconnecting.
+
+Run on **both** native (dev client — `expo run:ios`/`expo run:android`, not
+Expo Go) and web, since they use genuinely different persistent-cache
+mechanisms:
+
+1. Launch the app online, let it fully sync (indicator shows "Synced").
+2. Turn off connectivity — airplane mode (native) or dev-tools "Offline"
+   network throttling / disconnect Wi-Fi (web).
+3. While offline, create or edit at least 2-3 records across different
+   collections (e.g. add an expense, mark an income paid, edit a category).
+   Confirm the sync-status indicator shows "Pending"/"Offline" and the data
+   appears immediately in the UI (local-first read).
+4. **Force-kill the app** — swipe away from the app switcher (native) or
+   fully close the tab/browser process, not just navigate away (web).
+5. Relaunch/reopen while still offline. Confirm every change from step 3 is
+   still present — this is the step that actually exercises persistent vs.
+   in-memory cache; if data from step 3 is missing here, offline durability
+   is broken.
+6. Restore connectivity. Confirm the indicator returns to "Synced" and the
+   changes are now visible from a second, already-synced client (or the
+   Firebase console) — proving they actually flushed, not just survived
+   locally.
+
 ## Git conventions
 - One branch per SRS stage (or sub-task within a large stage)
 - Commit messages reference the stage/FR number where relevant, e.g.
@@ -140,6 +190,30 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
+- **Creating a new recurring expense/income while offline hangs the Save
+  button indefinitely** (found in Stage 7 sync validation) — `expenses/new.tsx`
+  and `income/new.tsx`'s recurring branch calls
+  `generateExpenseInstancesForDefinition`/`generateIncomeInstancesForDefinition`
+  immediately after creating the definition, so that period's instance
+  appears without waiting for the next launch's catch-up scan. That
+  generation call's first step, `getLastExpenseInstanceDate`/
+  `getLastIncomeInstanceDate` (`src/store/expenses.ts`,
+  `src/store/incomes.ts`), is a one-shot `getDocs()` query — reproduced live
+  (Playwright, web build): while offline, this query never resolves (not
+  even a fast rejection), so the async `handleSubmit` never finishes, and
+  the Save button (with its Stage 6b-colleague-feedback pending/spinner
+  state) spins forever with no error shown to the user. The underlying
+  `addRecurringExpense`/`addRecurringIncome` write itself isn't lost — it's
+  sitting in Firestore's offline queue like any other write and does flush
+  once reconnected (confirmed: the definition appears correctly after
+  reconnecting) — but the user gets no feedback and can't back out cleanly
+  while offline. Contrast with **editing** an existing recurring
+  expense/income while offline, which works correctly (no `getDocs()` in
+  that path) — this is specifically the immediate-generation-on-create step.
+  Not fixed as part of Stage 7 (a validation stage, not meant to carry new
+  behavior changes) — needs its own small fix (e.g. skip/timeout the
+  immediate-generation attempt when offline and let the next launch's
+  catch-up scan pick it up instead) in a later stage.
 - **Web add/edit modal renders as full-page navigation, not a dialog overlay**
   — `presentation: 'modal'` (Stage 5) gives native a real slide-up/swipe-to-dismiss
   modal, but on web, `expo-router`'s Stack navigation replaces the page outright
