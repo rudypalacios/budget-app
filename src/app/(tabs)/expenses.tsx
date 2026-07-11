@@ -56,8 +56,12 @@ export default function ExpensesScreen() {
                 </View>
                 <View style={styles.rowAmount}>
                   {/* amount is only null for an unpaid RecurringExpenseInstance
-                      (data-model.md §6) — see src/store/recurring-generation.ts */}
-                  <ThemedText type="smallBold">{formatCurrency(expense.amount ?? 0, expense.currency)}</ThemedText>
+                      (data-model.md §6) — see src/store/recurring-generation.ts.
+                      Fall back to budgetedAmount so an unpaid bill shows what
+                      it's expected to cost instead of a misleading Q0.00. */}
+                  <ThemedText type="smallBold">
+                    {formatCurrency(expense.amount ?? expense.budgetedAmount ?? 0, expense.currency)}
+                  </ThemedText>
                   <View style={styles.switchRow}>
                     <ThemedText type="caption">{expense.paid ? 'Paid' : 'Unpaid'}</ThemedText>
                     <Switch
