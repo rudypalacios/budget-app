@@ -72,7 +72,7 @@
     },
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "<rootDir>/firestore.rules.test.ts"
+      "<rootDir>/firestore\\..*\\.test\\.ts"
     ]
   }
 }
