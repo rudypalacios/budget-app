@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Keyboard, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { MinTouchTarget, Spacing } from '@/constants/theme';
@@ -8,7 +9,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
 export type ButtonProps = {
   label: string;
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
   variant?: ButtonVariant;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -16,29 +17,51 @@ export type ButtonProps = {
 
 export function Button({ label, onPress, variant = 'primary', disabled, style }: ButtonProps) {
   const theme = useTheme();
+  const [isPending, setIsPending] = useState(false);
 
   const background =
     variant === 'primary' ? theme.tint : variant === 'secondary' ? theme.backgroundElement : 'transparent';
   const textColor = variant === 'primary' ? theme.tintText : variant === 'secondary' ? theme.text : theme.tint;
   const borderColor = variant === 'secondary' ? theme.border : 'transparent';
+  const isDisabled = disabled || isPending;
+
+  async function handlePress() {
+    if (isPending) return;
+    // Tied to onPress (not onBlur), so this only fires on an explicit tap of
+    // the button itself, never when focus simply moves between fields.
+    Keyboard.dismiss();
+    const result = onPress();
+    if (result instanceof Promise) {
+      setIsPending(true);
+      try {
+        await result;
+      } finally {
+        setIsPending(false);
+      }
+    }
+  }
 
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
+      onPress={handlePress}
+      disabled={isDisabled}
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{ disabled: isDisabled, busy: isPending }}
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: background, borderColor },
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
+        pressed && !isDisabled && styles.pressed,
+        isDisabled && styles.disabled,
         style,
       ]}
     >
-      <ThemedText type="smallBold" style={{ color: textColor }}>
-        {label}
-      </ThemedText>
+      {isPending ? (
+        <ActivityIndicator size="small" color={textColor} />
+      ) : (
+        <ThemedText type="smallBold" style={{ color: textColor }}>
+          {label}
+        </ThemedText>
+      )}
     </Pressable>
   );
 }

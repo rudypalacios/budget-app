@@ -18,7 +18,7 @@ export function ScreenScroll({ children, contentStyle }: ScreenScrollProps) {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={[styles.content, contentStyle]}>{children}</View>
       </ScrollView>
     </View>

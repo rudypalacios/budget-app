@@ -22,7 +22,7 @@ export type RecurringIncomeFormValues = {
 export type RecurringIncomeFormProps = {
   initialValues?: RecurringIncomeFormValues;
   submitLabel: string;
-  onSubmit: (values: RecurringIncomeFormValues) => void;
+  onSubmit: (values: RecurringIncomeFormValues) => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -56,6 +56,17 @@ export function RecurringIncomeForm({
     parsedAmount > 0 &&
     (values.frequency !== 'monthly' ||
       (Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31));
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSubmit(values);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <View style={styles.form}>
@@ -104,8 +115,14 @@ export function RecurringIncomeForm({
       )}
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={() => onSubmit(values)} disabled={!isValid} style={styles.actionButton} />
-        <Button label="Cancel" variant="secondary" onPress={onCancel} style={styles.actionButton} />
+        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={onCancel}
+          disabled={isSaving}
+          style={styles.actionButton}
+        />
       </View>
     </View>
   );

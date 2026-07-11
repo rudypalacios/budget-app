@@ -17,7 +17,7 @@ export type CategoryFormValues = {
 export type CategoryFormProps = {
   initialValues?: CategoryFormValues;
   submitLabel: string;
-  onSubmit: (values: CategoryFormValues) => void;
+  onSubmit: (values: CategoryFormValues) => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -30,6 +30,17 @@ export function CategoryForm({ initialValues, submitLabel, onSubmit, onCancel }:
   const [values, setValues] = useState<CategoryFormValues>(initialValues ?? DEFAULT_VALUES);
 
   const isValid = !!values.name;
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSubmit(values);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <View style={styles.form}>
@@ -52,8 +63,14 @@ export function CategoryForm({ initialValues, submitLabel, onSubmit, onCancel }:
       </View>
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={() => onSubmit(values)} disabled={!isValid} style={styles.actionButton} />
-        <Button label="Cancel" variant="secondary" onPress={onCancel} style={styles.actionButton} />
+        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={onCancel}
+          disabled={isSaving}
+          style={styles.actionButton}
+        />
       </View>
     </View>
   );
