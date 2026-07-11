@@ -134,6 +134,12 @@ export interface RecurringExpenseInstance extends ExpenseRecordShared {
   budgetedAmount: number;
   budgetedCurrency: CurrencyCode;
   amount: number | null; // null until paid === true
+  // Marks this one occurrence as intentionally not being paid this period,
+  // without touching the definition/generation schedule (Stage 8, Payments
+  // Dashboard). Orthogonal to paid/paidDate, same as lifecycleState is —
+  // see data-model.md §12.
+  skipped: boolean;
+  skippedAt: Timestamp | null;
 }
 
 export type ExpenseRecord = OneTimeExpense | RecurringExpenseInstance;
@@ -161,6 +167,9 @@ export interface OneTimeIncome extends IncomeRecordShared {
 export interface RecurringIncomeInstance extends IncomeRecordShared {
   kind: 'recurringInstance';
   recurringIncomeId: string;
+  // See RecurringExpenseInstance.skipped — data-model.md §12.
+  skipped: boolean;
+  skippedAt: Timestamp | null;
 }
 
 export type IncomeRecord = OneTimeIncome | RecurringIncomeInstance;

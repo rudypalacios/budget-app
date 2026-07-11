@@ -74,6 +74,26 @@ export function setExpensePaid(id: string, paid: boolean) {
   return store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
 }
 
+// Recurring-instance only (Stage 8, Payments Dashboard) — see
+// RecurringExpenseInstance.skipped in src/types/firestore.ts and
+// data-model.md §12. Callers are responsible for not offering this on a
+// OneTimeExpense row, since the field doesn't exist on that variant.
+//
+// The cast is needed because store.update()'s patch type is keyed off
+// ExpenseRecord (the OneTimeExpense | RecurringExpenseInstance union) —
+// TypeScript's keyof over a union only includes fields common to every
+// member, so 'skipped'/'skippedAt' (RecurringExpenseInstance-only) aren't
+// assignable without it. Firestore's updateDoc takes a plain object at
+// runtime regardless, so this is safe as long as callers only invoke this
+// for kind === 'recurringInstance' rows.
+export function setExpenseSkipped(id: string, skipped: boolean) {
+  const patch: Partial<Pick<RecurringExpenseInstance, 'skipped' | 'skippedAt'>> = {
+    skipped,
+    skippedAt: skipped ? toTimestamp(new Date()) : null,
+  };
+  return store.update(id, patch as Partial<Omit<ExpenseRecord, 'createdAt' | 'updatedAt'>>);
+}
+
 export type ExpenseInstanceInput = {
   recurringExpenseId: string;
   categoryId: string;
@@ -107,6 +127,8 @@ export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
     amount: null,
     paid: false,
     paidDate: null,
+    skipped: false,
+    skippedAt: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,

@@ -71,6 +71,22 @@ export function setIncomeReceived(id: string, paid: boolean) {
   return store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
 }
 
+// Recurring-instance only (Stage 8, Payments Dashboard) — see
+// RecurringIncomeInstance.skipped in src/types/firestore.ts and
+// data-model.md §12. Callers are responsible for not offering this on a
+// OneTimeIncome row, since the field doesn't exist on that variant.
+//
+// The cast is needed because store.update()'s patch type is keyed off
+// IncomeRecord (the OneTimeIncome | RecurringIncomeInstance union) — see
+// the matching comment on setExpenseSkipped in src/store/expenses.ts.
+export function setIncomeSkipped(id: string, skipped: boolean) {
+  const patch: Partial<Pick<RecurringIncomeInstance, 'skipped' | 'skippedAt'>> = {
+    skipped,
+    skippedAt: skipped ? toTimestamp(new Date()) : null,
+  };
+  return store.update(id, patch as Partial<Omit<IncomeRecord, 'createdAt' | 'updatedAt'>>);
+}
+
 export type IncomeInstanceInput = {
   recurringIncomeId: string;
   categoryId: string;
@@ -100,6 +116,8 @@ export function setIncomeInstanceAt(id: string, input: IncomeInstanceInput) {
     amount: input.amount,
     paid: false,
     paidDate: null,
+    skipped: false,
+    skippedAt: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
