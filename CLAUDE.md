@@ -178,12 +178,24 @@ mechanisms:
    Firebase console) — proving they actually flushed, not just survived
    locally.
 
+_Note: while testing this on web, you'll likely see a red "Could not reach
+Cloud Firestore backend... operating in offline mode" toast — that's Expo's
+dev-only LogBox overlay surfacing the Firestore SDK's own benign offline
+log via `console.error`; it's expected, doesn't appear in production
+builds, and isn't itself a failure._
+
 ## Git conventions
 - One branch per SRS stage (or sub-task within a large stage)
 - Commit messages reference the stage/FR number where relevant, e.g.
   `feat: implement archive/trash flow (Stage 11, FR-4a-4c)`
 - No direct commits to `main` — even solo, work through branches so stages can be
   reviewed/reverted independently
+- **Never merge a stage/task branch into `develop` automatically, even after
+  tsc/lint/tests all pass.** Work stops at "committed to the stage branch,
+  verified, ready for review" — merging into `develop` (and pushing that
+  merge) is the user's call to make, every stage, no exceptions. Don't
+  delete the source branch either. State the branch name + commit hash in
+  the completion report and stop there.
 
 ## Known Issues
 _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap —
