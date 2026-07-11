@@ -184,6 +184,12 @@ mechanisms:
   `feat: implement archive/trash flow (Stage 11, FR-4a-4c)`
 - No direct commits to `main` — even solo, work through branches so stages can be
   reviewed/reverted independently
+- **Never merge a stage/task branch into `develop` automatically, even after
+  tsc/lint/tests all pass.** Work stops at "committed to the stage branch,
+  verified, ready for review" — merging into `develop` (and pushing that
+  merge) is the user's call to make, every stage, no exceptions. Don't
+  delete the source branch either. State the branch name + commit hash in
+  the completion report and stop there.
 
 ## Known Issues
 _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap —
