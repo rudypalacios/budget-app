@@ -202,6 +202,24 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
+- **Transient "permission-denied" console errors right after Sign Out**
+  (Stage 9a) — `signOutAndRestartAnonymous` (`src/store/session.ts`) calls
+  `authClient.signOut()` immediately followed by `bootstrapSession()`. The
+  five Firestore collection listeners in `_layout.tsx` are only
+  re-subscribed once `bootstrapSession()` resolves and the new anonymous
+  uid lands in `useSessionStore`; until then, they're still attached to the
+  *old* uid's collection paths using now-invalidated credentials, so
+  Firestore's SDK logs a handful of `[code=permission-denied]` snapshot
+  errors to the console during that gap (confirmed live, web). Harmless —
+  the old listeners get torn down and replaced correctly once the new
+  anonymous session's uid triggers `createCollectionStore`'s
+  `subscribe()`, and no data or functionality is affected — but it's
+  visible console noise. Not fixed here since a real fix (explicitly
+  unsubscribing all five listeners before calling `signOut()`) means
+  touching `_layout.tsx`'s multi-listener orchestration more broadly than
+  this auth sub-stage should; revisit if it turns out to matter (e.g. if
+  it ever surfaces as a user-visible error toast rather than just a
+  console log).
 - **Creating a new recurring expense/income while offline hangs the Save
   button indefinitely** (found in Stage 7 sync validation) — `expenses/new.tsx`
   and `income/new.tsx`'s recurring branch calls
@@ -266,18 +284,19 @@ actually resolved.)_
   yet** (Stage 6) — `bootstrapSession` signs in anonymously with no linked
   credential, so each device/browser profile gets its own separate uid and
   therefore its own separate data; there is no shared account across devices
-  until Stage 8 links a real credential (email/Google/Facebook) via
+  until Stage 9 links a real credential (email/Google/Facebook) via
   `linkWithCredential`, at which point that one anonymous account's data
   carries over intact. Until then, FR-12 ("same account accessible from
   mobile and web") does not hold — data entered on one device/browser is
-  invisible on any other.
-- **`users/{uid}` settings-doc store deferred to Stage 9** (Stage 6) — the
+  invisible on any other. **Stage 9a (in progress)** adds the email/password
+  half of this; Google/Facebook remain Stage 9b/9c.
+- **`users/{uid}` settings-doc store deferred to Stage 10** (Stage 6) — the
   approved Stage 6 plan included a `createDocumentStore` for `UserSettings`
   alongside the collection stores; deliberately cut instead, since
   `settings.tsx` still uses local `useState` placeholders (no real consumer
-  exists until Stage 9 wires localization/default-currency to it) and Stage 9
+  exists until Stage 10 wires localization/default-currency to it) and Stage 10
   is already the roadmap's named home for this data. Not a silent cut this
-  time — flagged and confirmed before proceeding. **Decision for when Stage 9
+  time — flagged and confirmed before proceeding. **Decision for when Stage 10
   builds this store** (colleague feedback review, Stage 6b): Settings follows
   the same explicit Save-button pattern as Expenses/Income/Categories — apply
   and persist on Save, not autosave-on-change, and no separate "pending sync"
@@ -301,21 +320,21 @@ actually resolved.)_
   never corrected once a real `amount` is set either. Not user-visible yet
   (Budget/History screens read `amount` directly, not
   `amountInDefaultCurrency` — see `src/app/(tabs)/index.tsx`), but will need
-  fixing before Stage 10 (multi-currency) or any feature that aggregates via
+  fixing before Stage 11 (multi-currency) or any feature that aggregates via
   `amountInDefaultCurrency` instead of `amount`.
 - **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
   "Recurring" section on the Expenses/Income tabs (`src/app/(tabs)/expenses.tsx`,
   `income.tsx` — folded in from the old standalone `/recurring-expenses`,
   `/recurring-incomes` management screens as part of the Stage 8.1 Add/Manage
   consolidation) only ever shows `lifecycleState: 'active'` definitions;
-  archiving is Stage 11's job. The generation engine
+  archiving is Stage 12's job. The generation engine
   (`src/store/recurring-generation.ts`) already filters
   `lifecycleState === 'active'` per FR-4e, so archiving will correctly stop
   regeneration as soon as that UI exists — nothing to change in the
-  generation logic itself when Stage 11 lands.
+  generation logic itself when Stage 12 lands.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **6b — Recurring definitions: management UI + instance generation**
+Stage: **9a — Firebase Auth: email/password + anonymous account upgrade**
