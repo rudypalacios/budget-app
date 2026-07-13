@@ -85,13 +85,10 @@ export default function RootLayout() {
         <Stack.Screen name="expenses/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="income/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="income/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="payments/quick-expense" options={{ presentation: 'modal' }} />
         <Stack.Screen name="categories/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="recurring-expenses/index" />
-        <Stack.Screen name="recurring-expenses/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="recurring-incomes/index" />
-        <Stack.Screen name="recurring-incomes/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
