@@ -232,7 +232,17 @@ actually resolved.)_
   rather than layering a dialog over the previous screen (confirmed via DOM
   inspection — no `role="dialog"`/`aria-modal`, and the previous route isn't kept
   mounted underneath). Affects `expenses/new`, `expenses/[id]/edit`, `income/new`,
-  `income/[id]/edit`, `categories/new`, `categories/[id]/edit`.
+  `income/[id]/edit`, `categories/new`, `categories/[id]/edit`. **Likely
+  symptom (Stage 8 browser testing):** opening a `Select`/`OverflowMenu`
+  dropdown (both built on `FloatingPanel`, itself a `Modal`) on one of these
+  full-page-navigation screens, then immediately submitting and opening a
+  *second* one right after, occasionally leaves a stale full-screen
+  `FloatingPanel` backdrop (`aria-label="Close menu"`) intercepting clicks
+  on the new page — consistent with the previous route's `Modal` not
+  tearing down cleanly across the non-overlay page transition. Not
+  reliably reproduced by hand (only hit via fast scripted clicks), so
+  filed here rather than as its own entry; worth a look whenever the
+  overlay-modal primitive above gets built.
 - **`eslint-plugin-react-native-a11y` not installed** (Stage 4) — its peer range
   caps at ESLint 8, conflicts with this project's ESLint 9 flat config.
   Accessibility props (`accessibilityRole`/`Label`/`State`) are applied by hand

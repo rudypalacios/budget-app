@@ -3,6 +3,12 @@ import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
+// Native (iOS/Android) tab registration — app-tabs.web.tsx is a SEPARATE
+// implementation for web (custom Tabs/Drawer nav, not NativeTabs), picked
+// up automatically by the platform-specific .web.tsx extension. A new tab
+// must be added to BOTH files, or it silently only appears on one platform
+// (caught in Stage 8 browser testing: the Payments tab was added here but
+// missed in app-tabs.web.tsx's TAB_ITEMS, so it never rendered on web).
 export default function AppTabs() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
@@ -31,6 +37,14 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon
           sf={{ default: 'dollarsign.circle', selected: 'dollarsign.circle.fill' }}
           md="attach_money"
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="payments">
+        <NativeTabs.Trigger.Label>Payments</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'list.bullet.rectangle', selected: 'list.bullet.rectangle.fill' }}
+          md="receipt_long"
         />
       </NativeTabs.Trigger>
 
