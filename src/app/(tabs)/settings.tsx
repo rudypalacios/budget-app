@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -13,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { useCategoriesStore } from '@/store/categories';
+import { signOutAndRestartAnonymous, useSessionStore } from '@/store/session';
 
 const CURRENCIES = [
   { value: 'GTQ', label: 'GTQ — Guatemalan Quetzal' },
@@ -41,10 +43,32 @@ export default function SettingsScreen() {
   const [trashRetentionDays, setTrashRetentionDays] = useState('30');
 
   const categories = useCategoriesStore((state) => state.items);
+  const email = useSessionStore((state) => state.email);
+  const isAnonymous = useSessionStore((state) => state.isAnonymous);
 
   return (
     <ScreenScroll>
       <ScreenHeader title="Settings" />
+
+      <View style={styles.section}>
+        <SectionHeader title="Account" />
+        {isAnonymous ? (
+          <Pressable
+            onPress={() => router.push('/(auth)/login' as Href)}
+            accessibilityRole="button"
+            accessibilityLabel="Create account or log in"
+          >
+            <Card style={styles.manageRow}>
+              <ThemedText type="smallBold">Create account / Log in</ThemedText>
+              <ThemedText themeColor="textSecondary">›</ThemedText>
+            </Card>
+          </Pressable>
+        ) : (
+          <Card style={styles.card}>
+            <ThemedText type="smallBold">{email}</ThemedText>
+          </Card>
+        )}
+      </View>
 
       <View style={styles.section}>
         <SectionHeader title="General" />
@@ -120,6 +144,15 @@ export default function SettingsScreen() {
           />
         </Card>
       </View>
+
+      {!isAnonymous && (
+        // Sign Out lives on its own at the very end of the page, below every
+        // other section — matches the common Facebook/GitHub convention of
+        // putting sign-out last, rather than nested inside the Account card.
+        <View style={styles.section}>
+          <Button label="Sign Out" variant="ghost" onPress={signOutAndRestartAnonymous} />
+        </View>
+      )}
     </ScreenScroll>
   );
 }

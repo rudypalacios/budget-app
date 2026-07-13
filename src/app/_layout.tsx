@@ -9,7 +9,7 @@ import { subscribeIncomes, useIncomesStore } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import { subscribeRecurringExpenses, useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { subscribeRecurringIncomes, useRecurringIncomesStore } from '@/store/recurring-incomes';
-import { bootstrapSession, useSessionStore } from '@/store/session';
+import { bootstrapSession, subscribeAuthState, useSessionStore } from '@/store/session';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,11 +25,15 @@ export default function RootLayout() {
 
   useEffect(() => {
     bootstrapSession();
+    // Keeps uid/email/isAnonymous in sync with every later sign-up/in/out,
+    // not just this initial bootstrap (Stage 9a) — see session.ts.
+    subscribeAuthState();
   }, []);
 
-  // Starts the five collection listeners once anonymous sign-in resolves —
-  // see docs/SRS-presupuesto-app.md §11 Stage 8 for the real-auth upgrade
-  // that eventually replaces bootstrapSession.
+  // Starts the five collection listeners once a uid is available (anonymous
+  // or, since Stage 9a, a real signed-in account) — reactive to uid changes,
+  // so signing in/out on this device also re-subscribes to that account's
+  // own data.
   useEffect(() => {
     if (!uid) return;
     subscribeCategories(uid);
@@ -90,6 +94,7 @@ export default function RootLayout() {
         <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="(auth)/login" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );
