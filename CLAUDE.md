@@ -304,12 +304,15 @@ actually resolved.)_
   fixing before Stage 10 (multi-currency) or any feature that aggregates via
   `amountInDefaultCurrency` instead of `amount`.
 - **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
-  `/recurring-expenses`, `/recurring-incomes` management screens only ever
-  show/create `lifecycleState: 'active'` definitions; archiving is Stage
-  11's job. The generation engine (`src/store/recurring-generation.ts`)
-  already filters `lifecycleState === 'active'` per FR-4e, so archiving will
-  correctly stop regeneration as soon as that UI exists — nothing to change
-  in the generation logic itself when Stage 11 lands.
+  "Recurring" section on the Expenses/Income tabs (`src/app/(tabs)/expenses.tsx`,
+  `income.tsx` — folded in from the old standalone `/recurring-expenses`,
+  `/recurring-incomes` management screens as part of the Stage 8.1 Add/Manage
+  consolidation) only ever shows `lifecycleState: 'active'` definitions;
+  archiving is Stage 11's job. The generation engine
+  (`src/store/recurring-generation.ts`) already filters
+  `lifecycleState === 'active'` per FR-4e, so archiving will correctly stop
+  regeneration as soon as that UI exists — nothing to change in the
+  generation logic itself when Stage 11 lands.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
