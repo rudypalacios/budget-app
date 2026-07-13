@@ -85,6 +85,7 @@ export default function RootLayout() {
         <Stack.Screen name="expenses/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="income/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="income/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="payments/quick-expense" options={{ presentation: 'modal' }} />
         <Stack.Screen name="categories/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
