@@ -101,34 +101,46 @@ export default function PaymentsScreen() {
                       isOverdue && !isCompleted ? { backgroundColor: `${theme.danger}1A` } : null,
                     ]}
                   >
-                    <View style={styles.rowMain}>
-                      <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
-                        {row.name}{' '}
-                        <ThemedText type="caption" themeColor="textSecondary">
-                          (Due: {formatShortDate(row.date)}
-                          {row.paid && row.paidDate ? `, Paid: ${formatShortDate(row.paidDate)}` : ''})
+                    <View style={styles.rowContent}>
+                      <View style={styles.topLine}>
+                        <ThemedText
+                          type="smallBold"
+                          style={[styles.nameText, isCompleted && styles.completedText]}
+                        >
+                          {row.name}{' '}
+                          <ThemedText type="caption" themeColor="textSecondary">
+                            (Due: {formatShortDate(row.date)}
+                            {row.paid && row.paidDate ? `, Paid: ${formatShortDate(row.paidDate)}` : ''})
+                          </ThemedText>
                         </ThemedText>
-                      </ThemedText>
-                      <View style={styles.rowMeta}>
-                        <ThemedText type="caption">{category?.name}</ThemedText>
-                        {row.kind === 'recurringInstance' && <Chip label="Recurring" />}
-                        {row.skipped && <Chip label="Skipped" tone="warning" />}
+                        <ThemedText
+                          type="smallBold"
+                          // Skipped rows stay neutral ("white") — they're no
+                          // longer a real income/expense for the period, so
+                          // the red/green income-vs-expense coding doesn't
+                          // apply; the Skipped chip below is what flags them.
+                          themeColor={row.skipped ? 'text' : row.direction === 'income' ? 'success' : 'danger'}
+                          style={[isCompleted && styles.completedText]}
+                        >
+                          {row.direction === 'income' ? '+' : '-'}
+                          {formatCurrency(row.amount, row.currency)}
+                        </ThemedText>
                       </View>
-                    </View>
-                    <View style={styles.rowAmount}>
-                      <ThemedText
-                        type="smallBold"
-                        // Skipped rows stay neutral ("white") — they're no
-                        // longer a real income/expense for the period, so
-                        // the red/green income-vs-expense coding doesn't
-                        // apply; the Skipped chip above is what flags them.
-                        themeColor={row.skipped ? 'text' : row.direction === 'income' ? 'success' : 'danger'}
-                        style={[isCompleted && styles.completedText]}
-                      >
-                        {row.direction === 'income' ? '+' : '-'}
-                        {formatCurrency(row.amount, row.currency)}
-                      </ThemedText>
-                      <View style={styles.switchRow}>
+
+                      <ThemedText type="caption">{category?.name}</ThemedText>
+
+                      {/* Full row width, below the top line — otherwise the
+                          top line's amount column permanently squeezes this
+                          row's available width, forcing Recurring/Skipped to
+                          wrap onto separate lines even with room to spare. */}
+                      {(row.kind === 'recurringInstance' || row.skipped) && (
+                        <View style={styles.rowTags}>
+                          {row.kind === 'recurringInstance' && <Chip label="Recurring" />}
+                          {row.skipped && <Chip label="Skipped" tone="warning" />}
+                        </View>
+                      )}
+
+                      <View style={styles.bottomLine}>
                         {isCompleted ? (
                           <ThemedText type="caption">{paidLabel}</ThemedText>
                         ) : (
@@ -192,21 +204,26 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     gap: Spacing.two,
   },
-  rowMain: {
+  rowContent: {
     flex: 1,
     gap: Spacing.one,
   },
-  rowMeta: {
+  topLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+  },
+  nameText: {
+    flex: 1,
+  },
+  rowTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: Spacing.two,
   },
-  rowAmount: {
-    gap: Spacing.one,
-    alignItems: 'flex-end',
-  },
-  switchRow: {
+  bottomLine: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,

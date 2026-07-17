@@ -68,10 +68,8 @@ export default function HistoryScreen() {
                   <View style={styles.row}>
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold">{row.name}</ThemedText>
-                      <View style={styles.rowMeta}>
-                        <ThemedText type="caption">{category?.name}</ThemedText>
-                        {row.skipped && <Chip label="Skipped" tone="warning" />}
-                      </View>
+                      <ThemedText type="caption">{category?.name}</ThemedText>
+                      {row.skipped && <Chip label="Skipped" tone="warning" />}
                     </View>
                     <ThemedText
                       type="smallBold"
@@ -108,12 +106,6 @@ const styles = StyleSheet.create({
   rowMain: {
     flex: 1,
     gap: Spacing.one,
-  },
-  rowMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: Spacing.two,
   },
   divider: {
     marginVertical: Spacing.one,
