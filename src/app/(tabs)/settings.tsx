@@ -64,8 +64,9 @@ export default function SettingsScreen() {
             </Card>
           </Pressable>
         ) : (
-          <Card style={styles.card}>
+          <Card style={styles.manageRow}>
             <ThemedText type="smallBold">{email}</ThemedText>
+            <Button label="Sign Out" variant="ghost" onPress={signOutAndRestartAnonymous} />
           </Card>
         )}
       </View>
@@ -146,9 +147,11 @@ export default function SettingsScreen() {
       </View>
 
       {!isAnonymous && (
-        // Sign Out lives on its own at the very end of the page, below every
-        // other section — matches the common Facebook/GitHub convention of
-        // putting sign-out last, rather than nested inside the Account card.
+        // Duplicated here deliberately: the Account-card action above is for
+        // discoverability (found live that a single Sign Out at the very
+        // bottom of a long page was too easy to miss), while this one keeps
+        // the common Facebook/GitHub convention of also having sign-out as
+        // the last action on the page.
         <View style={styles.section}>
           <Button label="Sign Out" variant="ghost" onPress={signOutAndRestartAnonymous} />
         </View>
