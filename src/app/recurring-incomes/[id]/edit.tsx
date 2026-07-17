@@ -4,6 +4,7 @@ import { ModalHeader } from '@/components/modal-header';
 import { RecurringIncomeForm, type RecurringIncomeFormValues } from '@/components/recurring-income-form';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { parseAmountInput } from '@/lib/currency-input';
 import { updateRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
 
 export default function EditRecurringIncomeScreen() {
@@ -27,7 +28,7 @@ export default function EditRecurringIncomeScreen() {
     updateRecurringIncome(id, {
       name: values.name,
       categoryId: values.categoryId,
-      amount: Number(values.amount),
+      amount: parseAmountInput(values.amount),
       frequency: values.frequency,
       dayOfMonth: values.frequency === 'monthly' ? Number(values.dayOfMonth) : null,
     });

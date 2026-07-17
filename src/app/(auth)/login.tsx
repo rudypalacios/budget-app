@@ -32,7 +32,14 @@ export default function LoginScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title={TITLES[form.mode]} onBack={() => router.back()} />
+      <ModalHeader
+        title={TITLES[form.mode]}
+        // Reset Password is an in-place mode of this same screen, not a
+        // separate route (see useAuthForm) — back should return to Log In,
+        // not dismiss the whole auth modal, mirroring the existing "Back to
+        // Log In" link below.
+        onBack={form.mode === 'reset' ? () => form.setMode('signIn') : () => router.back()}
+      />
 
       {form.mode !== 'reset' && (
         <View style={styles.modeRow}>
@@ -100,6 +107,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   modeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.two,
   },
   form: {

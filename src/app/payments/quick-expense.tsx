@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { addExpense } from '@/store/expenses';
 import { useCategoriesStore } from '@/store/categories';
 
@@ -31,7 +32,7 @@ export default function QuickExpenseScreen() {
   const [categoryId, setCategoryId] = useState(expenseCategories[0]?.id ?? '');
   const [paid, setPaid] = useState(true);
 
-  const parsedAmount = Number(amount);
+  const parsedAmount = parseAmountInput(amount);
   const isValid = !!name && !!categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   async function handleSave() {
@@ -47,8 +48,9 @@ export default function QuickExpenseScreen() {
         <TextField
           label="Amount (GTQ)"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={(text) => setAmount(sanitizeAmountInput(text))}
           keyboardType="decimal-pad"
+          inputMode="decimal"
           placeholder="0.00"
         />
         <Select

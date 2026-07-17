@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 
 export type RecurringExpenseFormValues = {
@@ -41,7 +42,7 @@ export function RecurringExpenseForm({
     },
   );
 
-  const parsedAmount = Number(values.amount);
+  const parsedAmount = parseAmountInput(values.amount);
   const parsedDueDay = Number(values.dueDay);
   const isValid =
     !!values.name &&
@@ -74,8 +75,9 @@ export function RecurringExpenseForm({
       <TextField
         label="Amount (GTQ)"
         value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount }))}
+        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"
+        inputMode="decimal"
         placeholder="0.00"
       />
 

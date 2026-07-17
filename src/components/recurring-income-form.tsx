@@ -7,6 +7,7 @@ import { Chip } from '@/components/ui/chip';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
@@ -47,7 +48,7 @@ export function RecurringIncomeForm({
     },
   );
 
-  const parsedAmount = Number(values.amount);
+  const parsedAmount = parseAmountInput(values.amount);
   const parsedDayOfMonth = Number(values.dayOfMonth);
   const isValid =
     !!values.name &&
@@ -79,8 +80,9 @@ export function RecurringIncomeForm({
       <TextField
         label="Amount (GTQ)"
         value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount }))}
+        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"
+        inputMode="decimal"
         placeholder="0.00"
       />
 
@@ -103,8 +105,9 @@ export function RecurringIncomeForm({
       </View>
 
       {/* anchorDate (weekly/biweekly) isn't exposed as a field — it defaults
-          to the creation date, same as startDate, rather than introducing a
-          date-picker primitive that doesn't exist elsewhere in this app yet. */}
+          to the creation date, same as startDate. Unlike a one-time due
+          date, a recurring definition's start point isn't user-facing data
+          worth editing after the fact. */}
       {values.frequency === 'monthly' && (
         <TextField
           label="Day of month"

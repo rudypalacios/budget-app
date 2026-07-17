@@ -198,6 +198,7 @@ const styles = StyleSheet.create({
   },
   rowMeta: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: Spacing.two,
   },

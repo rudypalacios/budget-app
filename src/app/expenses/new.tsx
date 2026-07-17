@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
+import { parseAmountInput } from '@/lib/currency-input';
 import { addExpense } from '@/store/expenses';
 import { addRecurringExpense } from '@/store/recurring-expenses';
 import { generateExpenseInstancesForDefinition } from '@/store/recurring-generation';
@@ -17,7 +18,7 @@ export default function NewExpenseScreen() {
       const startDate = new Date();
       const categoryId = values.categoryId;
       const currency = 'GTQ';
-      const amount = Number(values.amount);
+      const amount = parseAmountInput(values.amount);
       const dueDay = Number(values.dueDay);
 
       const id = await addRecurringExpense({ name: values.name, categoryId, amount, currency, dueDay, startDate });
@@ -32,9 +33,11 @@ export default function NewExpenseScreen() {
       addExpense({
         name: values.name,
         categoryId: values.categoryId,
-        amount: Number(values.amount),
+        amount: parseAmountInput(values.amount),
         currency: 'GTQ',
-        date: new Date(),
+        // isValid requires values.date to be set on the one-time branch —
+        // the fallback here only guards the type, it's never actually hit.
+        date: values.date ?? new Date(),
         paid: values.paid,
       });
     }

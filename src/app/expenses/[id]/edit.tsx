@@ -4,7 +4,8 @@ import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { setExpensePaid, updateExpense, useExpensesStore } from '@/store/expenses';
+import { parseAmountInput } from '@/lib/currency-input';
+import { setExpensePaid, toTimestamp, updateExpense, useExpensesStore } from '@/store/expenses';
 
 export default function EditExpenseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,7 +25,10 @@ export default function EditExpenseScreen() {
     updateExpense(id, {
       name: values.name,
       categoryId: values.categoryId,
-      amount: Number(values.amount),
+      amount: parseAmountInput(values.amount),
+      // Only meaningful for a one-time expense (the only case the form
+      // exposes this field for) — values.date is guaranteed non-null there.
+      date: toTimestamp(values.date ?? expense.date.toDate()),
     });
     if (values.paid !== expense.paid) {
       setExpensePaid(id, values.paid);
@@ -39,6 +43,7 @@ export default function EditExpenseScreen() {
     isRecurring: expense.kind === 'recurringInstance',
     dueDay: String(expense.date.toDate().getDate()),
     paid: expense.paid,
+    date: expense.date.toDate(),
   };
 
   return (

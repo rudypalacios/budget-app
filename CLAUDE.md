@@ -37,6 +37,14 @@ assumed here.
 - **i18n:** structured translation files, Spanish + English at launch, extensible
 - **Currency:** never hardcoded — always driven by user's default currency setting
   and per-record currency/exchange-rate fields (see SRS 6.7)
+- **Date picker:** `@react-native-community/datetimepicker` (Stage 9a.1 decision) on
+  iOS/Android — it does not support react-native-web, so web uses the browser's
+  native `<input type="date">` instead. Both are behind a shared
+  `src/components/ui/date-picker.tsx` (native) / `date-picker.web.tsx` (web)
+  component, same platform-split pattern as Firestore — feature code should
+  render `<DatePicker>` and never import the underlying library/DOM element
+  directly. Needs a dev-client rebuild after this dependency was added (config
+  plugin auto-registered in `app.json` by `expo install`).
 
 ## Folder structure conventions
 Propose a structure before scaffolding if one doesn't exist yet, but default to
@@ -202,6 +210,19 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
+- **Amount-field parsing normalizes comma/period universally, not per-locale**
+  (Stage 9a.1) — `src/lib/currency-input.ts`'s `parseAmountInput` treats a
+  typed comma as an alternate decimal separator and converts it to a period
+  before `Number()` parsing, so both "12.34" and "12,34" work as valid
+  decimal entry today. This is a simple universal normalization, not real
+  locale-aware masking (e.g. it doesn't distinguish a thousands-grouping
+  comma from a decimal comma, and can't yet, since there's no per-user
+  region/locale setting to disambiguate against). Revisit once Stage 10
+  (Localization) adds a region setting to Settings — at that point the input
+  mask and `formatCurrency` (`src/lib/format-currency.ts`, which has the same
+  "revisit for richer locale formatting" note) should both read from it, and
+  ideally share one centralized parse/format pair driven by the user's
+  region rather than each guessing independently.
 - **Creating a new recurring expense/income while offline hangs the Save
   button indefinitely** (found in Stage 7 sync validation) — `expenses/new.tsx`
   and `income/new.tsx`'s recurring branch calls

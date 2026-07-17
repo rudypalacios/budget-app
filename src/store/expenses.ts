@@ -16,8 +16,10 @@ export const subscribeExpenses = store.subscribe;
 // Firestore write paths accept a plain JS Date for a Timestamp field and
 // convert it automatically — this cast just satisfies our structural
 // Timestamp type (see src/types/firestore.ts) on the way in. Reads always
-// come back as a real Timestamp instance, no cast needed there.
-function toTimestamp(date: Date): Timestamp {
+// come back as a real Timestamp instance, no cast needed there. Exported
+// for callers that build an update patch outside this module (e.g.
+// expenses/[id]/edit.tsx setting a picked due date).
+export function toTimestamp(date: Date): Timestamp {
   return date as unknown as Timestamp;
 }
 
