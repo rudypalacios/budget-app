@@ -82,12 +82,27 @@ export const firestoreClient: FirestoreClient = {
     path: string,
     onNext: (doc: WithId<T> | null, meta: SnapshotMeta) => void,
   ) {
-    return onSnapshot(doc(db, path), { includeMetadataChanges: true }, (snap) => {
-      onNext(snap.exists() ? ({ id: snap.id, ...snap.data() } as WithId<T>) : null, {
-        fromCache: snap.metadata.fromCache,
-        hasPendingWrites: snap.metadata.hasPendingWrites,
-      });
-    });
+    return onSnapshot(
+      doc(db, path),
+      { includeMetadataChanges: true },
+      (snap) => {
+        onNext(snap.exists() ? ({ id: snap.id, ...snap.data() } as WithId<T>) : null, {
+          fromCache: snap.metadata.fromCache,
+          hasPendingWrites: snap.metadata.hasPendingWrites,
+        });
+      },
+      // Without this, an error (e.g. permission-denied from a stale listener
+      // still attached to a just-signed-out uid — see signOutAndRestartAnonymous
+      // in session.ts) has nowhere to go: onNext is never called for it, so
+      // callers just never hear about it. Logging and returning here leaves
+      // the store's last-known state as-is rather than clearing it, since
+      // this listener is effectively done either way — a legitimate
+      // subscribe() call for whichever uid is current will tear it down and
+      // replace it shortly after.
+      (error) => {
+        console.warn(`[firestore] subscribeDoc(${path}) listener error:`, error);
+      },
+    );
   },
 
   subscribeCollection<T extends object>(
@@ -103,6 +118,10 @@ export const firestoreClient: FirestoreClient = {
           snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<T>),
           { fromCache: snap.metadata.fromCache, hasPendingWrites: snap.metadata.hasPendingWrites },
         );
+      },
+      // See subscribeDoc's onError comment above — same reasoning.
+      (error) => {
+        console.warn(`[firestore] subscribeCollection(${collectionPath}) listener error:`, error);
       },
     );
   },

@@ -153,6 +153,18 @@ export async function runRecurringGeneration(uid: string): Promise<void> {
         now,
       );
     }
+  } catch (error) {
+    // This is a fire-and-forget background scan (_layout.tsx never awaits
+    // or .catch()es its call), so an unhandled rejection here would
+    // otherwise crash/surface as an uncaught promise error rather than a
+    // normal one. Reported live: signing out mid-scan lets an in-flight
+    // getDocs() call (inside getLastExpenseInstanceDate/
+    // getLastIncomeInstanceDate) reject with permission-denied once the
+    // uid it was querying for stops being valid. Harmless either way — the
+    // next app launch's catch-up scan picks up whatever this run didn't
+    // finish, per the existing offline-hang Known Issue on this same
+    // generation path.
+    console.warn('[recurring-generation] catch-up scan failed:', error);
   } finally {
     generationInFlight = false;
   }

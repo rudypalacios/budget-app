@@ -41,6 +41,14 @@ export async function seedDefaultCategories() {
         lifecycleState: 'active',
       });
     }
+  } catch (error) {
+    // Fire-and-forget from _layout.tsx (never awaited/.catch()ed) — same
+    // reasoning as runRecurringGeneration's catch: an in-flight write here
+    // can reject with permission-denied if the uid it was writing for stops
+    // being valid mid-seed (e.g. a sign-out race), and an unhandled
+    // rejection would otherwise crash rather than just skip a seed attempt
+    // that the next app launch's zero-categories check will retry anyway.
+    console.warn('[categories] default-category seed failed:', error);
   } finally {
     seedInFlight = false;
   }

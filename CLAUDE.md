@@ -266,18 +266,19 @@ actually resolved.)_
   yet** (Stage 6) — `bootstrapSession` signs in anonymously with no linked
   credential, so each device/browser profile gets its own separate uid and
   therefore its own separate data; there is no shared account across devices
-  until Stage 8 links a real credential (email/Google/Facebook) via
+  until Stage 9 links a real credential (email/Google/Facebook) via
   `linkWithCredential`, at which point that one anonymous account's data
   carries over intact. Until then, FR-12 ("same account accessible from
   mobile and web") does not hold — data entered on one device/browser is
-  invisible on any other.
-- **`users/{uid}` settings-doc store deferred to Stage 9** (Stage 6) — the
+  invisible on any other. **Stage 9a (in progress)** adds the email/password
+  half of this; Google/Facebook remain Stage 9b/9c.
+- **`users/{uid}` settings-doc store deferred to Stage 10** (Stage 6) — the
   approved Stage 6 plan included a `createDocumentStore` for `UserSettings`
   alongside the collection stores; deliberately cut instead, since
   `settings.tsx` still uses local `useState` placeholders (no real consumer
-  exists until Stage 9 wires localization/default-currency to it) and Stage 9
+  exists until Stage 10 wires localization/default-currency to it) and Stage 10
   is already the roadmap's named home for this data. Not a silent cut this
-  time — flagged and confirmed before proceeding. **Decision for when Stage 9
+  time — flagged and confirmed before proceeding. **Decision for when Stage 10
   builds this store** (colleague feedback review, Stage 6b): Settings follows
   the same explicit Save-button pattern as Expenses/Income/Categories — apply
   and persist on Save, not autosave-on-change, and no separate "pending sync"
@@ -301,21 +302,21 @@ actually resolved.)_
   never corrected once a real `amount` is set either. Not user-visible yet
   (Budget/History screens read `amount` directly, not
   `amountInDefaultCurrency` — see `src/app/(tabs)/index.tsx`), but will need
-  fixing before Stage 10 (multi-currency) or any feature that aggregates via
+  fixing before Stage 11 (multi-currency) or any feature that aggregates via
   `amountInDefaultCurrency` instead of `amount`.
 - **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
   "Recurring" section on the Expenses/Income tabs (`src/app/(tabs)/expenses.tsx`,
   `income.tsx` — folded in from the old standalone `/recurring-expenses`,
   `/recurring-incomes` management screens as part of the Stage 8.1 Add/Manage
   consolidation) only ever shows `lifecycleState: 'active'` definitions;
-  archiving is Stage 11's job. The generation engine
+  archiving is Stage 12's job. The generation engine
   (`src/store/recurring-generation.ts`) already filters
   `lifecycleState === 'active'` per FR-4e, so archiving will correctly stop
   regeneration as soon as that UI exists — nothing to change in the
-  generation logic itself when Stage 11 lands.
+  generation logic itself when Stage 12 lands.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **6b — Recurring definitions: management UI + instance generation**
+Stage: **9a — Firebase Auth: email/password + anonymous account upgrade**

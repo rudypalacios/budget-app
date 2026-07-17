@@ -161,7 +161,26 @@ These were discussed and deliberately deferred rather than overlooked — worth 
    generation schedule, or historical paid records. Consumes existing
    expenses/incomes collections only — no new collections, but requires
    a data-model.md update to add the skip concept (see ADR below).
-9. Firebase Auth integration (email/password + Google + Facebook)
+8.1. Add/Manage-recurring consolidation + Payments Dashboard UX polish:
+     folded the standalone `/recurring-expenses` and `/recurring-incomes`
+     management screens into the Expenses/Income tabs (each keeping its own
+     "Recurring" section, edit-only, plus a "One-time" section), since
+     paid/unpaid/overdue handling now lives exclusively on the Payments tab
+     built in Stage 8. Also added a "quick expense" fast-entry shortcut,
+     section-card grouping (Overdue / Upcoming / Completed this cycle), and
+     status styling (danger tint for overdue+unpaid, strikethrough/dimmed
+     for completed) to the Payments Dashboard itself. No data-model changes.
+9. Firebase Auth integration (email/password + Google + Facebook), split
+   into sub-stages since the social providers each require external OAuth
+   console setup that has to happen outside of code:
+9a. Email/password sign-up and sign-in, upgrading the existing anonymous
+    account in place via `linkWithCredential` (never minting a second,
+    disconnected uid for the same person), plus a password-reset flow and
+    sign-out.
+9b. Google sign-in — same account-joining principle as 9a. Gated on
+    registering an OAuth client in the Firebase/Google Cloud Console.
+9c. Facebook sign-in — same account-joining principle as 9a/9b. Gated on
+    registering an app in the Facebook Developer console.
 10. Localization setup (Spanish + English) and default currency setting
 11. Multi-currency handling: per-record currency, stored exchange rate,
     optional live-rate fetch
