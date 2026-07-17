@@ -319,4 +319,5 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **9a — Firebase Auth: email/password + anonymous account upgrade**
+Stage: **9a.1 — Cross-cutting UX polish pass** (9a is merged; 9b/9c remain
+blocked on external OAuth console setup — see SRS §11)

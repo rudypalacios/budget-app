@@ -18,7 +18,7 @@ const MONTH_ABBREVIATIONS = [
 ] as const;
 
 // e.g. "15-Jan-26" — used on the Payments dashboard next to a row's title
-// for its due/paid date (src/app/(tabs)/payments.tsx).
+// for its due/paid date (src/app/(tabs)/index.tsx, the Payments screen).
 export function formatShortDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   const month = MONTH_ABBREVIATIONS[date.getMonth()];

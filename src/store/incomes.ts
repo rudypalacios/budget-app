@@ -27,6 +27,10 @@ export type NewIncomeInput = {
   amount: number;
   currency: CurrencyCode;
   date: Date;
+  // Whether this income has already been received — user-set initial state,
+  // defaulting to unpaid (expected/future income) unless the caller's form
+  // says otherwise.
+  paid?: boolean;
 };
 
 // kind is always 'oneTime' here: the "Recurring" toggle in IncomeForm is
@@ -34,6 +38,7 @@ export type NewIncomeInput = {
 // pointing at a recurringIncomes definition doc, and that collection doesn't
 // exist until a later stage (see CLAUDE.md Known Issues).
 export function addIncome(input: NewIncomeInput) {
+  const paid = input.paid ?? false;
   const doc: Omit<OneTimeIncome, 'createdAt' | 'updatedAt'> = {
     kind: 'oneTime',
     recurringIncomeId: null,
@@ -45,8 +50,8 @@ export function addIncome(input: NewIncomeInput) {
     amountInDefaultCurrency: input.amount,
     rateSource: 'manual',
     amount: input.amount,
-    paid: false,
-    paidDate: null,
+    paid,
+    paidDate: paid ? toTimestamp(new Date()) : null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,

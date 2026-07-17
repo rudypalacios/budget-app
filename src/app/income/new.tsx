@@ -44,6 +44,7 @@ export default function NewIncomeScreen() {
         amount: Number(values.amount),
         currency: 'GTQ',
         date: new Date(),
+        paid: values.paid,
       });
     }
     router.back();

@@ -19,6 +19,9 @@ export type IncomeFormValues = {
   isRecurring: boolean;
   frequency: (typeof FREQUENCIES)[number];
   dayOfMonth: string;
+  // Only meaningful for one-time income — recurring instances keep their
+  // own unpaid-until-settled lifecycle via the Payments dashboard.
+  paid: boolean;
 };
 
 export type IncomeFormProps = {
@@ -53,6 +56,7 @@ export function IncomeForm({
       isRecurring: false,
       frequency: 'monthly',
       dayOfMonth: '1',
+      paid: false,
     },
   );
 
@@ -133,6 +137,17 @@ export function IncomeForm({
             />
           )}
         </>
+      )}
+
+      {!values.isRecurring && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.paid}
+            onValueChange={(paid) => setValues((current) => ({ ...current, paid }))}
+            accessibilityLabel="Received"
+          />
+          <ThemedText>Received</ThemedText>
+        </View>
       )}
 
       <View style={styles.actionRow}>

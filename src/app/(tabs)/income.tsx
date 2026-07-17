@@ -10,6 +10,7 @@ import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useIncomesStore } from '@/store/incomes';
@@ -18,13 +19,15 @@ import { useRecurringIncomesStore } from '@/store/recurring-incomes';
 // This screen is config-only: creating/editing planned income (one-time or
 // recurring templates). Marking a specific occurrence received/expected/
 // skipped — and the overdue tag — lives exclusively on the Payments tab
-// (src/app/(tabs)/payments.tsx, Stage 8), which already unifies both kinds.
+// (src/app/(tabs)/index.tsx, the Payments screen, Stage 8), which already
+// unifies both kinds.
 export default function IncomeScreen() {
   const incomes = useIncomesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const recurringDefinitions = useRecurringIncomesStore((state) => state.items);
 
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
+  const { refreshing, onRefresh } = usePullToRefresh();
 
   // Once a one-time income is received it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and
@@ -34,7 +37,7 @@ export default function IncomeScreen() {
   );
 
   return (
-    <ScreenScroll>
+    <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title="Income" />
 
       <Button label="Add income" onPress={() => router.push('/income/new')} />
@@ -59,7 +62,9 @@ export default function IncomeScreen() {
                     </ThemedText>
                   </View>
                   <View style={styles.rowEnd}>
-                    <ThemedText type="smallBold">{formatCurrency(definition.amount, definition.currency)}</ThemedText>
+                    <ThemedText type="smallBold" themeColor="success">
+                      {formatCurrency(definition.amount, definition.currency)}
+                    </ThemedText>
                     <OverflowMenu
                       accessibilityLabel={`Actions for ${definition.name}`}
                       items={[

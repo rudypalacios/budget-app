@@ -10,6 +10,7 @@ import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
@@ -18,13 +19,15 @@ import { useRecurringExpensesStore } from '@/store/recurring-expenses';
 // This screen is config-only: creating/editing planned expenses (one-time
 // or recurring templates). Marking a specific occurrence paid/unpaid/skipped
 // — and the overdue tag — lives exclusively on the Payments tab
-// (src/app/(tabs)/payments.tsx, Stage 8), which already unifies both kinds.
+// (src/app/(tabs)/index.tsx, the Payments screen, Stage 8), which already
+// unifies both kinds.
 export default function ExpensesScreen() {
   const expenses = useExpensesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const recurringDefinitions = useRecurringExpensesStore((state) => state.items);
 
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
+  const { refreshing, onRefresh } = usePullToRefresh();
 
   // Once a one-time expense is paid it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and
@@ -34,7 +37,7 @@ export default function ExpensesScreen() {
   );
 
   return (
-    <ScreenScroll>
+    <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title="Expenses" />
 
       <Button label="Add expense" onPress={() => router.push('/expenses/new')} />
@@ -53,7 +56,9 @@ export default function ExpensesScreen() {
                     <ThemedText type="caption">Due day {definition.dueDay}</ThemedText>
                   </View>
                   <View style={styles.rowEnd}>
-                    <ThemedText type="smallBold">{formatCurrency(definition.amount, definition.currency)}</ThemedText>
+                    <ThemedText type="smallBold" themeColor="danger">
+                      {formatCurrency(definition.amount, definition.currency)}
+                    </ThemedText>
                     <OverflowMenu
                       accessibilityLabel={`Actions for ${definition.name}`}
                       items={[
@@ -89,7 +94,9 @@ export default function ExpensesScreen() {
                       <ThemedText type="caption">{category?.name}</ThemedText>
                     </View>
                     <View style={styles.rowEnd}>
-                      <ThemedText type="smallBold">{formatCurrency(expense.amount ?? 0, expense.currency)}</ThemedText>
+                      <ThemedText type="smallBold" themeColor="danger">
+                        {formatCurrency(expense.amount ?? 0, expense.currency)}
+                      </ThemedText>
                       <OverflowMenu
                         accessibilityLabel={`Actions for ${expense.name}`}
                         items={[

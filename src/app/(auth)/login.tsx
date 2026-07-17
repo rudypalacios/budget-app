@@ -32,7 +32,7 @@ export default function LoginScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title={TITLES[form.mode]} />
+      <ModalHeader title={TITLES[form.mode]} onBack={() => router.back()} />
 
       {form.mode !== 'reset' && (
         <View style={styles.modeRow}>

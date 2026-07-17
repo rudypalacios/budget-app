@@ -9,6 +9,7 @@ import { LineChart } from '@/components/ui/line-chart';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
 import { sampleMonthlyTotals } from '@/constants/sample-data';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { useCategoriesStore } from '@/store/categories';
@@ -79,9 +80,10 @@ export default function HistoryScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const rows = buildHistoryRows(expenses, incomes, categories);
   const groups = groupByMonth(rows);
+  const { refreshing, onRefresh } = usePullToRefresh();
 
   return (
-    <ScreenScroll>
+    <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title="History" />
 
       <Card>
@@ -102,7 +104,7 @@ export default function HistoryScreen() {
                   </View>
                   <ThemedText
                     type="smallBold"
-                    themeColor={row.direction === 'income' ? 'success' : 'text'}
+                    themeColor={row.direction === 'income' ? 'success' : 'danger'}
                   >
                     {row.direction === 'income' ? '+' : '-'}
                     {formatCurrency(row.amount, row.currency)}

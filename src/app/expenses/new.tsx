@@ -35,6 +35,7 @@ export default function NewExpenseScreen() {
         amount: Number(values.amount),
         currency: 'GTQ',
         date: new Date(),
+        paid: values.paid,
       });
     }
     router.back();

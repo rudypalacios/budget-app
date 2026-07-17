@@ -15,6 +15,9 @@ export type ExpenseFormValues = {
   categoryId: string;
   isRecurring: boolean;
   dueDay: string;
+  // Only meaningful for one-time expenses — recurring instances keep their
+  // own unpaid-until-settled lifecycle via the Payments dashboard.
+  paid: boolean;
 };
 
 export type ExpenseFormProps = {
@@ -48,6 +51,7 @@ export function ExpenseForm({
       categoryId: expenseCategories[0]?.id ?? '',
       isRecurring: false,
       dueDay: '1',
+      paid: false,
     },
   );
 
@@ -106,6 +110,17 @@ export function ExpenseForm({
           keyboardType="number-pad"
           editable={!disableRecurringToggle}
         />
+      )}
+
+      {!values.isRecurring && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.paid}
+            onValueChange={(paid) => setValues((current) => ({ ...current, paid }))}
+            accessibilityLabel="Paid"
+          />
+          <ThemedText>Paid</ThemedText>
+        </View>
       )}
 
       <View style={styles.actionRow}>

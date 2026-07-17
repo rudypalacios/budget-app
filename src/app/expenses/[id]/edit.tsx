@@ -4,7 +4,7 @@ import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { updateExpense, useExpensesStore } from '@/store/expenses';
+import { setExpensePaid, updateExpense, useExpensesStore } from '@/store/expenses';
 
 export default function EditExpenseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +26,9 @@ export default function EditExpenseScreen() {
       categoryId: values.categoryId,
       amount: Number(values.amount),
     });
+    if (values.paid !== expense.paid) {
+      setExpensePaid(id, values.paid);
+    }
     router.back();
   };
 
@@ -35,6 +38,7 @@ export default function EditExpenseScreen() {
     categoryId: expense.categoryId,
     isRecurring: expense.kind === 'recurringInstance',
     dueDay: String(expense.date.toDate().getDate()),
+    paid: expense.paid,
   };
 
   return (
