@@ -202,24 +202,6 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
-- **Transient "permission-denied" console errors right after Sign Out**
-  (Stage 9a) — `signOutAndRestartAnonymous` (`src/store/session.ts`) calls
-  `authClient.signOut()` immediately followed by `bootstrapSession()`. The
-  five Firestore collection listeners in `_layout.tsx` are only
-  re-subscribed once `bootstrapSession()` resolves and the new anonymous
-  uid lands in `useSessionStore`; until then, they're still attached to the
-  *old* uid's collection paths using now-invalidated credentials, so
-  Firestore's SDK logs a handful of `[code=permission-denied]` snapshot
-  errors to the console during that gap (confirmed live, web). Harmless —
-  the old listeners get torn down and replaced correctly once the new
-  anonymous session's uid triggers `createCollectionStore`'s
-  `subscribe()`, and no data or functionality is affected — but it's
-  visible console noise. Not fixed here since a real fix (explicitly
-  unsubscribing all five listeners before calling `signOut()`) means
-  touching `_layout.tsx`'s multi-listener orchestration more broadly than
-  this auth sub-stage should; revisit if it turns out to matter (e.g. if
-  it ever surfaces as a user-visible error toast rather than just a
-  console log).
 - **Creating a new recurring expense/income while offline hangs the Save
   button indefinitely** (found in Stage 7 sync validation) — `expenses/new.tsx`
   and `income/new.tsx`'s recurring branch calls
