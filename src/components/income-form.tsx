@@ -35,8 +35,9 @@ export type IncomeFormProps = {
   onCancel: () => void;
   // Set on Edit — kind is immutable post-creation (firestore.rules'
   // unchanged('kind')), so an existing one-time income can never become
-  // recurring in place, and vice versa. The toggle stays visible as
-  // read-only status instead of being hidden outright.
+  // recurring in place, and vice versa. The toggle is hidden outright
+  // rather than shown disabled, so it doesn't look like a control that
+  // should do something.
   disableRecurringToggle?: boolean;
 };
 
@@ -108,15 +109,16 @@ export function IncomeForm({
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
-      <View style={styles.switchRow}>
-        <Switch
-          value={values.isRecurring}
-          onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
-          accessibilityLabel="Recurring income"
-          disabled={disableRecurringToggle}
-        />
-        <ThemedText>Recurring</ThemedText>
-      </View>
+      {!disableRecurringToggle && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.isRecurring}
+            onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
+            accessibilityLabel="Recurring income"
+          />
+          <ThemedText>Recurring</ThemedText>
+        </View>
+      )}
 
       {values.isRecurring && (
         <>

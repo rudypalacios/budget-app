@@ -31,8 +31,9 @@ export type ExpenseFormProps = {
   onCancel: () => void;
   // Set on Edit — kind is immutable post-creation (firestore.rules'
   // unchanged('kind')), so an existing one-time expense can never become
-  // recurring in place, and vice versa. The toggle stays visible as
-  // read-only status instead of being hidden outright.
+  // recurring in place, and vice versa. The toggle is hidden outright
+  // rather than shown disabled, so it doesn't look like a control that
+  // should do something.
   disableRecurringToggle?: boolean;
 };
 
@@ -103,15 +104,16 @@ export function ExpenseForm({
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
-      <View style={styles.switchRow}>
-        <Switch
-          value={values.isRecurring}
-          onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
-          accessibilityLabel="Recurring expense"
-          disabled={disableRecurringToggle}
-        />
-        <ThemedText>Recurring monthly</ThemedText>
-      </View>
+      {!disableRecurringToggle && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.isRecurring}
+            onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
+            accessibilityLabel="Recurring expense"
+          />
+          <ThemedText>Recurring monthly</ThemedText>
+        </View>
+      )}
 
       {values.isRecurring && (
         <TextField
