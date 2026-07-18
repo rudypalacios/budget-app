@@ -101,45 +101,48 @@ export default function PaymentsScreen() {
                       isOverdue && !isCompleted ? { backgroundColor: `${theme.danger}1A` } : null,
                     ]}
                   >
-                    <View style={styles.rowContent}>
-                      <View style={styles.topLine}>
-                        <ThemedText
-                          type="smallBold"
-                          style={[styles.nameText, isCompleted && styles.completedText]}
-                        >
-                          {row.name}{' '}
-                          <ThemedText type="caption" themeColor="textSecondary">
-                            (Due: {formatShortDate(row.date)}
-                            {row.paid && row.paidDate ? `, Paid: ${formatShortDate(row.paidDate)}` : ''})
-                          </ThemedText>
+                    <View style={styles.rowMain}>
+                      <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
+                        {row.name}{' '}
+                        <ThemedText type="caption" themeColor="textSecondary">
+                          (Due: {formatShortDate(row.date)}
+                          {row.paid && row.paidDate ? `, Paid: ${formatShortDate(row.paidDate)}` : ''})
                         </ThemedText>
+                      </ThemedText>
+                      <View style={styles.rowMeta}>
+                        <ThemedText type="caption">{category?.name}</ThemedText>
+                        {/* Recurring/Skipped are grouped in their own
+                            non-wrapping row so they wrap as a single unit —
+                            category can drop to its own line under a narrow
+                            width, but the two chips never split apart from
+                            each other. */}
+                        {(row.kind === 'recurringInstance' || row.skipped) && (
+                          <View style={styles.tagsGroup}>
+                            {row.kind === 'recurringInstance' && <Chip label="Recurring" />}
+                            {row.skipped && <Chip label="Skipped" tone="warning" />}
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.rowAside}>
+                      <View style={styles.amountLine}>
                         <ThemedText
                           type="smallBold"
                           // Skipped rows stay neutral ("white") — they're no
                           // longer a real income/expense for the period, so
                           // the red/green income-vs-expense coding doesn't
-                          // apply; the Skipped chip below is what flags them.
+                          // apply; the Skipped chip above is what flags them.
                           themeColor={row.skipped ? 'text' : row.direction === 'income' ? 'success' : 'danger'}
                           style={[isCompleted && styles.completedText]}
                         >
                           {row.direction === 'income' ? '+' : '-'}
                           {formatCurrency(row.amount, row.currency)}
                         </ThemedText>
+                        <OverflowMenu
+                          accessibilityLabel={`Actions for ${row.name}`}
+                          items={overflowItems}
+                        />
                       </View>
-
-                      <ThemedText type="caption">{category?.name}</ThemedText>
-
-                      {/* Full row width, below the top line — otherwise the
-                          top line's amount column permanently squeezes this
-                          row's available width, forcing Recurring/Skipped to
-                          wrap onto separate lines even with room to spare. */}
-                      {(row.kind === 'recurringInstance' || row.skipped) && (
-                        <View style={styles.rowTags}>
-                          {row.kind === 'recurringInstance' && <Chip label="Recurring" />}
-                          {row.skipped && <Chip label="Skipped" tone="warning" />}
-                        </View>
-                      )}
-
                       <View style={styles.bottomLine}>
                         {isCompleted ? (
                           <ThemedText type="caption">{paidLabel}</ThemedText>
@@ -161,10 +164,6 @@ export default function PaymentsScreen() {
                         />
                       </View>
                     </View>
-                    <OverflowMenu
-                      accessibilityLabel={`Actions for ${row.name}`}
-                      items={overflowItems}
-                    />
                   </View>
                   {index < rows.length - 1 && <Divider style={styles.divider} />}
                 </View>
@@ -198,28 +197,37 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    // Top-aligned, not centered — the left column (rowMain) can grow
+    // taller than the right column (rowAside) once category/tags wrap
+    // onto extra lines, and rowAside should stay pinned to the top rather
+    // than vertically centering against that extra height.
+    alignItems: 'flex-start',
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.two,
     gap: Spacing.two,
   },
-  rowContent: {
+  rowMain: {
     flex: 1,
     gap: Spacing.one,
   },
-  topLine: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-  },
-  nameText: {
-    flex: 1,
-  },
-  rowTags: {
+  rowMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  tagsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  rowAside: {
+    gap: Spacing.one,
+    alignItems: 'flex-end',
+  },
+  amountLine: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
