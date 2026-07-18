@@ -7,6 +7,7 @@ import {
 } from '@/components/recurring-expense-form';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { parseAmountInput } from '@/lib/currency-input';
 import { updateRecurringExpense, useRecurringExpensesStore } from '@/store/recurring-expenses';
 
 export default function EditRecurringExpenseScreen() {
@@ -30,7 +31,7 @@ export default function EditRecurringExpenseScreen() {
     updateRecurringExpense(id, {
       name: values.name,
       categoryId: values.categoryId,
-      amount: Number(values.amount),
+      amount: parseAmountInput(values.amount),
       dueDay: Number(values.dueDay),
     });
     router.back();

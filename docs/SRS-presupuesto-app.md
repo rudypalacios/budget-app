@@ -181,6 +181,18 @@ These were discussed and deliberately deferred rather than overlooked — worth 
     registering an OAuth client in the Firebase/Google Cloud Console.
 9c. Facebook sign-in — same account-joining principle as 9a/9b. Gated on
     registering an app in the Facebook Developer console.
+9a.1. Cross-cutting UX polish pass (colleague feedback round, inserted after
+      9a like 6b/8.1 were similarly non-sequential polish passes): Payments
+      tab becomes the default/Home tab (new house icon, Budget moves to
+      another slot); one-time expense/income forms + quick-expense gain an
+      explicit Paid/Received switch (off by default on the full form, on by
+      default on quick-expense) instead of expenses always being created
+      paid; pull-to-refresh (visual-only — Firestore listeners are already
+      live) on the Payments/Expenses/Income/History lists; login screen gets
+      an explicit back arrow; expense amounts recolor to the danger/red
+      token (matching income's existing green), with skipped Payments rows
+      staying neutral and the Skipped chip getting its own tone. No
+      data-model changes.
 10. Localization setup (Spanish + English) and default currency setting
 11. Multi-currency handling: per-record currency, stored exchange rate,
     optional live-rate fetch

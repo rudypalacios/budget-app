@@ -4,9 +4,10 @@ import type { ExpenseRecord, IncomeRecord } from '@/types/firestore';
 
 export type PaymentDirection = 'expense' | 'income';
 
-// Unified shape over ExpenseRecord/IncomeRecord (mirrors history.tsx's
-// buildHistoryRows) — `skipped`/`skippedAt` are normalized to false/null
-// for one-time records, which have no such field (data-model.md §12).
+// Unified shape over ExpenseRecord/IncomeRecord, shared by this dashboard
+// and history.tsx's ledger view — `skipped`/`skippedAt` are normalized to
+// false/null for one-time records, which have no such field
+// (data-model.md §12).
 export type PaymentRow = {
   id: string;
   direction: PaymentDirection;

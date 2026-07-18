@@ -4,10 +4,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
@@ -19,6 +21,11 @@ export type IncomeFormValues = {
   isRecurring: boolean;
   frequency: (typeof FREQUENCIES)[number];
   dayOfMonth: string;
+  // Only meaningful for one-time income — recurring instances keep their
+  // own unpaid-until-settled lifecycle via the Payments dashboard, and use
+  // dayOfMonth/frequency (above) instead of a fixed calendar date.
+  paid: boolean;
+  date: Date | null;
 };
 
 export type IncomeFormProps = {
@@ -28,8 +35,9 @@ export type IncomeFormProps = {
   onCancel: () => void;
   // Set on Edit — kind is immutable post-creation (firestore.rules'
   // unchanged('kind')), so an existing one-time income can never become
-  // recurring in place, and vice versa. The toggle stays visible as
-  // read-only status instead of being hidden outright.
+  // recurring in place, and vice versa. The toggle is hidden outright
+  // rather than shown disabled, so it doesn't look like a control that
+  // should do something.
   disableRecurringToggle?: boolean;
 };
 
@@ -53,11 +61,18 @@ export function IncomeForm({
       isRecurring: false,
       frequency: 'monthly',
       dayOfMonth: '1',
+      paid: false,
+      date: null,
     },
   );
 
-  const parsedAmount = Number(values.amount);
-  const isValid = !!values.name && !!values.categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const parsedAmount = parseAmountInput(values.amount);
+  const isValid =
+    !!values.name &&
+    !!values.categoryId &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    (values.isRecurring || values.date !== null);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -81,8 +96,9 @@ export function IncomeForm({
       <TextField
         label="Amount (GTQ)"
         value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount }))}
+        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"
+        inputMode="decimal"
         placeholder="0.00"
       />
 
@@ -93,15 +109,16 @@ export function IncomeForm({
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
-      <View style={styles.switchRow}>
-        <Switch
-          value={values.isRecurring}
-          onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
-          accessibilityLabel="Recurring income"
-          disabled={disableRecurringToggle}
-        />
-        <ThemedText>Recurring</ThemedText>
-      </View>
+      {!disableRecurringToggle && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.isRecurring}
+            onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
+            accessibilityLabel="Recurring income"
+          />
+          <ThemedText>Recurring</ThemedText>
+        </View>
+      )}
 
       {values.isRecurring && (
         <>
@@ -120,9 +137,9 @@ export function IncomeForm({
             ))}
           </View>
           {/* anchorDate (weekly/biweekly) isn't exposed as a field — it
-              defaults to the creation date, same as startDate, rather than
-              introducing a date-picker primitive that doesn't exist
-              elsewhere in this app yet. */}
+              defaults to the creation date, same as startDate. Unlike the
+              one-time due date below, a recurring definition's start point
+              isn't user-facing data worth editing after the fact. */}
           {values.frequency === 'monthly' && (
             <TextField
               label="Day of month"
@@ -133,6 +150,25 @@ export function IncomeForm({
             />
           )}
         </>
+      )}
+
+      {!values.isRecurring && (
+        <DatePicker
+          label="Due date"
+          value={values.date}
+          onChange={(date) => setValues((current) => ({ ...current, date }))}
+        />
+      )}
+
+      {!values.isRecurring && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.paid}
+            onValueChange={(paid) => setValues((current) => ({ ...current, paid }))}
+            accessibilityLabel="Received"
+          />
+          <ThemedText>Received</ThemedText>
+        </View>
       )}
 
       <View style={styles.actionRow}>

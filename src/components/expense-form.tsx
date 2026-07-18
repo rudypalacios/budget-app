@@ -3,10 +3,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 
 export type ExpenseFormValues = {
@@ -15,6 +17,11 @@ export type ExpenseFormValues = {
   categoryId: string;
   isRecurring: boolean;
   dueDay: string;
+  // Only meaningful for one-time expenses — recurring instances keep their
+  // own unpaid-until-settled lifecycle via the Payments dashboard, and use
+  // dueDay (above) instead of a fixed calendar date.
+  paid: boolean;
+  date: Date | null;
 };
 
 export type ExpenseFormProps = {
@@ -24,8 +31,9 @@ export type ExpenseFormProps = {
   onCancel: () => void;
   // Set on Edit — kind is immutable post-creation (firestore.rules'
   // unchanged('kind')), so an existing one-time expense can never become
-  // recurring in place, and vice versa. The toggle stays visible as
-  // read-only status instead of being hidden outright.
+  // recurring in place, and vice versa. The toggle is hidden outright
+  // rather than shown disabled, so it doesn't look like a control that
+  // should do something.
   disableRecurringToggle?: boolean;
 };
 
@@ -48,11 +56,18 @@ export function ExpenseForm({
       categoryId: expenseCategories[0]?.id ?? '',
       isRecurring: false,
       dueDay: '1',
+      paid: false,
+      date: null,
     },
   );
 
-  const parsedAmount = Number(values.amount);
-  const isValid = !!values.name && !!values.categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const parsedAmount = parseAmountInput(values.amount);
+  const isValid =
+    !!values.name &&
+    !!values.categoryId &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    (values.isRecurring || values.date !== null);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -76,8 +91,9 @@ export function ExpenseForm({
       <TextField
         label="Amount (GTQ)"
         value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount }))}
+        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"
+        inputMode="decimal"
         placeholder="0.00"
       />
 
@@ -88,15 +104,16 @@ export function ExpenseForm({
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
-      <View style={styles.switchRow}>
-        <Switch
-          value={values.isRecurring}
-          onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
-          accessibilityLabel="Recurring expense"
-          disabled={disableRecurringToggle}
-        />
-        <ThemedText>Recurring monthly</ThemedText>
-      </View>
+      {!disableRecurringToggle && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.isRecurring}
+            onValueChange={(isRecurring) => setValues((current) => ({ ...current, isRecurring }))}
+            accessibilityLabel="Recurring expense"
+          />
+          <ThemedText>Recurring monthly</ThemedText>
+        </View>
+      )}
 
       {values.isRecurring && (
         <TextField
@@ -106,6 +123,25 @@ export function ExpenseForm({
           keyboardType="number-pad"
           editable={!disableRecurringToggle}
         />
+      )}
+
+      {!values.isRecurring && (
+        <DatePicker
+          label="Due date"
+          value={values.date}
+          onChange={(date) => setValues((current) => ({ ...current, date }))}
+        />
+      )}
+
+      {!values.isRecurring && (
+        <View style={styles.switchRow}>
+          <Switch
+            value={values.paid}
+            onValueChange={(paid) => setValues((current) => ({ ...current, paid }))}
+            accessibilityLabel="Paid"
+          />
+          <ThemedText>Paid</ThemedText>
+        </View>
       )}
 
       <View style={styles.actionRow}>

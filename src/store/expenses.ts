@@ -16,8 +16,10 @@ export const subscribeExpenses = store.subscribe;
 // Firestore write paths accept a plain JS Date for a Timestamp field and
 // convert it automatically — this cast just satisfies our structural
 // Timestamp type (see src/types/firestore.ts) on the way in. Reads always
-// come back as a real Timestamp instance, no cast needed there.
-function toTimestamp(date: Date): Timestamp {
+// come back as a real Timestamp instance, no cast needed there. Exported
+// for callers that build an update patch outside this module (e.g.
+// expenses/[id]/edit.tsx setting a picked due date).
+export function toTimestamp(date: Date): Timestamp {
   return date as unknown as Timestamp;
 }
 
@@ -27,15 +29,17 @@ export type NewExpenseInput = {
   amount: number;
   currency: CurrencyCode;
   date: Date;
+  // A one-time expense can be something already spent (paid) or a planned
+  // future expense entered ahead of time (unpaid) — the caller's form
+  // decides the default (off on the full form, on for quick-add's
+  // already-spent fast path). Unlike a RecurringExpenseInstance
+  // (setExpenseInstanceAt below), which always starts unpaid until settled
+  // on the Payments dashboard, this is a one-off, user-set initial state.
+  paid?: boolean;
 };
 
-// A one-time expense is a record of something already spent — unlike a
-// RecurringExpenseInstance (setExpenseInstanceAt below), which represents an
-// upcoming bill and starts unpaid until settled on the Payments dashboard —
-// so it's created paid immediately rather than going through
-// setExpensePaid() as a separate step.
 export function addExpense(input: NewExpenseInput) {
-  const now = new Date();
+  const paid = input.paid ?? false;
   const doc: Omit<OneTimeExpense, 'createdAt' | 'updatedAt'> = {
     kind: 'oneTime',
     recurringExpenseId: null,
@@ -49,8 +53,8 @@ export function addExpense(input: NewExpenseInput) {
     budgetedAmount: null,
     budgetedCurrency: null,
     amount: input.amount,
-    paid: true,
-    paidDate: toTimestamp(now),
+    paid,
+    paidDate: paid ? toTimestamp(new Date()) : null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
