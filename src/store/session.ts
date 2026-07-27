@@ -131,6 +131,13 @@ export async function signInWithGoogle(): Promise<GoogleSignInActionResult> {
     return { ok: true };
   } catch (error) {
     const code = getErrorCode(error);
+    // Native Google Sign-In failures (e.g. Play Services issues, or a
+    // misconfigured SHA-1/client ID) throw their own status codes, not
+    // Firebase auth/-prefixed ones — mapAuthErrorMessage still surfaces the
+    // raw code in its fallback message (see auth-errors.ts), but logging
+    // the full error too means a device's Metro/logcat output has more to
+    // go on than just what fits in that one line.
+    console.error('signInWithGoogle failed:', error);
     return { ok: false, reason: 'error', code, message: mapAuthErrorMessage(code) };
   }
 }
