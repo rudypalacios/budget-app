@@ -97,6 +97,23 @@ export async function signInWithEmail(email: string, password: string): Promise<
   }
 }
 
+// Same direct-apply-user reasoning as signUpWithEmail above — a Google-driven
+// linkWithCredential also flips isAnonymous on the same uid, which the
+// auth-state listener doesn't reliably re-fire for.
+export async function signInWithGoogle(): Promise<AuthActionResult> {
+  try {
+    const user = await authClient.signInWithGoogle();
+    // null means the user cancelled the picker/popup — not a failure, but
+    // not a navigable success either, so callers should just no-op.
+    if (!user) return { ok: false, code: 'cancelled', message: '' };
+    applyUser(user);
+    return { ok: true };
+  } catch (error) {
+    const code = getErrorCode(error);
+    return { ok: false, code, message: mapAuthErrorMessage(code) };
+  }
+}
+
 // The app must never be left with no uid — every store assumes one exists —
 // so signing out immediately restarts a fresh anonymous session.
 export async function signOutAndRestartAnonymous(): Promise<void> {

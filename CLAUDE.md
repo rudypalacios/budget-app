@@ -26,7 +26,18 @@ assumed here.
   behind a shared interface in `src/lib/firebase/` (`firestore.ts` native,
   `firestore.web.ts` web) — feature/store code should never import either
   SDK directly.
-- **Auth:** Firebase Authentication — email/password, Google, Facebook
+- **Auth:** Firebase Authentication — email/password (Stage 9a), Google
+  (Stage 9b), Facebook (Stage 9c, not yet built). Google sign-in uses
+  `@react-native-google-signin/google-signin` on native (the standard native
+  sign-in sheet, matching the `@react-native-firebase/auth` pattern already
+  used elsewhere) + `firebase/auth`'s `linkWithPopup`/`signInWithPopup` on
+  web — same platform-split pattern as Firestore and the date picker. Needs
+  a dev-client rebuild after this dependency was added (config plugin
+  auto-registered in `app.json` by `expo install`). Requires a Google OAuth
+  client registered in the Firebase Console (Authentication → Sign-in
+  method → Google) plus an Android SHA-1 fingerprint added there — see
+  `src/lib/firebase/auth.ts`'s `signInWithGoogle` for the account-joining
+  implementation.
 - **State management:** Zustand
 - **Charts:** react-native-svg (Stage 5 decision) — the History line chart (FR-7) is
   drawn manually with `Svg`/`Path`/`Line`/`Circle` primitives in
@@ -291,8 +302,10 @@ actually resolved.)_
   `linkWithCredential`, at which point that one anonymous account's data
   carries over intact. Until then, FR-12 ("same account accessible from
   mobile and web") does not hold — data entered on one device/browser is
-  invisible on any other. **Stage 9a (in progress)** adds the email/password
-  half of this; Google/Facebook remain Stage 9b/9c.
+  invisible on any other. **Stage 9a is merged** (email/password half);
+  **Stage 9b (Google) is built on its stage branch**, pending merge to
+  `develop`. Facebook remains Stage 9c, blocked on Facebook Developer
+  console setup.
 - **`users/{uid}` settings-doc store deferred to Stage 10** (Stage 6) — the
   approved Stage 6 plan included a `createDocumentStore` for `UserSettings`
   alongside the collection stores; deliberately cut instead, since
@@ -340,5 +353,8 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **9a.1 — Cross-cutting UX polish pass** (9a is merged; 9b/9c remain
-blocked on external OAuth console setup — see SRS §11)
+Stage: **9b — Google sign-in** (9a and 9a.1 are merged; 9b is built and
+verified on branch `stage-9b-google-signin`, pending merge to `develop`;
+9c remains blocked on Facebook Developer console setup — see SRS §11).
+Stage 10 (localization + default currency) is planned and ready to resume
+once 9b is merged.

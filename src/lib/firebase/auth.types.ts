@@ -31,6 +31,17 @@ export interface AuthClient {
   // `auth/credential-already-in-use`.
   signInWithEmail(email: string, password: string): Promise<AuthUser>;
 
+  // Signs in with Google, upgrading the current anonymous session in place —
+  // same account-joining principle as signUpWithEmail. Falls back to a plain
+  // sign-in with the Google credential, abandoning the anonymous session, if
+  // this Google account is already linked to a different real account
+  // (`auth/credential-already-in-use`) — there's no form to redirect through
+  // here, so the fallback happens transparently inside this one call instead
+  // of use-auth-form.ts's sign-up-to-sign-in mode switch.
+  // Returns null if the user cancels the native picker/web popup — not an
+  // error, callers should treat it as a silent no-op.
+  signInWithGoogle(): Promise<AuthUser | null>;
+
   signOut(): Promise<void>;
 
   sendPasswordReset(email: string): Promise<void>;

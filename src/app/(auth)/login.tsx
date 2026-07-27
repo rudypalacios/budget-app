@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ModalHeader } from '@/components/modal-header';
@@ -6,9 +7,11 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Divider } from '@/components/ui/divider';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { useAuthForm, type AuthFormMode } from '@/features/auth/use-auth-form';
+import { signInWithGoogle } from '@/store/session';
 
 const TITLES: Record<AuthFormMode, string> = {
   signUp: 'Create Account',
@@ -24,10 +27,21 @@ const SUBMIT_LABELS: Record<AuthFormMode, string> = {
 
 export default function LoginScreen() {
   const form = useAuthForm();
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   async function handleSubmit() {
     const succeeded = await form.submit();
     if (succeeded) router.back();
+  }
+
+  async function handleGoogleSignIn() {
+    setGoogleError(null);
+    const result = await signInWithGoogle();
+    if (result.ok) {
+      router.back();
+    } else if (result.code !== 'cancelled') {
+      setGoogleError(result.message);
+    }
   }
 
   return (
@@ -98,6 +112,24 @@ export default function LoginScreen() {
               <ThemedText type="linkPrimary">Back to Log In</ThemedText>
             </Pressable>
           )}
+
+          {form.mode !== 'reset' && (
+            <View style={styles.googleSection}>
+              <View style={styles.dividerRow}>
+                <Divider style={styles.dividerLine} />
+                <ThemedText type="caption">or</ThemedText>
+                <Divider style={styles.dividerLine} />
+              </View>
+
+              <Button label="Continue with Google" variant="secondary" onPress={handleGoogleSignIn} />
+
+              {googleError ? (
+                <ThemedText themeColor="danger" accessibilityRole="alert">
+                  {googleError}
+                </ThemedText>
+              ) : null}
+            </View>
+          )}
         </View>
       )}
     </ScreenScroll>
@@ -112,5 +144,16 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.three,
+  },
+  googleSection: {
+    gap: Spacing.three,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  dividerLine: {
+    flex: 1,
   },
 });

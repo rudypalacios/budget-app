@@ -15,7 +15,7 @@ export function mapAuthErrorMessage(code: string): string {
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a moment and try again.';
     case 'auth/operation-not-allowed':
-      return 'Email/password sign-in is not enabled for this app yet.';
+      return 'This sign-in method is not enabled for this app yet.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
     default:

@@ -42,6 +42,9 @@ jest.mock('@react-native-firebase/auth', () => ({
   onAuthStateChanged: jest.fn(),
   signInAnonymously: jest.fn(),
 }));
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: { configure: jest.fn(), hasPlayServices: jest.fn(), signIn: jest.fn() },
+}));
 
 // useNetworkStatus (native) reads real device connectivity via NetInfo —
 // this mock is self-contained (no outer-scope references, per

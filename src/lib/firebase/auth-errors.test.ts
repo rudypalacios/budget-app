@@ -38,7 +38,7 @@ describe('mapAuthErrorMessage', () => {
 
   it('maps auth/operation-not-allowed', () => {
     expect(mapAuthErrorMessage('auth/operation-not-allowed')).toBe(
-      'Email/password sign-in is not enabled for this app yet.'
+      'This sign-in method is not enabled for this app yet.'
     );
   });
 
