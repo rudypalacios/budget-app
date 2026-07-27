@@ -45,6 +45,7 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 }));
 
 import {
+  completeGoogleLink,
   requestPasswordReset,
   signInWithEmail,
   signInWithGoogle,
@@ -127,10 +128,10 @@ describe('signInWithGoogle', () => {
     expect(useSessionStore.getState()).toMatchObject({ uid: 'other-real-uid' });
   });
 
-  it('resolves not-ok with a cancelled code, without touching the session, when the user cancels', async () => {
+  it('resolves not-ok with a cancelled reason, without touching the session, when the user cancels', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'cancelled', data: null });
 
-    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, code: 'cancelled', message: '' });
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, reason: 'cancelled' });
     expect(mockLinkWithCredential).not.toHaveBeenCalled();
     expect(useSessionStore.getState()).toMatchObject({ uid: null });
   });
@@ -140,6 +141,48 @@ describe('signInWithGoogle', () => {
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/network-request-failed' });
 
     await expect(signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      reason: 'error',
+      code: 'auth/network-request-failed',
+      message: 'Network error. Check your connection and try again.',
+    });
+  });
+
+  it('reports an account-exists conflict, without touching the session, when the email already belongs to a different real account', async () => {
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: { idToken: 'google-id-token', user: { email: 'a@b.com' } },
+    });
+    mockLinkWithCredential.mockRejectedValue({ code: 'auth/email-already-in-use' });
+
+    await expect(signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      reason: 'account-exists',
+      email: 'a@b.com',
+      pendingCredential: { idToken: 'google-id-token' },
+    });
+    expect(mockSignInWithCredential).not.toHaveBeenCalled();
+    expect(useSessionStore.getState()).toMatchObject({ uid: null });
+  });
+});
+
+describe('completeGoogleLink', () => {
+  it('links the pending credential to the currently signed-in user on success', async () => {
+    fakeAuth.currentUser = { uid: 'real-uid', email: 'a@b.com', isAnonymous: false };
+    mockLinkWithCredential.mockResolvedValue({
+      user: { uid: 'real-uid', email: 'a@b.com', isAnonymous: false },
+    });
+
+    const pendingCredential = { idToken: 'google-id-token' };
+    await expect(completeGoogleLink(pendingCredential)).resolves.toEqual({ ok: true });
+    expect(mockLinkWithCredential).toHaveBeenCalledWith(fakeAuth.currentUser, pendingCredential);
+    expect(useSessionStore.getState()).toMatchObject({ uid: 'real-uid', email: 'a@b.com', isAnonymous: false });
+  });
+
+  it('maps a thrown Firebase error to a user-facing message and preserves the code', async () => {
+    mockLinkWithCredential.mockRejectedValue({ code: 'auth/network-request-failed' });
+
+    await expect(completeGoogleLink({ idToken: 'google-id-token' })).resolves.toEqual({
       ok: false,
       code: 'auth/network-request-failed',
       message: 'Network error. Check your connection and try again.',

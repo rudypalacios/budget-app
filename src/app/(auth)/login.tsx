@@ -11,7 +11,7 @@ import { Divider } from '@/components/ui/divider';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { useAuthForm, type AuthFormMode } from '@/features/auth/use-auth-form';
-import { signInWithGoogle } from '@/store/session';
+import { completeGoogleLink, signInWithGoogle } from '@/store/session';
 
 const TITLES: Record<AuthFormMode, string> = {
   signUp: 'Create Account',
@@ -28,20 +28,63 @@ const SUBMIT_LABELS: Record<AuthFormMode, string> = {
 export default function LoginScreen() {
   const form = useAuthForm();
   const [googleError, setGoogleError] = useState<string | null>(null);
+  // Set only when signInWithGoogle reports an 'account-exists' conflict —
+  // this same Google account's email already belongs to a different real
+  // account. Holding the credential here (rather than in the session store)
+  // is deliberate: it's only ever needed for the rest of this screen's
+  // lifetime, to finish the join once the user proves ownership below by
+  // signing in with their password.
+  const [pendingGoogleCredential, setPendingGoogleCredential] = useState<unknown | null>(null);
+  const [googleLinkPrompt, setGoogleLinkPrompt] = useState<string | null>(null);
+
+  function clearGoogleState() {
+    setGoogleError(null);
+    setPendingGoogleCredential(null);
+    setGoogleLinkPrompt(null);
+  }
 
   async function handleSubmit() {
     const succeeded = await form.submit();
-    if (succeeded) router.back();
+    if (!succeeded) return;
+
+    if (pendingGoogleCredential) {
+      // The user just proved ownership of the conflicting account by
+      // signing in with their password — finish joining the Google
+      // credential captured earlier onto that same (now current) account.
+      const linkResult = await completeGoogleLink(pendingGoogleCredential);
+      if (!linkResult.ok) {
+        // They're still signed in to the right account either way — this
+        // step failing just means Google isn't linked yet, so surface it
+        // but don't block navigating away.
+        setGoogleError(linkResult.message);
+      }
+      setPendingGoogleCredential(null);
+      setGoogleLinkPrompt(null);
+    }
+
+    router.back();
   }
 
   async function handleGoogleSignIn() {
-    setGoogleError(null);
+    clearGoogleState();
     const result = await signInWithGoogle();
     if (result.ok) {
       router.back();
-    } else if (result.code !== 'cancelled') {
-      setGoogleError(result.message);
+      return;
     }
+    if (result.reason === 'cancelled') return;
+    if (result.reason === 'account-exists') {
+      // Firebase enforces one account per email — this Google account
+      // can't be linked until the user proves ownership of the existing
+      // account by signing in with its password. Redirect them into that
+      // exact flow rather than dead-ending.
+      setPendingGoogleCredential(result.pendingCredential);
+      form.setMode('signIn');
+      form.setEmail(result.email ?? '');
+      setGoogleLinkPrompt('An account already exists with this email. Sign in with your password to connect your Google account.');
+      return;
+    }
+    setGoogleError(result.message);
   }
 
   return (
@@ -57,10 +100,24 @@ export default function LoginScreen() {
 
       {form.mode !== 'reset' && (
         <View style={styles.modeRow}>
-          <Pressable onPress={() => form.setMode('signIn')} accessibilityRole="button" accessibilityLabel="Log in">
+          <Pressable
+            onPress={() => {
+              clearGoogleState();
+              form.setMode('signIn');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Log in"
+          >
             <Chip label="Log In" tone={form.mode === 'signIn' ? 'success' : 'neutral'} />
           </Pressable>
-          <Pressable onPress={() => form.setMode('signUp')} accessibilityRole="button" accessibilityLabel="Sign up">
+          <Pressable
+            onPress={() => {
+              clearGoogleState();
+              form.setMode('signUp');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Sign up"
+          >
             <Chip label="Sign Up" tone={form.mode === 'signUp' ? 'success' : 'neutral'} />
           </Pressable>
         </View>
@@ -72,6 +129,8 @@ export default function LoginScreen() {
         </ThemedText>
       ) : (
         <View style={styles.form}>
+          {googleLinkPrompt ? <ThemedText accessibilityRole="alert">{googleLinkPrompt}</ThemedText> : null}
+
           <TextField
             label="Email"
             value={form.email}

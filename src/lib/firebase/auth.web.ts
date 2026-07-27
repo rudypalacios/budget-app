@@ -10,6 +10,8 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
+  type AuthCredential,
+  type AuthError,
   type User,
 } from 'firebase/auth';
 
@@ -70,21 +72,40 @@ export const authClient: AuthClient = {
       // comment for why linkWithPopup (never a plain sign-in) is the
       // primary path.
       const result = await linkWithPopup(auth.currentUser!, provider);
-      return toAuthUser(result.user);
+      return { status: 'linked', user: toAuthUser(result.user) };
     } catch (error) {
       const code = getErrorCode(error);
-      if (GOOGLE_POPUP_CANCELLED_CODES.has(code)) return null;
-      // This Google account is already a real, separate Firebase user —
-      // linking can't succeed. Fall back to signing into that existing
-      // account, abandoning the current anonymous session (there's no
-      // form here to redirect through, unlike use-auth-form.ts's
-      // sign-up-to-sign-in mode switch on the same error).
+      if (GOOGLE_POPUP_CANCELLED_CODES.has(code)) return { status: 'cancelled' };
+      // This exact Google account is already linked to a different real
+      // Firebase user (its own account-joining attempt happened before) —
+      // fall back to signing into that existing account, abandoning the
+      // current anonymous session (there's no form here to redirect
+      // through, unlike use-auth-form.ts's sign-up-to-sign-in mode switch
+      // on the same error).
       if (code === 'auth/credential-already-in-use') {
         const result = await signInWithPopup(auth, provider);
-        return toAuthUser(result.user);
+        return { status: 'linked', user: toAuthUser(result.user) };
+      }
+      // This Google account's *email* — not yet linked to Google at all —
+      // already belongs to a different real account registered some other
+      // way (e.g. email/password). Firebase enforces one account per
+      // email, so linking can't complete here; the caller must have the
+      // user sign in with their existing credential first, then finish via
+      // completeGoogleLink. Firebase attaches enough of the popup's OAuth
+      // exchange to this error's customData for credentialFromError to
+      // reconstruct it, even though it couldn't be linked yet.
+      if (code === 'auth/email-already-in-use' || code === 'auth/account-exists-with-different-credential') {
+        const authError = error as AuthError;
+        const pendingCredential = GoogleAuthProvider.credentialFromError(authError);
+        return { status: 'account-exists', conflict: { email: authError.customData?.email ?? null, pendingCredential } };
       }
       throw error;
     }
+  },
+
+  async completeGoogleLink(pendingCredential) {
+    const result = await linkWithCredential(auth.currentUser!, pendingCredential as AuthCredential);
+    return toAuthUser(result.user);
   },
 
   async signOut() {

@@ -63,7 +63,7 @@ export const authClient: AuthClient = {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     }
     const response = await GoogleSignin.signIn();
-    if (response.type === 'cancelled') return null;
+    if (response.type === 'cancelled') return { status: 'cancelled' };
 
     const idToken = response.data.idToken;
     if (!idToken) throw new Error('Google sign-in did not return an ID token.');
@@ -74,19 +74,38 @@ export const authClient: AuthClient = {
       // comment for why linkWithCredential (never a plain sign-in) is the
       // primary path.
       const result = await linkWithCredential(auth.currentUser!, credential);
-      return toAuthUser(result.user);
+      return { status: 'linked', user: toAuthUser(result.user) };
     } catch (error) {
-      // This Google account is already a real, separate Firebase user —
-      // linking can't succeed. Fall back to signing into that existing
-      // account, abandoning the current anonymous session (there's no
-      // form here to redirect through, unlike use-auth-form.ts's
-      // sign-up-to-sign-in mode switch on the same error).
-      if (getErrorCode(error) === 'auth/credential-already-in-use') {
+      const code = getErrorCode(error);
+      // This exact Google account is already linked to a different real
+      // Firebase user (its own account-joining attempt happened before) —
+      // fall back to signing into that existing account, abandoning the
+      // current anonymous session (there's no form here to redirect
+      // through, unlike use-auth-form.ts's sign-up-to-sign-in mode switch
+      // on the same error).
+      if (code === 'auth/credential-already-in-use') {
         const result = await signInWithCredential(auth, credential);
-        return toAuthUser(result.user);
+        return { status: 'linked', user: toAuthUser(result.user) };
+      }
+      // This Google account's *email* — not yet linked to Google at all —
+      // already belongs to a different real account registered some other
+      // way (e.g. email/password). Firebase enforces one account per
+      // email, so linking can't complete here; the caller must have the
+      // user sign in with their existing credential first, then finish via
+      // completeGoogleLink. GoogleAuthProvider.credentialFromError always
+      // returns null on React Native Firebase (unlike the web SDK), but
+      // there's nothing to recover anyway — the credential built above
+      // from the Google idToken is exactly what completeGoogleLink needs.
+      if (code === 'auth/email-already-in-use') {
+        return { status: 'account-exists', conflict: { email: response.data.user.email, pendingCredential: credential } };
       }
       throw error;
     }
+  },
+
+  async completeGoogleLink(pendingCredential) {
+    const result = await linkWithCredential(auth.currentUser!, pendingCredential as ReturnType<typeof GoogleAuthProvider.credential>);
+    return toAuthUser(result.user);
   },
 
   async signOut() {
