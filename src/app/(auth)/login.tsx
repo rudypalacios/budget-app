@@ -25,6 +25,20 @@ const SUBMIT_LABELS: Record<AuthFormMode, string> = {
   reset: 'Send Reset Email',
 };
 
+// This screen is normally reached by pushing from Settings, so router.back()
+// has somewhere to go — but a direct page load/reload while already on
+// /login (easy to hit on web) starts with an empty history, and router.back()
+// then silently does nothing (logs "GO_BACK was not handled" in dev),
+// stranding the user here after a successful sign-in. Falling back to the
+// home tab covers that case.
+function dismissLoginScreen() {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace('/');
+  }
+}
+
 export default function LoginScreen() {
   const form = useAuthForm();
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -62,14 +76,14 @@ export default function LoginScreen() {
       setGoogleLinkPrompt(null);
     }
 
-    router.back();
+    dismissLoginScreen();
   }
 
   async function handleGoogleSignIn() {
     clearGoogleState();
     const result = await signInWithGoogle();
     if (result.ok) {
-      router.back();
+      dismissLoginScreen();
       return;
     }
     if (result.reason === 'cancelled') return;
@@ -95,7 +109,7 @@ export default function LoginScreen() {
         // separate route (see useAuthForm) — back should return to Log In,
         // not dismiss the whole auth modal, mirroring the existing "Back to
         // Log In" link below.
-        onBack={form.mode === 'reset' ? () => form.setMode('signIn') : () => router.back()}
+        onBack={form.mode === 'reset' ? () => form.setMode('signIn') : dismissLoginScreen}
       />
 
       {form.mode !== 'reset' && (
