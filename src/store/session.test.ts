@@ -22,13 +22,14 @@ const mockSignInAnonymously = jest.fn();
 const mockSignOut = jest.fn();
 const mockSendPasswordResetEmail = jest.fn();
 const mockGoogleSignIn = jest.fn();
+const mockGetTokens = jest.fn();
 
 jest.mock('@react-native-firebase/app', () => ({ getApp: jest.fn(() => ({})) }));
 jest.mock('@react-native-firebase/auth', () => ({
   getAuth: jest.fn(() => fakeAuth),
   onAuthStateChanged: jest.fn(() => jest.fn()),
   EmailAuthProvider: { credential: jest.fn((email, password) => ({ email, password })) },
-  GoogleAuthProvider: { credential: jest.fn((idToken) => ({ idToken })) },
+  GoogleAuthProvider: { credential: jest.fn((idToken, accessToken) => ({ idToken, accessToken })) },
   linkWithCredential: (...args: unknown[]) => mockLinkWithCredential(...args),
   signInWithCredential: (...args: unknown[]) => mockSignInWithCredential(...args),
   signInWithEmailAndPassword: (...args: unknown[]) => mockSignInWithEmailAndPassword(...args),
@@ -41,6 +42,7 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
     configure: jest.fn(),
     hasPlayServices: jest.fn(() => Promise.resolve(true)),
     signIn: (...args: unknown[]) => mockGoogleSignIn(...args),
+    getTokens: (...args: unknown[]) => mockGetTokens(...args),
   },
 }));
 
@@ -106,25 +108,36 @@ describe('signInWithEmail', () => {
 describe('signInWithGoogle', () => {
   it('links the credential to the existing anonymous uid on success', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-id-token' } });
+    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
     mockLinkWithCredential.mockResolvedValue({
       user: { uid: 'anon-uid', email: 'a@b.com', isAnonymous: false },
     });
 
     await expect(signInWithGoogle()).resolves.toEqual({ ok: true });
-    expect(mockLinkWithCredential).toHaveBeenCalledWith(fakeAuth.currentUser, { idToken: 'google-id-token' });
+    // Built from getTokens()'s pair, not signIn()'s response — see auth.ts:
+    // GoogleAuthProvider.credential(idToken) with no accessToken bridges to
+    // native as an empty string, which Android's SDK rejects.
+    expect(mockLinkWithCredential).toHaveBeenCalledWith(fakeAuth.currentUser, {
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
     expect(mockSignInWithCredential).not.toHaveBeenCalled();
     expect(useSessionStore.getState()).toMatchObject({ uid: 'anon-uid', email: 'a@b.com', isAnonymous: false });
   });
 
   it('falls back to a plain sign-in when the Google account is already linked elsewhere', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-id-token' } });
+    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/credential-already-in-use' });
     mockSignInWithCredential.mockResolvedValue({
       user: { uid: 'other-real-uid', email: 'a@b.com', isAnonymous: false },
     });
 
     await expect(signInWithGoogle()).resolves.toEqual({ ok: true });
-    expect(mockSignInWithCredential).toHaveBeenCalledWith(fakeAuth, { idToken: 'google-id-token' });
+    expect(mockSignInWithCredential).toHaveBeenCalledWith(fakeAuth, {
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
     expect(useSessionStore.getState()).toMatchObject({ uid: 'other-real-uid' });
   });
 
@@ -132,12 +145,14 @@ describe('signInWithGoogle', () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'cancelled', data: null });
 
     await expect(signInWithGoogle()).resolves.toEqual({ ok: false, reason: 'cancelled' });
+    expect(mockGetTokens).not.toHaveBeenCalled();
     expect(mockLinkWithCredential).not.toHaveBeenCalled();
     expect(useSessionStore.getState()).toMatchObject({ uid: null });
   });
 
   it('maps a thrown Firebase error to a user-facing message and preserves the code', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-id-token' } });
+    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/network-request-failed' });
 
     await expect(signInWithGoogle()).resolves.toEqual({
@@ -153,13 +168,14 @@ describe('signInWithGoogle', () => {
       type: 'success',
       data: { idToken: 'google-id-token', user: { email: 'a@b.com' } },
     });
+    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/email-already-in-use' });
 
     await expect(signInWithGoogle()).resolves.toEqual({
       ok: false,
       reason: 'account-exists',
       email: 'a@b.com',
-      pendingCredential: { idToken: 'google-id-token' },
+      pendingCredential: { idToken: 'google-id-token', accessToken: 'google-access-token' },
     });
     expect(mockSignInWithCredential).not.toHaveBeenCalled();
     expect(useSessionStore.getState()).toMatchObject({ uid: null });

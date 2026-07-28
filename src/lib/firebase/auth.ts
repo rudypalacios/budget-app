@@ -65,9 +65,16 @@ export const authClient: AuthClient = {
     const response = await GoogleSignin.signIn();
     if (response.type === 'cancelled') return { status: 'cancelled' };
 
-    const idToken = response.data.idToken;
+    // GoogleAuthProvider.credential(idToken) — with no second argument —
+    // bridges the missing access token to the native module as an empty
+    // string rather than a true null, and Android's native Firebase Auth
+    // SDK rejects that with "Exception in HostFunction: accessToken cannot
+    // be empty" (verified live). signIn()'s response never carries an
+    // access token at all, only an idToken, so fetch the pair together via
+    // getTokens() instead, which always returns non-empty strings for both.
+    const { idToken, accessToken } = await GoogleSignin.getTokens();
     if (!idToken) throw new Error('Google sign-in did not return an ID token.');
-    const credential = GoogleAuthProvider.credential(idToken);
+    const credential = GoogleAuthProvider.credential(idToken, accessToken);
 
     try {
       // Same account-joining principle as signUpWithEmail above — see that
