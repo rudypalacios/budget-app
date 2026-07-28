@@ -18,6 +18,8 @@ export function mapAuthErrorMessage(code: string): string {
       return 'This sign-in method is not enabled for this app yet.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the Google sign-in popup. Please allow popups for this site and try again.';
     default:
       // This maps *any* thrown error's code, not just auth/-prefixed
       // Firebase ones — a native Google Sign-In failure (e.g. Android's

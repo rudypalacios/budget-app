@@ -48,6 +48,12 @@ describe('mapAuthErrorMessage', () => {
     );
   });
 
+  it('maps auth/popup-blocked', () => {
+    expect(mapAuthErrorMessage('auth/popup-blocked')).toBe(
+      'Your browser blocked the Google sign-in popup. Please allow popups for this site and try again.'
+    );
+  });
+
   it('includes the raw code in the fallback message for unrecognized codes', () => {
     expect(mapAuthErrorMessage('auth/some-unknown-code')).toBe(
       'Something went wrong (auth/some-unknown-code). Please try again.'

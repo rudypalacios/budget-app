@@ -7,8 +7,8 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInAnonymously,
+  signInWithCredential,
   signInWithEmailAndPassword,
-  signInWithPopup,
   signOut as firebaseSignOut,
   type AuthCredential,
   type AuthError,
@@ -81,9 +81,18 @@ export const authClient: AuthClient = {
       // fall back to signing into that existing account, abandoning the
       // current anonymous session (there's no form here to redirect
       // through, unlike use-auth-form.ts's sign-up-to-sign-in mode switch
-      // on the same error).
+      // on the same error). Deliberately NOT a second signInWithPopup call
+      // here — opening another popup from this async continuation gets
+      // blocked by the browser (verified live: Chrome throws
+      // auth/popup-blocked, since this no longer reads as a direct result
+      // of the user's click). Firebase already attaches the completed
+      // OAuth exchange from the *first* popup to this error's customData
+      // (same mechanism as the email-already-in-use case below), so
+      // there's nothing left to prompt for — just sign in with it.
       if (code === 'auth/credential-already-in-use') {
-        const result = await signInWithPopup(auth, provider);
+        const pendingCredential = GoogleAuthProvider.credentialFromError(error as AuthError);
+        if (!pendingCredential) throw error;
+        const result = await signInWithCredential(auth, pendingCredential);
         return { status: 'linked', user: toAuthUser(result.user) };
       }
       // This Google account's *email* — not yet linked to Google at all —
