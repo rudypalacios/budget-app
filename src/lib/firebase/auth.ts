@@ -103,7 +103,11 @@ export const authClient: AuthClient = {
       // returns null on React Native Firebase (unlike the web SDK), but
       // there's nothing to recover anyway — the credential built above
       // from the Google idToken is exactly what completeGoogleLink needs.
-      if (code === 'auth/email-already-in-use') {
+      // Mirrors auth.web.ts's same branch, which additionally checks
+      // 'auth/account-exists-with-different-credential' — RNFirebase's
+      // linkWithCredential can surface either code for this situation, so
+      // both must map to the same conflict result here too.
+      if (code === 'auth/email-already-in-use' || code === 'auth/account-exists-with-different-credential') {
         return { status: 'account-exists', conflict: { email: response.data.user.email, pendingCredential: credential } };
       }
       throw error;

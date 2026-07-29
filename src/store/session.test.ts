@@ -180,6 +180,28 @@ describe('signInWithGoogle', () => {
     expect(mockSignInWithCredential).not.toHaveBeenCalled();
     expect(useSessionStore.getState()).toMatchObject({ uid: null });
   });
+
+  it('reports the same account-exists conflict when Firebase uses the account-exists-with-different-credential code instead', async () => {
+    // Regression test for the auth.ts/auth.web.ts parity fix — RNFirebase's
+    // linkWithCredential can surface either this code or
+    // auth/email-already-in-use for the same underlying conflict, and both
+    // must resolve identically here.
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: { idToken: 'google-id-token', user: { email: 'a@b.com' } },
+    });
+    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
+    mockLinkWithCredential.mockRejectedValue({ code: 'auth/account-exists-with-different-credential' });
+
+    await expect(signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      reason: 'account-exists',
+      email: 'a@b.com',
+      pendingCredential: { idToken: 'google-id-token', accessToken: 'google-access-token' },
+    });
+    expect(mockSignInWithCredential).not.toHaveBeenCalled();
+    expect(useSessionStore.getState()).toMatchObject({ uid: null });
+  });
 });
 
 describe('completeGoogleLink', () => {

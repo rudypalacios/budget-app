@@ -221,6 +221,58 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
+- **Anonymous-to-existing-account linking is silent, no merge confirmation**
+  (found during Stage 9b closeout, auditing `LoginScenarios.txt`) — when an
+  anonymous session with local data tries to link a credential (email,
+  Google, and Facebook once built) that already belongs to a **separate,
+  pre-existing real account**, `signInWithGoogle`'s
+  `auth/credential-already-in-use` fallback (`src/lib/firebase/auth.ts:93-96`,
+  `auth.web.ts:92-97`) silently signs into that existing account with zero
+  warning, abandoning the anonymous session's local data. The correct fix —
+  a session-level "keep your data or start fresh?" prompt, with a real
+  category-matching/id-remapping/idempotent-copy merge engine behind
+  "keep your data" — is a data-migration problem, not a login-flow tweak,
+  and is designed in full in `docs/auth-scenarios.md` §2 as a future
+  **Account Data Merge** stage, scheduled once the app is more developed.
+  This does *not* apply to the already-correct, unrelated flow where an
+  **already-registered** account links a second provider via a
+  password-confirmation prompt (`login.tsx:90-100`) — that flow is
+  confirmed correct and unaffected.
+- **No client-side password-strength validation on sign-up** (Stage 9b
+  closeout) — `src/features/auth/use-auth-form.ts:36` only checks that a
+  password was typed at all, relying entirely on Firebase's server-side
+  `auth/weak-password` rejection. The user-facing message for that code
+  (`src/lib/firebase/auth-errors.ts:7-8`, "Password must be at least 6
+  characters") is a static assumption baked into the mapping, not derived
+  from Firebase Console's actual configured policy, so it could drift if
+  that policy ever changes.
+- **No "sign in with Google instead" prompt when email/password sign-up
+  conflicts with an existing Google-linked account** (Stage 9b closeout) —
+  `signUpWithEmail` correctly throws `auth/email-already-in-use` and
+  prevents a duplicate account, but the message shown
+  (`auth-errors.ts:3-4`, "An account with this email already exists.") is
+  generic rather than pointing the user at the provider they actually used.
+  Contrast with the equivalent Google-sign-up-conflicts-with-email case,
+  which already has a full password-confirmation linking flow
+  (`login.tsx:90-100`) — this is the asymmetric, less-built direction of
+  the same conflict.
+- **Auth-bootstrap failure has no visible/distinct error state** (Stage 9b
+  closeout) — `bootstrapSession`'s `status: 'error'` (`src/store/session.ts:42-44`)
+  is only ever consumed by `useSyncStatus()` (`src/hooks/use-sync-status.ts:20,28`),
+  which treats it identically to `'pending'`. If `ensureSignedIn()` ever
+  fails (e.g. anonymous auth disabled server-side, or no network at all on
+  first launch), the app would sit in a perpetual "pending" sync state with
+  no uid and no explanation to the user.
+- **No proactive offline check before an auth attempt** (Stage 9b
+  closeout) — sign-in/sign-up/Google sign-in all rely on Firebase's own
+  `auth/network-request-failed` rejection after the fact
+  (`auth-errors.ts:19-20`) rather than checking `useNetworkStatus()`
+  beforehand and short-circuiting with an immediate, clear message.
+- **No token-expiry/re-authentication handling anywhere** (Stage 9b
+  closeout) — no `reauthenticateWith*` call exists in the codebase. Moot
+  today since no sensitive action (e.g. account deletion, which is
+  explicitly out of scope per SRS §10) currently requires a freshly
+  re-verified session; revisit if/when one is ever built.
 - **Amount-field parsing normalizes comma/period universally, not per-locale**
   (Stage 9a.1) — `src/lib/currency-input.ts`'s `parseAmountInput` treats a
   typed comma as an alternate decimal separator and converts it to a period
@@ -358,3 +410,11 @@ verified on branch `stage-9b-google-signin`, pending merge to `develop`;
 9c remains blocked on Facebook Developer console setup — see SRS §11).
 Stage 10 (localization + default currency) is planned and ready to resume
 once 9b is merged.
+
+A `LoginScenarios.txt` audit against 9b's implementation (2026-07-28)
+found and fixed one native/web parity gap in `signInWithGoogle` (see
+`src/lib/firebase/auth.ts`), and surfaced a real, deliberately-deferred
+future stage — **Account Data Merge** — not yet numbered/scheduled, whose
+full design lives in `docs/auth-scenarios.md` §2. See that file for the
+complete scenario-by-scenario audit and the Facebook (9c) forward-looking
+requirements it captured for later (§3).
