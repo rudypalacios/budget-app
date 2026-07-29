@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
@@ -8,6 +9,7 @@ import { parseAmountInput } from '@/lib/currency-input';
 import { setExpensePaid, toTimestamp, updateExpense, useExpensesStore } from '@/store/expenses';
 
 export default function EditExpenseScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useExpensesStore((state) => state.items);
   const expense = items.find((item) => item.id === id);
@@ -15,8 +17,8 @@ export default function EditExpenseScreen() {
   if (!expense) {
     return (
       <ScreenScroll>
-        <ModalHeader title="Expense not found" />
-        <ThemedText>This expense no longer exists.</ThemedText>
+        <ModalHeader title={t('expenses.notFoundTitle')} />
+        <ThemedText>{t('expenses.notFoundBody')}</ThemedText>
       </ScreenScroll>
     );
   }
@@ -48,10 +50,10 @@ export default function EditExpenseScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title="Edit expense" />
+      <ModalHeader title={t('expenses.editTitle')} />
       <ExpenseForm
         initialValues={initialValues}
-        submitLabel="Save changes"
+        submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
         disableRecurringToggle

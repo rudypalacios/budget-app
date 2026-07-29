@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -16,12 +17,13 @@ export type ModalHeaderProps = {
 };
 
 export function ModalHeader({ title, onBack }: ModalHeaderProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.row}>
       {onBack && (
         <IconButton
           name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           onPress={onBack}
           size={18}
         />

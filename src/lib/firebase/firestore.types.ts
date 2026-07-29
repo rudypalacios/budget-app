@@ -35,6 +35,11 @@ export interface FirestoreClient {
     data: Omit<T, 'createdAt' | 'updatedAt'>,
   ): Promise<string>;
   updateDoc(path: string, data: Record<string, unknown>): Promise<void>;
+  // Applies every update atomically in one write — used where multiple
+  // documents must change together (e.g. UserSettings.defaultCurrency
+  // changing must also flip every recurringExpenses budgetRecommendation to
+  // 'stale' in the same write, see docs/data-model.md §3).
+  batchUpdate(updates: { path: string; data: Record<string, unknown> }[]): Promise<void>;
   deleteDoc(path: string): Promise<void>;
   getDocs<T extends object>(
     collectionPath: string,

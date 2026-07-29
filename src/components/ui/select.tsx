@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -19,6 +20,7 @@ export type SelectProps<T extends string> = {
 };
 
 export function Select<T extends string>({ label, value, options, onChange }: SelectProps<T>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
@@ -47,7 +49,7 @@ export function Select<T extends string>({ label, value, options, onChange }: Se
         accessibilityState={{ expanded: isOpen }}
         style={[styles.field, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
       >
-        <ThemedText>{selected?.label ?? 'Select…'}</ThemedText>
+        <ThemedText>{selected?.label ?? t('common.selectPlaceholder')}</ThemedText>
         <ThemedText themeColor="textSecondary">{isOpen ? '▴' : '▾'}</ThemedText>
       </Pressable>
 

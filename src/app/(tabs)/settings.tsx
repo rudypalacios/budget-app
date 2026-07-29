@@ -1,5 +1,6 @@
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -12,78 +13,119 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
+import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
 import { useCategoriesStore } from '@/store/categories';
 import { signOutAndRestartAnonymous, useSessionStore } from '@/store/session';
+import { updateUserSettings, useUserSettingsStore } from '@/store/user-settings';
+import type { UserSettings } from '@/types/firestore';
 
-const CURRENCIES = [
-  { value: 'GTQ', label: 'GTQ — Guatemalan Quetzal' },
-  { value: 'USD', label: 'USD — US Dollar' },
-  { value: 'EUR', label: 'EUR — Euro' },
-] as const;
 const LANGUAGES = [
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Español' },
 ] as const;
 const THEMES = ['light', 'dark', 'system'] as const;
+const THEME_LABEL_KEY: Record<(typeof THEMES)[number], string> = {
+  light: 'settings.general.themeOption.light',
+  dark: 'settings.general.themeOption.dark',
+  system: 'settings.general.themeOption.system',
+};
 
-// Local-only still — these pickers don't yet change the app's active
-// theme/language/currency. That's Stage 9 (localization) plus a
-// users/{uid} settings-doc store this stage didn't need (no screen reads
-// UserSettings yet); this screen is just the settings UI shell.
-// Categories are the exception — FR-9's centrally managed list reads from
-// the real categoriesStore (Stage 6). Management itself lives on its own
-// /categories screen; Settings is just the entry point.
 export default function SettingsScreen() {
-  const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]['value']>('GTQ');
-  const [language, setLanguage] = useState<(typeof LANGUAGES)[number]['value']>('en');
-  const [theme, setTheme] = useState<(typeof THEMES)[number]>('system');
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [leadDays, setLeadDays] = useState('1');
-  const [trashRetentionDays, setTrashRetentionDays] = useState('30');
+  const { t } = useTranslation();
+  const isLoading = useUserSettingsStore((state) => state.isLoading);
+  const settings = useUserSettingsStore((state) => state.data);
+
+  // Gated on the settings doc having loaded (or been seeded — see
+  // _layout.tsx) so SettingsForm's local draft state below initializes from
+  // real values exactly once, the same initialValues-on-mount pattern
+  // expense-form.tsx/category-form.tsx use.
+  if (isLoading || !settings) {
+    return (
+      <ScreenScroll>
+        <ScreenHeader title={t('settings.title')} />
+      </ScreenScroll>
+    );
+  }
+
+  return <SettingsForm settings={settings} />;
+}
+
+function SettingsForm({ settings }: { settings: UserSettings }) {
+  const { t } = useTranslation();
+  const [currency, setCurrency] = useState<UserSettings['defaultCurrency']>(settings.defaultCurrency);
+  const [language, setLanguage] = useState<UserSettings['language']>(settings.language);
+  const [theme, setTheme] = useState<UserSettings['theme']>(settings.theme);
+  const [remindersEnabled, setRemindersEnabled] = useState(settings.reminders.enabled);
+  const [leadDays, setLeadDays] = useState(String(settings.reminders.leadDays));
+  const [trashRetentionDays, setTrashRetentionDays] = useState(String(settings.trashRetentionDays));
 
   const categories = useCategoriesStore((state) => state.items);
   const email = useSessionStore((state) => state.email);
   const isAnonymous = useSessionStore((state) => state.isAnonymous);
 
+  async function handleSave() {
+    await updateUserSettings({
+      defaultCurrency: currency,
+      language,
+      theme,
+      trashRetentionDays: Number(trashRetentionDays),
+      reminders: {
+        enabled: remindersEnabled,
+        leadDays: Number(leadDays),
+        timeOfDay: settings.reminders.timeOfDay,
+      },
+    });
+  }
+
   return (
     <ScreenScroll>
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title={t('settings.title')} />
 
       <View style={styles.section}>
-        <SectionHeader title="Account" />
+        <SectionHeader title={t('settings.account.title')} />
         {isAnonymous ? (
           <Pressable
             onPress={() => router.push('/(auth)/login' as Href)}
             accessibilityRole="button"
-            accessibilityLabel="Create account or log in"
+            accessibilityLabel={t('settings.account.createOrLogIn')}
           >
             <Card style={styles.manageRow}>
-              <ThemedText type="smallBold">Create account / Log in</ThemedText>
+              <ThemedText type="smallBold">{t('settings.account.createOrLogIn')}</ThemedText>
               <ThemedText themeColor="textSecondary">›</ThemedText>
             </Card>
           </Pressable>
         ) : (
           <Card style={styles.manageRow}>
             <ThemedText type="smallBold">{email}</ThemedText>
-            <Button label="Sign Out" variant="ghost" onPress={signOutAndRestartAnonymous} />
+            <Button label={t('common.signOut')} variant="ghost" onPress={signOutAndRestartAnonymous} />
           </Card>
         )}
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="General" />
+        <SectionHeader title={t('settings.general.title')} />
         <Card style={styles.card}>
-          <Select label="Default currency" value={currency} options={CURRENCIES} onChange={setCurrency} />
-          <Select label="Language" value={language} options={LANGUAGES} onChange={setLanguage} />
+          <Select
+            label={t('settings.general.defaultCurrency')}
+            value={currency}
+            options={SUPPORTED_CURRENCIES.map((c) => ({ value: c.code, label: c.label }))}
+            onChange={setCurrency}
+          />
+          <Select
+            label={t('settings.general.language')}
+            value={language}
+            options={LANGUAGES}
+            onChange={setLanguage}
+          />
 
           <ThemedText type="smallBold" themeColor="textSecondary">
-            Theme
+            {t('settings.general.theme')}
           </ThemedText>
           <View style={styles.chipRow}>
             {THEMES.map((option) => (
               <Pressable key={option} onPress={() => setTheme(option)}>
-                <Chip label={option} tone={theme === option ? 'success' : 'neutral'} />
+                <Chip label={t(THEME_LABEL_KEY[option])} tone={theme === option ? 'success' : 'neutral'} />
               </Pressable>
             ))}
           </View>
@@ -91,7 +133,7 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Categories" />
+        <SectionHeader title={t('settings.categories.title')} />
         <Pressable
           // expo-router's typed-routes generator doesn't emit the collapsed
           // '/categories' alias for a plain (non-group) folder's index.tsx —
@@ -100,12 +142,12 @@ export default function SettingsScreen() {
           // 404). Cast around the incorrect type until upstream fixes this.
           onPress={() => router.push('/categories' as Href)}
           accessibilityRole="button"
-          accessibilityLabel="Manage categories"
+          accessibilityLabel={t('settings.categories.manage')}
         >
           <Card style={styles.manageRow}>
             <View>
-              <ThemedText type="smallBold">Manage categories</ThemedText>
-              <ThemedText type="caption">{categories.length} categories</ThemedText>
+              <ThemedText type="smallBold">{t('settings.categories.manage')}</ThemedText>
+              <ThemedText type="caption">{t('settings.categories.count', { count: categories.length })}</ThemedText>
             </View>
             <ThemedText themeColor="textSecondary">›</ThemedText>
           </Card>
@@ -113,19 +155,19 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Reminders" />
+        <SectionHeader title={t('settings.reminders.title')} />
         <Card style={styles.card}>
           <View style={styles.switchRow}>
             <Switch
               value={remindersEnabled}
               onValueChange={setRemindersEnabled}
-              accessibilityLabel="Enable reminders"
+              accessibilityLabel={t('settings.reminders.enable')}
             />
-            <ThemedText>Enable reminders</ThemedText>
+            <ThemedText>{t('settings.reminders.enable')}</ThemedText>
           </View>
           {remindersEnabled && (
             <TextField
-              label="Lead days"
+              label={t('settings.reminders.leadDays')}
               value={leadDays}
               onChangeText={setLeadDays}
               keyboardType="number-pad"
@@ -135,15 +177,19 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Data" />
+        <SectionHeader title={t('settings.data.title')} />
         <Card style={styles.card}>
           <TextField
-            label="Trash retention (days)"
+            label={t('settings.data.trashRetention')}
             value={trashRetentionDays}
             onChangeText={setTrashRetentionDays}
             keyboardType="number-pad"
           />
         </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Button label={t('common.save')} onPress={handleSave} />
       </View>
 
       {!isAnonymous && (
@@ -153,7 +199,7 @@ export default function SettingsScreen() {
         // the common Facebook/GitHub convention of also having sign-out as
         // the last action on the page.
         <View style={styles.section}>
-          <Button label="Sign Out" variant="ghost" onPress={signOutAndRestartAnonymous} />
+          <Button label={t('common.signOut')} variant="ghost" onPress={signOutAndRestartAnonymous} />
         </View>
       )}
     </ScreenScroll>

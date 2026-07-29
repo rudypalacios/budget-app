@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -22,6 +23,7 @@ import { useRecurringIncomesStore } from '@/store/recurring-incomes';
 // (src/app/(tabs)/index.tsx, the Payments screen, Stage 8), which already
 // unifies both kinds.
 export default function IncomeScreen() {
+  const { t } = useTranslation();
   const incomes = useIncomesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const recurringDefinitions = useRecurringIncomesStore((state) => state.items);
@@ -38,14 +40,14 @@ export default function IncomeScreen() {
 
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title="Income" />
+      <ScreenHeader title={t('income.title')} />
 
-      <Button label="Add income" onPress={() => router.push('/income/new')} />
+      <Button label={t('income.addIncome')} onPress={() => router.push('/income/new')} />
 
       <View style={styles.section}>
-        <SectionHeader title="Recurring" />
+        <SectionHeader title={t('income.recurringSection')} />
         {activeRecurring.length === 0 ? (
-          <ThemedText type="caption">No recurring income yet.</ThemedText>
+          <ThemedText type="caption">{t('income.noRecurring')}</ThemedText>
         ) : (
           <Card style={styles.card}>
             {activeRecurring.map((definition, index) => (
@@ -55,10 +57,10 @@ export default function IncomeScreen() {
                     <ThemedText type="smallBold">{definition.name}</ThemedText>
                     <ThemedText type="caption">
                       {definition.frequency === 'monthly'
-                        ? `Monthly, day ${definition.dayOfMonth}`
+                        ? t('income.frequency.monthlyDay', { day: definition.dayOfMonth })
                         : definition.frequency === 'biweekly'
-                          ? 'Biweekly'
-                          : 'Weekly'}
+                          ? t('income.frequency.biweekly')
+                          : t('income.frequency.weekly')}
                     </ThemedText>
                   </View>
                   <View style={styles.rowEnd}>
@@ -66,10 +68,10 @@ export default function IncomeScreen() {
                       {formatCurrency(definition.amount, definition.currency)}
                     </ThemedText>
                     <OverflowMenu
-                      accessibilityLabel={`Actions for ${definition.name}`}
+                      accessibilityLabel={t('common.actionsFor', { name: definition.name })}
                       items={[
                         {
-                          label: 'Edit',
+                          label: t('common.edit'),
                           onPress: () =>
                             router.push({ pathname: '/recurring-incomes/[id]/edit', params: { id: definition.id } }),
                         },
@@ -85,9 +87,9 @@ export default function IncomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="One-time" />
+        <SectionHeader title={t('income.oneTimeSection')} />
         {plannedOneTime.length === 0 ? (
-          <ThemedText type="caption">No planned one-time income.</ThemedText>
+          <ThemedText type="caption">{t('income.noOneTime')}</ThemedText>
         ) : (
           <Card style={styles.card}>
             {plannedOneTime.map((income, index) => {
@@ -104,10 +106,10 @@ export default function IncomeScreen() {
                         {formatCurrency(income.amount, income.currency)}
                       </ThemedText>
                       <OverflowMenu
-                        accessibilityLabel={`Actions for ${income.name}`}
+                        accessibilityLabel={t('common.actionsFor', { name: income.name })}
                         items={[
                           {
-                            label: 'Edit',
+                            label: t('common.edit'),
                             onPress: () => router.push({ pathname: '/income/[id]/edit', params: { id: income.id } }),
                           },
                         ]}

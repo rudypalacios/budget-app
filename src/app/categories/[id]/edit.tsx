@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { CategoryForm, type CategoryFormValues } from '@/components/category-form';
 import { ModalHeader } from '@/components/modal-header';
@@ -7,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { updateCategory, useCategoriesStore } from '@/store/categories';
 
 export default function EditCategoryScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useCategoriesStore((state) => state.items);
   const category = items.find((item) => item.id === id);
@@ -14,8 +16,8 @@ export default function EditCategoryScreen() {
   if (!category) {
     return (
       <ScreenScroll>
-        <ModalHeader title="Category not found" />
-        <ThemedText>This category no longer exists.</ThemedText>
+        <ModalHeader title={t('categories.notFoundTitle')} />
+        <ThemedText>{t('categories.notFoundBody')}</ThemedText>
       </ScreenScroll>
     );
   }
@@ -32,10 +34,10 @@ export default function EditCategoryScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title="Edit category" />
+      <ModalHeader title={t('categories.editTitle')} />
       <CategoryForm
         initialValues={initialValues}
-        submitLabel="Save changes"
+        submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
       />

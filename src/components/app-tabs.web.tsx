@@ -7,6 +7,7 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { Drawer } from './ui/drawer';
@@ -19,16 +20,19 @@ import { MaxContentWidth, NavBreakpoint, Spacing } from '@/constants/theme';
 
 // Kept in sync by hand with app-tabs.tsx's NativeTabs.Trigger list (native
 // iOS/Android) — see the comment there. A new tab needs an entry here too.
+// labelKey is a nav.* translation key, resolved at render time (below) since
+// this array lives outside the component, where the t() hook isn't available.
 const TAB_ITEMS = [
-  { name: 'index', href: '/', label: 'Payments' },
-  { name: 'expenses', href: '/expenses', label: 'Expenses' },
-  { name: 'income', href: '/income', label: 'Income' },
-  { name: 'budget', href: '/budget', label: 'Budget' },
-  { name: 'history', href: '/history', label: 'History' },
-  { name: 'settings', href: '/settings', label: 'Settings' },
+  { name: 'index', href: '/', labelKey: 'nav.payments' },
+  { name: 'expenses', href: '/expenses', labelKey: 'nav.expenses' },
+  { name: 'income', href: '/income', labelKey: 'nav.income' },
+  { name: 'budget', href: '/budget', labelKey: 'nav.budget' },
+  { name: 'history', href: '/history', labelKey: 'nav.history' },
+  { name: 'settings', href: '/settings', labelKey: 'nav.settings' },
 ] as const;
 
 export default function AppTabs() {
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isCompact = width < NavBreakpoint;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -41,7 +45,7 @@ export default function AppTabs() {
         <CustomTabList isCompact={isCompact} onMenuPress={() => setIsDrawerOpen(true)}>
           {TAB_ITEMS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-              <TabButton>{tab.label}</TabButton>
+              <TabButton>{t(tab.labelKey)}</TabButton>
             </TabTrigger>
           ))}
         </CustomTabList>
@@ -54,17 +58,17 @@ export default function AppTabs() {
           one place in the tree and still resolve/highlight consistently. */}
       <Drawer isOpen={isDrawerOpen} onClose={closeDrawer}>
         <View style={styles.drawerHeader}>
-          <ThemedText type="smallBold">Budget App</ThemedText>
+          <ThemedText type="smallBold">{t('common.appName')}</ThemedText>
           <IconButton
             name={{ ios: 'xmark', android: 'close', web: 'close' }}
-            accessibilityLabel="Close menu"
+            accessibilityLabel={t('common.closeMenu')}
             onPress={closeDrawer}
             size={16}
           />
         </View>
         {TAB_ITEMS.map((tab) => (
           <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-            <DrawerLink onNavigate={closeDrawer}>{tab.label}</DrawerLink>
+            <DrawerLink onNavigate={closeDrawer}>{t(tab.labelKey)}</DrawerLink>
           </TabTrigger>
         ))}
       </Drawer>
@@ -115,11 +119,12 @@ export function CustomTabList({
   onMenuPress,
   ...props
 }: TabListProps & { isCompact: boolean; onMenuPress: () => void }) {
+  const { t } = useTranslation();
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          Budget App
+          {t('common.appName')}
         </ThemedText>
 
         <SyncStatusIndicator style={styles.syncStatus} />
@@ -127,7 +132,7 @@ export function CustomTabList({
         {isCompact ? (
           <IconButton
             name={{ ios: 'line.3.horizontal', android: 'menu', web: 'menu' }}
-            accessibilityLabel="Open menu"
+            accessibilityLabel={t('common.openMenu')}
             onPress={onMenuPress}
             size={18}
           />

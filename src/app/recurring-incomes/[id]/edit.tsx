@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { ModalHeader } from '@/components/modal-header';
 import { RecurringIncomeForm, type RecurringIncomeFormValues } from '@/components/recurring-income-form';
@@ -8,6 +9,7 @@ import { parseAmountInput } from '@/lib/currency-input';
 import { updateRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
 
 export default function EditRecurringIncomeScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useRecurringIncomesStore((state) => state.items);
   const definition = items.find((item) => item.id === id);
@@ -15,8 +17,8 @@ export default function EditRecurringIncomeScreen() {
   if (!definition) {
     return (
       <ScreenScroll>
-        <ModalHeader title="Recurring income not found" />
-        <ThemedText>This recurring income no longer exists.</ThemedText>
+        <ModalHeader title={t('recurringIncome.notFoundTitle')} />
+        <ThemedText>{t('recurringIncome.notFoundBody')}</ThemedText>
       </ScreenScroll>
     );
   }
@@ -45,10 +47,10 @@ export default function EditRecurringIncomeScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title="Edit recurring income" />
+      <ModalHeader title={t('recurringIncome.editTitle')} />
       <RecurringIncomeForm
         initialValues={initialValues}
-        submitLabel="Save changes"
+        submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
       />

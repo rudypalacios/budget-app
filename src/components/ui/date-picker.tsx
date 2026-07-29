@@ -1,5 +1,6 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -21,9 +22,11 @@ export type DatePickerProps = {
 // (live-updating `value`) until the user taps the explicit Done button
 // below — a widely-used pattern for this library since iOS has no single
 // display mode that both looks like a calendar and auto-closes.
-export function DatePicker({ label, value, onChange, placeholder = 'Select date' }: DatePickerProps) {
+export function DatePicker({ label, value, onChange, placeholder }: DatePickerProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const resolvedPlaceholder = placeholder ?? t('common.selectDatePlaceholder');
 
   function handleChange(event: DateTimePickerEvent, selectedDate?: Date) {
     if (Platform.OS === 'android') setIsOpen(false);
@@ -39,11 +42,11 @@ export function DatePicker({ label, value, onChange, placeholder = 'Select date'
         onPress={() => setIsOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={label}
-        accessibilityValue={{ text: value ? formatShortDate(value) : placeholder }}
+        accessibilityValue={{ text: value ? formatShortDate(value) : resolvedPlaceholder }}
         style={[styles.field, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
       >
         <ThemedText themeColor={value ? 'text' : 'textSecondary'}>
-          {value ? formatShortDate(value) : placeholder}
+          {value ? formatShortDate(value) : resolvedPlaceholder}
         </ThemedText>
       </Pressable>
 
@@ -56,7 +59,7 @@ export function DatePicker({ label, value, onChange, placeholder = 'Select date'
             onChange={handleChange}
           />
           {Platform.OS === 'ios' && (
-            <Button label="Done" variant="secondary" onPress={() => setIsOpen(false)} />
+            <Button label={t('common.done')} variant="secondary" onPress={() => setIsOpen(false)} />
           )}
         </View>
       )}

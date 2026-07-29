@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,13 +16,14 @@ export type SyncStatusIndicatorProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-const STATUS_LABEL: Record<SyncStatus, string> = {
-  synced: 'Synced',
-  pending: 'Syncing…',
-  offline: 'Offline',
+const STATUS_LABEL_KEY: Record<SyncStatus, string> = {
+  synced: 'syncStatus.synced',
+  pending: 'syncStatus.syncing',
+  offline: 'syncStatus.offline',
 };
 
 export function SyncStatusIndicator({ status, style }: SyncStatusIndicatorProps) {
+  const { t } = useTranslation();
   const liveStatus = useSyncStatus();
   const resolvedStatus = status ?? liveStatus;
   const theme = useTheme();
@@ -31,16 +33,17 @@ export function SyncStatusIndicator({ status, style }: SyncStatusIndicatorProps)
       : resolvedStatus === 'pending'
         ? theme.warning
         : theme.textSecondary;
+  const statusLabel = t(STATUS_LABEL_KEY[resolvedStatus]);
 
   return (
     <View
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`Sync status: ${STATUS_LABEL[resolvedStatus]}`}
+      accessibilityLabel={t('syncStatus.label', { status: statusLabel })}
       style={[styles.row, style]}
     >
       <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      <ThemedText type="caption">{STATUS_LABEL[resolvedStatus]}</ThemedText>
+      <ThemedText type="caption">{statusLabel}</ThemedText>
     </View>
   );
 }

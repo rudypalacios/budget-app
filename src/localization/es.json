@@ -1,0 +1,274 @@
+{
+  "common": {
+    "save": "Guardar",
+    "saveChanges": "Guardar cambios",
+    "cancel": "Cancelar",
+    "signOut": "Cerrar sesión",
+    "edit": "Editar",
+    "name": "Nombre",
+    "category": "Categoría",
+    "amountWithCurrency": "Monto ({{currency}})",
+    "selectPlaceholder": "Seleccionar…",
+    "closeMenu": "Cerrar menú",
+    "openMenu": "Abrir menú",
+    "back": "Atrás",
+    "done": "Listo",
+    "selectDatePlaceholder": "Seleccionar fecha",
+    "appName": "Budget App",
+    "actionsFor": "Acciones para {{name}}"
+  },
+  "nav": {
+    "payments": "Pagos",
+    "expenses": "Gastos",
+    "income": "Ingresos",
+    "budget": "Presupuesto",
+    "history": "Historial",
+    "settings": "Ajustes"
+  },
+  "syncStatus": {
+    "synced": "Sincronizado",
+    "syncing": "Sincronizando…",
+    "offline": "Sin conexión",
+    "label": "Estado de sincronización: {{status}}"
+  },
+  "auth": {
+    "modeChip": {
+      "logIn": "Iniciar sesión",
+      "signUp": "Registrarse"
+    },
+    "title": {
+      "signUp": "Crear cuenta",
+      "signIn": "Iniciar sesión",
+      "reset": "Restablecer contraseña"
+    },
+    "submitLabel": {
+      "signUp": "Registrarse",
+      "signIn": "Iniciar sesión",
+      "reset": "Enviar correo de restablecimiento"
+    },
+    "resetConfirmation": "Si existe una cuenta con ese correo, se ha enviado un enlace para restablecer la contraseña.",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "backToLogIn": "Volver a iniciar sesión",
+    "or": "o",
+    "continueWithGoogle": "Continuar con Google",
+    "googleLinkPrompt": "Ya existe una cuenta con este correo. Inicia sesión con tu contraseña para conectar tu cuenta de Google.",
+    "accessibility": {
+      "logIn": "Iniciar sesión",
+      "signUp": "Registrarse",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "backToLogIn": "Volver a iniciar sesión"
+    },
+    "validation": {
+      "invalidEmail": "Ingresa un correo electrónico válido.",
+      "passwordRequired": "Ingresa tu contraseña."
+    },
+    "errors": {
+      "emailAlreadyInUse": "Ya existe una cuenta con este correo electrónico.",
+      "invalidEmail": "Ingresa un correo electrónico válido.",
+      "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+      "incorrectCredentials": "Correo o contraseña incorrectos.",
+      "credentialAlreadyInUse": "Este correo ya está vinculado a otra cuenta.",
+      "tooManyRequests": "Demasiados intentos. Espera un momento e intenta de nuevo.",
+      "operationNotAllowed": "Este método de inicio de sesión aún no está habilitado para esta app.",
+      "networkRequestFailed": "Error de red. Revisa tu conexión e intenta de nuevo.",
+      "popupBlocked": "Tu navegador bloqueó la ventana de inicio de sesión de Google. Permite ventanas emergentes para este sitio e intenta de nuevo.",
+      "unknownWithCode": "Algo salió mal ({{code}}). Intenta de nuevo.",
+      "unknown": "Algo salió mal. Intenta de nuevo."
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "account": {
+      "title": "Cuenta",
+      "createOrLogIn": "Crear cuenta / Iniciar sesión"
+    },
+    "general": {
+      "title": "General",
+      "defaultCurrency": "Moneda predeterminada",
+      "language": "Idioma",
+      "theme": "Tema",
+      "themeOption": {
+        "light": "Claro",
+        "dark": "Oscuro",
+        "system": "Sistema"
+      }
+    },
+    "languageOption": {
+      "en": "English",
+      "es": "Español"
+    },
+    "categories": {
+      "title": "Categorías",
+      "manage": "Administrar categorías",
+      "count_one": "{{count}} categoría",
+      "count_other": "{{count}} categorías"
+    },
+    "reminders": {
+      "title": "Recordatorios",
+      "enable": "Activar recordatorios",
+      "leadDays": "Días de anticipación"
+    },
+    "data": {
+      "title": "Datos",
+      "trashRetention": "Retención de la papelera (días)"
+    }
+  },
+  "expenses": {
+    "title": "Gastos",
+    "addExpense": "Agregar gasto",
+    "addTitle": "Agregar gasto",
+    "editTitle": "Editar gasto",
+    "notFoundTitle": "Gasto no encontrado",
+    "notFoundBody": "Este gasto ya no existe.",
+    "recurringSection": "Recurrentes",
+    "noRecurring": "Aún no hay gastos recurrentes.",
+    "dueDay": "Día de vencimiento {{day}}",
+    "oneTimeSection": "Únicos",
+    "noOneTime": "No hay gastos únicos planificados.",
+    "form": {
+      "namePlaceholder": "p. ej. Supermercado",
+      "amountPlaceholder": "0.00",
+      "recurringLabel": "Recurrente mensual",
+      "dueDayOfMonth": "Día de vencimiento del mes",
+      "dueDate": "Fecha de vencimiento",
+      "paid": "Pagado",
+      "accessibility": {
+        "recurring": "Gasto recurrente",
+        "paid": "Pagado"
+      }
+    }
+  },
+  "income": {
+    "title": "Ingresos",
+    "addIncome": "Agregar ingreso",
+    "addTitle": "Agregar ingreso",
+    "editTitle": "Editar ingreso",
+    "notFoundTitle": "Ingreso no encontrado",
+    "notFoundBody": "Este ingreso ya no existe.",
+    "recurringSection": "Recurrentes",
+    "noRecurring": "Aún no hay ingresos recurrentes.",
+    "frequency": {
+      "monthly": "Mensual",
+      "monthlyDay": "Mensual, día {{day}}",
+      "biweekly": "Quincenal",
+      "weekly": "Semanal"
+    },
+    "oneTimeSection": "Únicos",
+    "noOneTime": "No hay ingresos únicos planificados.",
+    "form": {
+      "namePlaceholder": "p. ej. Salario",
+      "amountPlaceholder": "0.00",
+      "recurringLabel": "Recurrente",
+      "frequency": "Frecuencia",
+      "dayOfMonth": "Día del mes",
+      "dueDate": "Fecha de vencimiento",
+      "received": "Recibido",
+      "accessibility": {
+        "recurring": "Ingreso recurrente",
+        "received": "Recibido"
+      }
+    }
+  },
+  "recurringExpense": {
+    "editTitle": "Editar gasto recurrente",
+    "notFoundTitle": "Gasto recurrente no encontrado",
+    "notFoundBody": "Este gasto recurrente ya no existe.",
+    "form": {
+      "namePlaceholder": "p. ej. Alquiler",
+      "amountPlaceholder": "0.00",
+      "dueDayOfMonth": "Día de vencimiento del mes"
+    }
+  },
+  "recurringIncome": {
+    "editTitle": "Editar ingreso recurrente",
+    "notFoundTitle": "Ingreso recurrente no encontrado",
+    "notFoundBody": "Este ingreso recurrente ya no existe.",
+    "form": {
+      "namePlaceholder": "p. ej. Salario",
+      "amountPlaceholder": "0.00",
+      "frequency": "Frecuencia",
+      "dayOfMonth": "Día del mes"
+    }
+  },
+  "quickExpense": {
+    "title": "Gasto rápido",
+    "namePlaceholder": "p. ej. Café",
+    "amountPlaceholder": "0.00",
+    "paid": "Pagado"
+  },
+  "categories": {
+    "title": "Categorías",
+    "allCategories": "Todas las categorías",
+    "addAction": "+ Agregar",
+    "addTitle": "Agregar categoría",
+    "editTitle": "Editar categoría",
+    "notFoundTitle": "Categoría no encontrada",
+    "notFoundBody": "Esta categoría ya no existe.",
+    "active": "Activa",
+    "archived": "Archivada",
+    "markAs": "Marcar {{name}} como {{state}}",
+    "state": {
+      "active": "activa",
+      "archived": "archivada"
+    },
+    "form": {
+      "namePlaceholder": "p. ej. Suscripciones",
+      "appearsIn": "Aparece en",
+      "type": {
+        "expense": "Gasto",
+        "income": "Ingreso",
+        "both": "Ambos"
+      }
+    }
+  },
+  "budget": {
+    "title": "Presupuesto",
+    "budgetedThisMonth": "Presupuestado este mes",
+    "remaining": "restante",
+    "overBudget": "sobre el presupuesto",
+    "overBudgetChip": "Sobre presupuesto",
+    "spent": "{{amount}} gastado",
+    "ofBudgeted": "de {{amount}}"
+  },
+  "history": {
+    "title": "Historial",
+    "last6Months": "Últimos 6 meses",
+    "skippedChip": "Omitido",
+    "legend": {
+      "actual": "Real",
+      "budgeted": "Presupuestado",
+      "sixMonthAvg": "Promedio de 6 meses"
+    },
+    "chartAccessibilityLabel": "Gráfico del historial de presupuesto"
+  },
+  "payments": {
+    "title": "Pagos",
+    "quickExpense": "Gasto rápido",
+    "overdue": "Vencidos",
+    "nothingOverdue": "Nada vencido.",
+    "upcoming": "Próximos",
+    "nothingUpcoming": "Nada próximo.",
+    "completedThisCycle": "Completados este ciclo",
+    "status": {
+      "received": "Recibido",
+      "expected": "Esperado",
+      "paid": "Pagado",
+      "unpaid": "Sin pagar"
+    },
+    "dueOnly": "(Vence: {{dueDate}})",
+    "dueWithPaid": "(Vence: {{dueDate}}, Pagado: {{paidDate}})",
+    "recurringChip": "Recurrente",
+    "skippedChip": "Omitido",
+    "skip": "Omitir",
+    "unskip": "No omitir",
+    "markAs": "Marcar {{name}} como {{state}}",
+    "state": {
+      "expected": "esperado",
+      "received": "recibido",
+      "unpaid": "sin pagar",
+      "paid": "pagado"
+    }
+  }
+}

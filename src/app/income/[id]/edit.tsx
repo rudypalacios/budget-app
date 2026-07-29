@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { IncomeForm, type IncomeFormValues } from '@/components/income-form';
 import { ModalHeader } from '@/components/modal-header';
@@ -8,6 +9,7 @@ import { parseAmountInput } from '@/lib/currency-input';
 import { setIncomeReceived, toTimestamp, updateIncome, useIncomesStore } from '@/store/incomes';
 
 export default function EditIncomeScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useIncomesStore((state) => state.items);
   const income = items.find((item) => item.id === id);
@@ -15,8 +17,8 @@ export default function EditIncomeScreen() {
   if (!income) {
     return (
       <ScreenScroll>
-        <ModalHeader title="Income not found" />
-        <ThemedText>This income record no longer exists.</ThemedText>
+        <ModalHeader title={t('income.notFoundTitle')} />
+        <ThemedText>{t('income.notFoundBody')}</ThemedText>
       </ScreenScroll>
     );
   }
@@ -49,10 +51,10 @@ export default function EditIncomeScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title="Edit income" />
+      <ModalHeader title={t('income.editTitle')} />
       <IncomeForm
         initialValues={initialValues}
-        submitLabel="Save changes"
+        submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
         disableRecurringToggle

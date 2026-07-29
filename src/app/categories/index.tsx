@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -12,8 +13,16 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
 import { updateCategory, useCategoriesStore } from '@/store/categories';
+import type { Category } from '@/types/firestore';
+
+const TYPE_LABEL_KEY: Record<Category['type'], string> = {
+  expense: 'categories.form.type.expense',
+  income: 'categories.form.type.income',
+  both: 'categories.form.type.both',
+};
 
 export default function CategoriesScreen() {
+  const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
 
   function toggleActive(id: string, lifecycleState: 'active' | 'archived') {
@@ -22,9 +31,13 @@ export default function CategoriesScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader title="Categories" onBack={() => router.back()} />
+      <ScreenHeader title={t('categories.title')} onBack={() => router.back()} />
 
-      <SectionHeader title="All categories" actionLabel="+ Add" onActionPress={() => router.push('/categories/new')} />
+      <SectionHeader
+        title={t('categories.allCategories')}
+        actionLabel={t('categories.addAction')}
+        onActionPress={() => router.push('/categories/new')}
+      />
 
       <Card style={styles.card}>
         {categories.map((category, index) => (
@@ -32,26 +45,30 @@ export default function CategoriesScreen() {
             <View style={styles.row}>
               <View style={styles.main}>
                 <ThemedText type="smallBold">{category.name}</ThemedText>
-                <Chip label={category.type} />
+                <Chip label={t(TYPE_LABEL_KEY[category.type])} />
               </View>
               <View style={styles.end}>
                 <View style={styles.switchRow}>
                   <ThemedText type="caption">
-                    {category.lifecycleState === 'active' ? 'Active' : 'Archived'}
+                    {category.lifecycleState === 'active' ? t('categories.active') : t('categories.archived')}
                   </ThemedText>
                   <Switch
                     value={category.lifecycleState === 'active'}
                     onValueChange={() => toggleActive(category.id, category.lifecycleState)}
-                    accessibilityLabel={`Mark ${category.name} as ${
-                      category.lifecycleState === 'active' ? 'archived' : 'active'
-                    }`}
+                    accessibilityLabel={t('categories.markAs', {
+                      name: category.name,
+                      state:
+                        category.lifecycleState === 'active'
+                          ? t('categories.state.archived')
+                          : t('categories.state.active'),
+                    })}
                   />
                 </View>
                 <OverflowMenu
-                  accessibilityLabel={`Actions for ${category.name}`}
+                  accessibilityLabel={t('common.actionsFor', { name: category.name })}
                   items={[
                     {
-                      label: 'Edit',
+                      label: t('common.edit'),
                       onPress: () =>
                         router.push({ pathname: '/categories/[id]/edit', params: { id: category.id } }),
                     },
