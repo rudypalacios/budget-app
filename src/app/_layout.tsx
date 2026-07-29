@@ -16,6 +16,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const uid = useSessionStore((state) => state.uid);
+  const isAnonymous = useSessionStore((state) => state.isAnonymous);
   const categoriesLoading = useCategoriesStore((state) => state.isLoading);
   const categoriesCount = useCategoriesStore((state) => state.items.length);
   const expensesLoading = useExpensesStore((state) => state.isLoading);
@@ -94,7 +95,14 @@ export default function RootLayout() {
         <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="(auth)/login" options={{ presentation: 'modal' }} />
+        {/* Excludes the login screen from the navigator entirely (not just a
+            post-mount redirect) once already signed in for real, so it can
+            never render even for a single frame — reached while already
+            signed in for real, the router bounces to the anchor/home route
+            automatically before this screen is ever mounted. */}
+        <Stack.Protected guard={isAnonymous}>
+          <Stack.Screen name="(auth)/login" options={{ presentation: 'modal' }} />
+        </Stack.Protected>
       </Stack>
     </ThemeProvider>
   );
