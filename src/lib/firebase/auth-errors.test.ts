@@ -38,7 +38,7 @@ describe('mapAuthErrorMessage', () => {
 
   it('maps auth/operation-not-allowed', () => {
     expect(mapAuthErrorMessage('auth/operation-not-allowed')).toBe(
-      'Email/password sign-in is not enabled for this app yet.'
+      'This sign-in method is not enabled for this app yet.'
     );
   });
 
@@ -48,9 +48,25 @@ describe('mapAuthErrorMessage', () => {
     );
   });
 
-  it('falls back to a generic message for unrecognized codes', () => {
-    expect(mapAuthErrorMessage('auth/some-unknown-code')).toBe(
-      'Something went wrong. Please try again.'
+  it('maps auth/popup-blocked', () => {
+    expect(mapAuthErrorMessage('auth/popup-blocked')).toBe(
+      'Your browser blocked the Google sign-in popup. Please allow popups for this site and try again.'
     );
+  });
+
+  it('includes the raw code in the fallback message for unrecognized codes', () => {
+    expect(mapAuthErrorMessage('auth/some-unknown-code')).toBe(
+      'Something went wrong (auth/some-unknown-code). Please try again.'
+    );
+  });
+
+  it('includes a raw non-Firebase code too, e.g. a native Google Sign-In status code', () => {
+    // Android's GoogleSignin DEVELOPER_ERROR — not an auth/-prefixed
+    // Firebase code, but still worth surfacing rather than swallowing.
+    expect(mapAuthErrorMessage('10')).toBe('Something went wrong (10). Please try again.');
+  });
+
+  it('falls back to the plain generic message when there is no code at all', () => {
+    expect(mapAuthErrorMessage('')).toBe('Something went wrong. Please try again.');
   });
 });

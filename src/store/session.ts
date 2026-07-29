@@ -97,6 +97,67 @@ export async function signInWithEmail(email: string, password: string): Promise<
   }
 }
 
+export type GoogleSignInActionResult =
+  | { ok: true }
+  // The user backed out of the picker/popup — not a failure, but not a
+  // navigable success either; callers should just no-op.
+  | { ok: false; reason: 'cancelled' }
+  // This Google account's email already belongs to a different real
+  // account registered some other way — the caller must have the user
+  // sign in with their existing credential (prefilled with `email`), then
+  // call completeGoogleLink(pendingCredential) to finish joining the two.
+  | { ok: false; reason: 'account-exists'; email: string | null; pendingCredential: unknown }
+  // `reason` (not `code`) is the discriminant so this variant's plain
+  // `string` code doesn't structurally overlap with the literal 'cancelled'/
+  // 'account-exists' reasons above and break narrowing on it.
+  | { ok: false; reason: 'error'; code: string; message: string };
+
+// Same direct-apply-user reasoning as signUpWithEmail above — a Google-driven
+// linkWithCredential also flips isAnonymous on the same uid, which the
+// auth-state listener doesn't reliably re-fire for.
+export async function signInWithGoogle(): Promise<GoogleSignInActionResult> {
+  try {
+    const result = await authClient.signInWithGoogle();
+    if (result.status === 'cancelled') return { ok: false, reason: 'cancelled' };
+    if (result.status === 'account-exists') {
+      return {
+        ok: false,
+        reason: 'account-exists',
+        email: result.conflict.email,
+        pendingCredential: result.conflict.pendingCredential,
+      };
+    }
+    applyUser(result.user);
+    return { ok: true };
+  } catch (error) {
+    const code = getErrorCode(error);
+    // Native Google Sign-In failures (e.g. Play Services issues, or a
+    // misconfigured SHA-1/client ID) throw their own status codes, not
+    // Firebase auth/-prefixed ones — mapAuthErrorMessage still surfaces the
+    // raw code in its fallback message (see auth-errors.ts), but logging
+    // the full error too means a device's Metro/logcat output has more to
+    // go on than just what fits in that one line.
+    console.error('signInWithGoogle failed:', error);
+    return { ok: false, reason: 'error', code, message: mapAuthErrorMessage(code) };
+  }
+}
+
+// Finishes joining a Google account flagged as an 'account-exists' conflict
+// by a prior signInWithGoogle() call, once the user has proven ownership of
+// that same account by signing in with their existing password — see
+// login.tsx's handleGoogleSignIn/handleSubmit for the two-step flow this
+// completes.
+export async function completeGoogleLink(pendingCredential: unknown): Promise<AuthActionResult> {
+  try {
+    const user = await authClient.completeGoogleLink(pendingCredential);
+    applyUser(user);
+    return { ok: true };
+  } catch (error) {
+    const code = getErrorCode(error);
+    return { ok: false, code, message: mapAuthErrorMessage(code) };
+  }
+}
+
 // The app must never be left with no uid — every store assumes one exists —
 // so signing out immediately restarts a fresh anonymous session.
 export async function signOutAndRestartAnonymous(): Promise<void> {
