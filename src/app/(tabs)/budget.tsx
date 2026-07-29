@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -13,6 +14,7 @@ import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
 
 export default function BudgetScreen() {
+  const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
 
@@ -31,14 +33,14 @@ export default function BudgetScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader title="Budget" />
+      <ScreenHeader title={t('budget.title')} />
 
       <Card>
-        <ThemedText type="caption">Budgeted this month</ThemedText>
+        <ThemedText type="caption">{t('budget.budgetedThisMonth')}</ThemedText>
         <ThemedText type="title">{formatCurrency(totalBudgeted, 'GTQ')}</ThemedText>
         <ThemedText type="smallBold" themeColor={remaining >= 0 ? 'success' : 'danger'}>
           {formatCurrency(Math.abs(remaining), 'GTQ')}{' '}
-          {remaining >= 0 ? 'remaining' : 'over budget'}
+          {remaining >= 0 ? t('budget.remaining') : t('budget.overBudget')}
         </ThemedText>
       </Card>
 
@@ -52,12 +54,16 @@ export default function BudgetScreen() {
             <Card key={line.categoryId} style={styles.categoryCard}>
               <View style={styles.categoryHeader}>
                 <ThemedText type="smallBold">{category?.name}</ThemedText>
-                {isOverBudget && <Chip label="Over budget" tone="danger" />}
+                {isOverBudget && <Chip label={t('budget.overBudgetChip')} tone="danger" />}
               </View>
               <ProgressBar budgeted={line.budgeted} actual={actual} />
               <View style={styles.categoryFooter}>
-                <ThemedText type="caption">{formatCurrency(actual, 'GTQ')} spent</ThemedText>
-                <ThemedText type="caption">of {formatCurrency(line.budgeted, 'GTQ')}</ThemedText>
+                <ThemedText type="caption">
+                  {t('budget.spent', { amount: formatCurrency(actual, 'GTQ') })}
+                </ThemedText>
+                <ThemedText type="caption">
+                  {t('budget.ofBudgeted', { amount: formatCurrency(line.budgeted, 'GTQ') })}
+                </ThemedText>
               </View>
             </Card>
           );

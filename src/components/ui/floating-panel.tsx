@@ -1,4 +1,5 @@
 import { type PropsWithChildren } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dimensions, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { Spacing } from '@/constants/theme';
@@ -25,6 +26,7 @@ export type FloatingPanelProps = PropsWithChildren<{
 // true native overlay on iOS/Android — so it floats above content without
 // reflowing it, unlike an inline-expand list or a full route navigation.
 export function FloatingPanel({ isOpen, onClose, anchor, align = 'left', children }: FloatingPanelProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
 
   if (!anchor) return null;
@@ -39,7 +41,7 @@ export function FloatingPanel({ isOpen, onClose, anchor, align = 'left', childre
         style={[StyleSheet.absoluteFill, styles.backdrop]}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close menu"
+        accessibilityLabel={t('common.closeMenu')}
       />
       <View
         style={[

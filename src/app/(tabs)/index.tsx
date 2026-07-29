@@ -1,4 +1,5 @@
 import { router, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -51,6 +52,7 @@ function toggleSkipped(row: PaymentRow) {
 }
 
 export default function PaymentsScreen() {
+  const { t } = useTranslation();
   const { overdueUnpaid, upcomingUnpaid, completedThisCycle } = usePaymentsDashboard();
   const categories = useCategoriesStore((state) => state.items);
   const theme = useTheme();
@@ -70,21 +72,21 @@ export default function PaymentsScreen() {
               const paidLabel =
                 row.direction === 'income'
                   ? row.paid
-                    ? 'Received'
-                    : 'Expected'
+                    ? t('payments.status.received')
+                    : t('payments.status.expected')
                   : row.paid
-                    ? 'Paid'
-                    : 'Unpaid';
+                    ? t('payments.status.paid')
+                    : t('payments.status.unpaid');
 
               const overflowItems: OverflowMenuItem[] = [
-                { label: 'Edit', onPress: () => router.push(editHref(row)) },
+                { label: t('common.edit'), onPress: () => router.push(editHref(row)) },
               ];
               // Skip only makes sense on an unpaid recurring instance —
               // one-time records have no skipped field (data-model.md §12),
               // and skipping something already paid isn't a meaningful action.
               if (row.kind === 'recurringInstance' && !row.paid) {
                 overflowItems.push({
-                  label: row.skipped ? 'Unskip' : 'Skip',
+                  label: row.skipped ? t('payments.unskip') : t('payments.skip'),
                   onPress: () => toggleSkipped(row),
                 });
               }
@@ -105,8 +107,12 @@ export default function PaymentsScreen() {
                       <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
                         {row.name}{' '}
                         <ThemedText type="caption" themeColor="textSecondary">
-                          (Due: {formatShortDate(row.date)}
-                          {row.paid && row.paidDate ? `, Paid: ${formatShortDate(row.paidDate)}` : ''})
+                          {row.paid && row.paidDate
+                            ? t('payments.dueWithPaid', {
+                                dueDate: formatShortDate(row.date),
+                                paidDate: formatShortDate(row.paidDate),
+                              })
+                            : t('payments.dueOnly', { dueDate: formatShortDate(row.date) })}
                         </ThemedText>
                       </ThemedText>
                       <View style={styles.rowMeta}>
@@ -118,8 +124,8 @@ export default function PaymentsScreen() {
                             each other. */}
                         {(row.kind === 'recurringInstance' || row.skipped) && (
                           <View style={styles.tagsGroup}>
-                            {row.kind === 'recurringInstance' && <Chip label="Recurring" />}
-                            {row.skipped && <Chip label="Skipped" tone="warning" />}
+                            {row.kind === 'recurringInstance' && <Chip label={t('payments.recurringChip')} />}
+                            {row.skipped && <Chip label={t('payments.skippedChip')} tone="warning" />}
                           </View>
                         )}
                       </View>
@@ -139,7 +145,7 @@ export default function PaymentsScreen() {
                           {formatCurrency(row.amount, row.currency)}
                         </ThemedText>
                         <OverflowMenu
-                          accessibilityLabel={`Actions for ${row.name}`}
+                          accessibilityLabel={t('common.actionsFor', { name: row.name })}
                           items={overflowItems}
                         />
                       </View>
@@ -152,15 +158,17 @@ export default function PaymentsScreen() {
                         <Switch
                           value={row.paid}
                           onValueChange={() => togglePaid(row)}
-                          accessibilityLabel={`Mark ${row.name} as ${
-                            row.direction === 'income'
-                              ? row.paid
-                                ? 'expected'
-                                : 'received'
-                              : row.paid
-                                ? 'unpaid'
-                                : 'paid'
-                          }`}
+                          accessibilityLabel={t('payments.markAs', {
+                            name: row.name,
+                            state:
+                              row.direction === 'income'
+                                ? row.paid
+                                  ? t('payments.state.expected')
+                                  : t('payments.state.received')
+                                : row.paid
+                                  ? t('payments.state.unpaid')
+                                  : t('payments.state.paid'),
+                          })}
                         />
                       </View>
                     </View>
@@ -177,13 +185,14 @@ export default function PaymentsScreen() {
 
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title="Payments" />
+      <ScreenHeader title={t('payments.title')} />
 
-      <Button label="Quick expense" onPress={() => router.push('/payments/quick-expense')} />
+      <Button label={t('payments.quickExpense')} onPress={() => router.push('/payments/quick-expense')} />
 
-      {renderGroup('Overdue', overdueUnpaid, 'Nothing overdue.', true)}
-      {renderGroup('Upcoming', upcomingUnpaid, 'Nothing upcoming.')}
-      {completedThisCycle.length > 0 && renderGroup('Completed this cycle', completedThisCycle, '')}
+      {renderGroup(t('payments.overdue'), overdueUnpaid, t('payments.nothingOverdue'), true)}
+      {renderGroup(t('payments.upcoming'), upcomingUnpaid, t('payments.nothingUpcoming'))}
+      {completedThisCycle.length > 0 &&
+        renderGroup(t('payments.completedThisCycle'), completedThisCycle, '')}
     </ScreenScroll>
   );
 }

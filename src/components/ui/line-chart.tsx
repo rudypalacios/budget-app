@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Circle, Line, Path, Svg } from 'react-native-svg';
 import { StyleSheet, View } from 'react-native';
 
@@ -46,6 +47,7 @@ function buildPath(
 }
 
 export function LineChart({ data, width = 320, height = 180 }: LineChartProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
 
   const allValues = data
@@ -78,7 +80,7 @@ export function LineChart({ data, width = 320, height = 180 }: LineChartProps) {
 
   return (
     <View>
-      <Svg width={width} height={height} accessibilityLabel="Budget history chart">
+      <Svg width={width} height={height} accessibilityLabel={t('history.chartAccessibilityLabel')}>
         {Array.from({ length: GRID_LINES }).map((_, i) => {
           const y = PADDING_TOP + (plotHeight / (GRID_LINES - 1)) * i;
           return (
@@ -115,9 +117,9 @@ export function LineChart({ data, width = 320, height = 180 }: LineChartProps) {
       </View>
 
       <View style={styles.legendRow}>
-        <LegendEntry color={theme.tint} label="Actual" />
-        <LegendEntry color={theme.textSecondary} label="Budgeted" />
-        <LegendEntry color={theme.warning} label="6-month avg" />
+        <LegendEntry color={theme.tint} label={t('history.legend.actual')} />
+        <LegendEntry color={theme.textSecondary} label={t('history.legend.budgeted')} />
+        <LegendEntry color={theme.warning} label={t('history.legend.sixMonthAvg')} />
       </View>
     </View>
   );

@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { ModalHeader } from '@/components/modal-header';
 import {
@@ -11,6 +12,7 @@ import { parseAmountInput } from '@/lib/currency-input';
 import { updateRecurringExpense, useRecurringExpensesStore } from '@/store/recurring-expenses';
 
 export default function EditRecurringExpenseScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useRecurringExpensesStore((state) => state.items);
   const definition = items.find((item) => item.id === id);
@@ -18,8 +20,8 @@ export default function EditRecurringExpenseScreen() {
   if (!definition) {
     return (
       <ScreenScroll>
-        <ModalHeader title="Recurring expense not found" />
-        <ThemedText>This recurring expense no longer exists.</ThemedText>
+        <ModalHeader title={t('recurringExpense.notFoundTitle')} />
+        <ThemedText>{t('recurringExpense.notFoundBody')}</ThemedText>
       </ScreenScroll>
     );
   }
@@ -46,10 +48,10 @@ export default function EditRecurringExpenseScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title="Edit recurring expense" />
+      <ModalHeader title={t('recurringExpense.editTitle')} />
       <RecurringExpenseForm
         initialValues={initialValues}
-        submitLabel="Save changes"
+        submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
       />

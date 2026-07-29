@@ -1,4 +1,5 @@
 import { useEffect, useState, type PropsWithChildren } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { Spacing } from '@/constants/theme';
@@ -19,6 +20,7 @@ const ANIMATION_MS = 220;
 // slide transition, since Modal's own `animationType="slide"` only moves
 // vertically, not from a side edge.
 export function Drawer({ isOpen, onClose, children }: DrawerProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const drawerWidth = Math.min(DRAWER_WIDTH, windowWidth);
@@ -61,7 +63,7 @@ export function Drawer({ isOpen, onClose, children }: DrawerProps) {
         style={[StyleSheet.absoluteFill, styles.backdrop]}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close menu"
+        accessibilityLabel={t('common.closeMenu')}
       />
       <Animated.View
         style={[

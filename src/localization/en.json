@@ -1,0 +1,274 @@
+{
+  "common": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "signOut": "Sign Out",
+    "edit": "Edit",
+    "name": "Name",
+    "category": "Category",
+    "amountWithCurrency": "Amount ({{currency}})",
+    "selectPlaceholder": "Select…",
+    "closeMenu": "Close menu",
+    "openMenu": "Open menu",
+    "back": "Back",
+    "done": "Done",
+    "selectDatePlaceholder": "Select date",
+    "appName": "Budget App",
+    "actionsFor": "Actions for {{name}}"
+  },
+  "nav": {
+    "payments": "Payments",
+    "expenses": "Expenses",
+    "income": "Income",
+    "budget": "Budget",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "syncStatus": {
+    "synced": "Synced",
+    "syncing": "Syncing…",
+    "offline": "Offline",
+    "label": "Sync status: {{status}}"
+  },
+  "auth": {
+    "modeChip": {
+      "logIn": "Log In",
+      "signUp": "Sign Up"
+    },
+    "title": {
+      "signUp": "Create Account",
+      "signIn": "Log In",
+      "reset": "Reset Password"
+    },
+    "submitLabel": {
+      "signUp": "Sign Up",
+      "signIn": "Log In",
+      "reset": "Send Reset Email"
+    },
+    "resetConfirmation": "If an account exists for that email, a password reset link has been sent.",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "backToLogIn": "Back to Log In",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "googleLinkPrompt": "An account already exists with this email. Sign in with your password to connect your Google account.",
+    "accessibility": {
+      "logIn": "Log in",
+      "signUp": "Sign up",
+      "forgotPassword": "Forgot password?",
+      "backToLogIn": "Back to log in"
+    },
+    "validation": {
+      "invalidEmail": "Enter a valid email address.",
+      "passwordRequired": "Enter your password."
+    },
+    "errors": {
+      "emailAlreadyInUse": "An account with this email already exists.",
+      "invalidEmail": "Enter a valid email address.",
+      "weakPassword": "Password must be at least 6 characters.",
+      "incorrectCredentials": "Incorrect email or password.",
+      "credentialAlreadyInUse": "This email is already linked to another account.",
+      "tooManyRequests": "Too many attempts. Please wait a moment and try again.",
+      "operationNotAllowed": "This sign-in method is not enabled for this app yet.",
+      "networkRequestFailed": "Network error. Check your connection and try again.",
+      "popupBlocked": "Your browser blocked the Google sign-in popup. Please allow popups for this site and try again.",
+      "unknownWithCode": "Something went wrong ({{code}}). Please try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "account": {
+      "title": "Account",
+      "createOrLogIn": "Create account / Log in"
+    },
+    "general": {
+      "title": "General",
+      "defaultCurrency": "Default currency",
+      "language": "Language",
+      "theme": "Theme",
+      "themeOption": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      }
+    },
+    "languageOption": {
+      "en": "English",
+      "es": "Español"
+    },
+    "categories": {
+      "title": "Categories",
+      "manage": "Manage categories",
+      "count_one": "{{count}} category",
+      "count_other": "{{count}} categories"
+    },
+    "reminders": {
+      "title": "Reminders",
+      "enable": "Enable reminders",
+      "leadDays": "Lead days"
+    },
+    "data": {
+      "title": "Data",
+      "trashRetention": "Trash retention (days)"
+    }
+  },
+  "expenses": {
+    "title": "Expenses",
+    "addExpense": "Add expense",
+    "addTitle": "Add expense",
+    "editTitle": "Edit expense",
+    "notFoundTitle": "Expense not found",
+    "notFoundBody": "This expense no longer exists.",
+    "recurringSection": "Recurring",
+    "noRecurring": "No recurring expenses yet.",
+    "dueDay": "Due day {{day}}",
+    "oneTimeSection": "One-time",
+    "noOneTime": "No planned one-time expenses.",
+    "form": {
+      "namePlaceholder": "e.g. Groceries",
+      "amountPlaceholder": "0.00",
+      "recurringLabel": "Recurring monthly",
+      "dueDayOfMonth": "Due day of month",
+      "dueDate": "Due date",
+      "paid": "Paid",
+      "accessibility": {
+        "recurring": "Recurring expense",
+        "paid": "Paid"
+      }
+    }
+  },
+  "income": {
+    "title": "Income",
+    "addIncome": "Add income",
+    "addTitle": "Add income",
+    "editTitle": "Edit income",
+    "notFoundTitle": "Income not found",
+    "notFoundBody": "This income record no longer exists.",
+    "recurringSection": "Recurring",
+    "noRecurring": "No recurring income yet.",
+    "frequency": {
+      "monthly": "Monthly",
+      "monthlyDay": "Monthly, day {{day}}",
+      "biweekly": "Biweekly",
+      "weekly": "Weekly"
+    },
+    "oneTimeSection": "One-time",
+    "noOneTime": "No planned one-time income.",
+    "form": {
+      "namePlaceholder": "e.g. Salary",
+      "amountPlaceholder": "0.00",
+      "recurringLabel": "Recurring",
+      "frequency": "Frequency",
+      "dayOfMonth": "Day of month",
+      "dueDate": "Due date",
+      "received": "Received",
+      "accessibility": {
+        "recurring": "Recurring income",
+        "received": "Received"
+      }
+    }
+  },
+  "recurringExpense": {
+    "editTitle": "Edit recurring expense",
+    "notFoundTitle": "Recurring expense not found",
+    "notFoundBody": "This recurring expense no longer exists.",
+    "form": {
+      "namePlaceholder": "e.g. Rent",
+      "amountPlaceholder": "0.00",
+      "dueDayOfMonth": "Due day of month"
+    }
+  },
+  "recurringIncome": {
+    "editTitle": "Edit recurring income",
+    "notFoundTitle": "Recurring income not found",
+    "notFoundBody": "This recurring income no longer exists.",
+    "form": {
+      "namePlaceholder": "e.g. Salary",
+      "amountPlaceholder": "0.00",
+      "frequency": "Frequency",
+      "dayOfMonth": "Day of month"
+    }
+  },
+  "quickExpense": {
+    "title": "Quick expense",
+    "namePlaceholder": "e.g. Coffee",
+    "amountPlaceholder": "0.00",
+    "paid": "Paid"
+  },
+  "categories": {
+    "title": "Categories",
+    "allCategories": "All categories",
+    "addAction": "+ Add",
+    "addTitle": "Add category",
+    "editTitle": "Edit category",
+    "notFoundTitle": "Category not found",
+    "notFoundBody": "This category no longer exists.",
+    "active": "Active",
+    "archived": "Archived",
+    "markAs": "Mark {{name}} as {{state}}",
+    "state": {
+      "active": "active",
+      "archived": "archived"
+    },
+    "form": {
+      "namePlaceholder": "e.g. Subscriptions",
+      "appearsIn": "Appears in",
+      "type": {
+        "expense": "Expense",
+        "income": "Income",
+        "both": "Both"
+      }
+    }
+  },
+  "budget": {
+    "title": "Budget",
+    "budgetedThisMonth": "Budgeted this month",
+    "remaining": "remaining",
+    "overBudget": "over budget",
+    "overBudgetChip": "Over budget",
+    "spent": "{{amount}} spent",
+    "ofBudgeted": "of {{amount}}"
+  },
+  "history": {
+    "title": "History",
+    "last6Months": "Last 6 months",
+    "skippedChip": "Skipped",
+    "legend": {
+      "actual": "Actual",
+      "budgeted": "Budgeted",
+      "sixMonthAvg": "6-month avg"
+    },
+    "chartAccessibilityLabel": "Budget history chart"
+  },
+  "payments": {
+    "title": "Payments",
+    "quickExpense": "Quick expense",
+    "overdue": "Overdue",
+    "nothingOverdue": "Nothing overdue.",
+    "upcoming": "Upcoming",
+    "nothingUpcoming": "Nothing upcoming.",
+    "completedThisCycle": "Completed this cycle",
+    "status": {
+      "received": "Received",
+      "expected": "Expected",
+      "paid": "Paid",
+      "unpaid": "Unpaid"
+    },
+    "dueOnly": "(Due: {{dueDate}})",
+    "dueWithPaid": "(Due: {{dueDate}}, Paid: {{paidDate}})",
+    "recurringChip": "Recurring",
+    "skippedChip": "Skipped",
+    "skip": "Skip",
+    "unskip": "Unskip",
+    "markAs": "Mark {{name}} as {{state}}",
+    "state": {
+      "expected": "expected",
+      "received": "received",
+      "unpaid": "unpaid",
+      "paid": "paid"
+    }
+  }
+}

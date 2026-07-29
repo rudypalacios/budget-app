@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -17,8 +18,6 @@ import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
 import { useIncomesStore } from '@/store/incomes';
 
-const MONTH_FORMATTER = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
-
 // History is a settled ledger: paid rows (real money moved) plus skipped
 // rows (a recurring instance the user explicitly chose not to pay this
 // period, per data-model.md §12) — both are "done" for the period, unlike
@@ -29,10 +28,11 @@ function buildHistoryRows(rows: PaymentRow[]): PaymentRow[] {
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
-function groupByMonth(rows: PaymentRow[]) {
+function groupByMonth(rows: PaymentRow[], locale: string) {
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
   const groups = new Map<string, PaymentRow[]>();
   for (const row of rows) {
-    const key = MONTH_FORMATTER.format(row.date);
+    const key = monthFormatter.format(row.date);
     const existing = groups.get(key) ?? [];
     existing.push(row);
     groups.set(key, existing);
@@ -41,19 +41,20 @@ function groupByMonth(rows: PaymentRow[]) {
 }
 
 export default function HistoryScreen() {
+  const { t, i18n } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const rows = buildHistoryRows(buildPaymentRows(expenses, incomes));
-  const groups = groupByMonth(rows);
+  const groups = groupByMonth(rows, i18n.language === 'es' ? 'es' : 'en');
   const { refreshing, onRefresh } = usePullToRefresh();
 
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title="History" />
+      <ScreenHeader title={t('history.title')} />
 
       <Card>
-        <ThemedText type="smallBold">Last 6 months</ThemedText>
+        <ThemedText type="smallBold">{t('history.last6Months')}</ThemedText>
         <LineChart data={sampleMonthlyTotals} />
       </Card>
 
@@ -69,7 +70,7 @@ export default function HistoryScreen() {
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold">{row.name}</ThemedText>
                       <ThemedText type="caption">{category?.name}</ThemedText>
-                      {row.skipped && <Chip label="Skipped" tone="warning" />}
+                      {row.skipped && <Chip label={t('history.skippedChip')} tone="warning" />}
                     </View>
                     <ThemedText
                       type="smallBold"

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ModalHeader } from '@/components/modal-header';
@@ -13,16 +14,16 @@ import { Spacing } from '@/constants/theme';
 import { useAuthForm, type AuthFormMode } from '@/features/auth/use-auth-form';
 import { completeGoogleLink, signInWithGoogle } from '@/store/session';
 
-const TITLES: Record<AuthFormMode, string> = {
-  signUp: 'Create Account',
-  signIn: 'Log In',
-  reset: 'Reset Password',
+const TITLE_KEY: Record<AuthFormMode, string> = {
+  signUp: 'auth.title.signUp',
+  signIn: 'auth.title.signIn',
+  reset: 'auth.title.reset',
 };
 
-const SUBMIT_LABELS: Record<AuthFormMode, string> = {
-  signUp: 'Sign Up',
-  signIn: 'Log In',
-  reset: 'Send Reset Email',
+const SUBMIT_LABEL_KEY: Record<AuthFormMode, string> = {
+  signUp: 'auth.submitLabel.signUp',
+  signIn: 'auth.submitLabel.signIn',
+  reset: 'auth.submitLabel.reset',
 };
 
 // This screen is normally reached by pushing from Settings, so router.back()
@@ -40,6 +41,7 @@ function dismissLoginScreen() {
 }
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const form = useAuthForm();
   const [googleError, setGoogleError] = useState<string | null>(null);
   // Set only when signInWithGoogle reports an 'account-exists' conflict —
@@ -95,7 +97,7 @@ export default function LoginScreen() {
       setPendingGoogleCredential(result.pendingCredential);
       form.setMode('signIn');
       form.setEmail(result.email ?? '');
-      setGoogleLinkPrompt('An account already exists with this email. Sign in with your password to connect your Google account.');
+      setGoogleLinkPrompt(t('auth.googleLinkPrompt'));
       return;
     }
     setGoogleError(result.message);
@@ -104,7 +106,7 @@ export default function LoginScreen() {
   return (
     <ScreenScroll>
       <ModalHeader
-        title={TITLES[form.mode]}
+        title={t(TITLE_KEY[form.mode])}
         // Reset Password is an in-place mode of this same screen, not a
         // separate route (see useAuthForm) — back should return to Log In,
         // not dismiss the whole auth modal, mirroring the existing "Back to
@@ -120,9 +122,9 @@ export default function LoginScreen() {
               form.setMode('signIn');
             }}
             accessibilityRole="button"
-            accessibilityLabel="Log in"
+            accessibilityLabel={t('auth.accessibility.logIn')}
           >
-            <Chip label="Log In" tone={form.mode === 'signIn' ? 'success' : 'neutral'} />
+            <Chip label={t('auth.modeChip.logIn')} tone={form.mode === 'signIn' ? 'success' : 'neutral'} />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -130,23 +132,21 @@ export default function LoginScreen() {
               form.setMode('signUp');
             }}
             accessibilityRole="button"
-            accessibilityLabel="Sign up"
+            accessibilityLabel={t('auth.accessibility.signUp')}
           >
-            <Chip label="Sign Up" tone={form.mode === 'signUp' ? 'success' : 'neutral'} />
+            <Chip label={t('auth.modeChip.signUp')} tone={form.mode === 'signUp' ? 'success' : 'neutral'} />
           </Pressable>
         </View>
       )}
 
       {form.resetConfirmationVisible ? (
-        <ThemedText accessibilityRole="alert">
-          If an account exists for that email, a password reset link has been sent.
-        </ThemedText>
+        <ThemedText accessibilityRole="alert">{t('auth.resetConfirmation')}</ThemedText>
       ) : (
         <View style={styles.form}>
           {googleLinkPrompt ? <ThemedText accessibilityRole="alert">{googleLinkPrompt}</ThemedText> : null}
 
           <TextField
-            label="Email"
+            label={t('auth.email')}
             value={form.email}
             onChangeText={form.setEmail}
             error={form.emailError ?? undefined}
@@ -157,7 +157,7 @@ export default function LoginScreen() {
 
           {form.mode !== 'reset' && (
             <TextField
-              label="Password"
+              label={t('auth.password')}
               value={form.password}
               onChangeText={form.setPassword}
               error={form.passwordError ?? undefined}
@@ -172,17 +172,25 @@ export default function LoginScreen() {
             </ThemedText>
           ) : null}
 
-          <Button label={SUBMIT_LABELS[form.mode]} onPress={handleSubmit} />
+          <Button label={t(SUBMIT_LABEL_KEY[form.mode])} onPress={handleSubmit} />
 
           {form.mode === 'signIn' && (
-            <Pressable onPress={() => form.setMode('reset')} accessibilityRole="button" accessibilityLabel="Forgot password?">
-              <ThemedText type="linkPrimary">Forgot password?</ThemedText>
+            <Pressable
+              onPress={() => form.setMode('reset')}
+              accessibilityRole="button"
+              accessibilityLabel={t('auth.accessibility.forgotPassword')}
+            >
+              <ThemedText type="linkPrimary">{t('auth.forgotPassword')}</ThemedText>
             </Pressable>
           )}
 
           {form.mode === 'reset' && (
-            <Pressable onPress={() => form.setMode('signIn')} accessibilityRole="button" accessibilityLabel="Back to log in">
-              <ThemedText type="linkPrimary">Back to Log In</ThemedText>
+            <Pressable
+              onPress={() => form.setMode('signIn')}
+              accessibilityRole="button"
+              accessibilityLabel={t('auth.accessibility.backToLogIn')}
+            >
+              <ThemedText type="linkPrimary">{t('auth.backToLogIn')}</ThemedText>
             </Pressable>
           )}
 
@@ -190,11 +198,11 @@ export default function LoginScreen() {
             <View style={styles.googleSection}>
               <View style={styles.dividerRow}>
                 <Divider style={styles.dividerLine} />
-                <ThemedText type="caption">or</ThemedText>
+                <ThemedText type="caption">{t('auth.or')}</ThemedText>
                 <Divider style={styles.dividerLine} />
               </View>
 
-              <Button label="Continue with Google" variant="secondary" onPress={handleGoogleSignIn} />
+              <Button label={t('auth.continueWithGoogle')} variant="secondary" onPress={handleGoogleSignIn} />
 
               {googleError ? (
                 <ThemedText themeColor="danger" accessibilityRole="alert">

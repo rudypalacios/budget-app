@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import i18n from '@/localization/i18n';
 import { seedDefaultCategories, subscribeCategories, useCategoriesStore } from '@/store/categories';
 import { subscribeExpenses, useExpensesStore } from '@/store/expenses';
 import { subscribeIncomes, useIncomesStore } from '@/store/incomes';
@@ -10,6 +11,7 @@ import { runRecurringGeneration } from '@/store/recurring-generation';
 import { subscribeRecurringExpenses, useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { subscribeRecurringIncomes, useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { bootstrapSession, subscribeAuthState, useSessionStore } from '@/store/session';
+import { seedDefaultUserSettings, subscribeUserSettings, useUserSettingsStore } from '@/store/user-settings';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,6 +25,8 @@ export default function RootLayout() {
   const incomesLoading = useIncomesStore((state) => state.isLoading);
   const recurringExpensesLoading = useRecurringExpensesStore((state) => state.isLoading);
   const recurringIncomesLoading = useRecurringIncomesStore((state) => state.isLoading);
+  const userSettingsLoading = useUserSettingsStore((state) => state.isLoading);
+  const userSettings = useUserSettingsStore((state) => state.data);
 
   useEffect(() => {
     bootstrapSession();
@@ -31,10 +35,10 @@ export default function RootLayout() {
     subscribeAuthState();
   }, []);
 
-  // Starts the five collection listeners once a uid is available (anonymous
-  // or, since Stage 9a, a real signed-in account) — reactive to uid changes,
-  // so signing in/out on this device also re-subscribes to that account's
-  // own data.
+  // Starts the six listeners once a uid is available (anonymous or, since
+  // Stage 9a, a real signed-in account) — reactive to uid changes, so
+  // signing in/out on this device also re-subscribes to that account's own
+  // data.
   useEffect(() => {
     if (!uid) return;
     subscribeCategories(uid);
@@ -42,6 +46,7 @@ export default function RootLayout() {
     subscribeIncomes(uid);
     subscribeRecurringExpenses(uid);
     subscribeRecurringIncomes(uid);
+    subscribeUserSettings(uid);
   }, [uid]);
 
   // First-run seed for a brand-new account (data-model.md §4's
@@ -51,6 +56,22 @@ export default function RootLayout() {
     if (!uid || categoriesLoading || categoriesCount > 0) return;
     seedDefaultCategories();
   }, [uid, categoriesLoading, categoriesCount]);
+
+  // First-run seed for the users/{uid} settings doc (Stage 10) — fires once
+  // the settings listener has resolved with no doc yet. Uses i18n's
+  // already-device-detected language as the seed's initial value, since a
+  // brand-new account has no persisted language preference yet.
+  useEffect(() => {
+    if (!uid || userSettingsLoading || userSettings) return;
+    seedDefaultUserSettings(i18n.language === 'es' ? 'es' : 'en');
+  }, [uid, userSettingsLoading, userSettings]);
+
+  // Once the real persisted language preference loads, it overrides i18n's
+  // device-locale guess (see src/localization/i18n.ts).
+  useEffect(() => {
+    if (!userSettings || userSettings.language === i18n.language) return;
+    i18n.changeLanguage(userSettings.language);
+  }, [userSettings]);
 
   // Launch-time recurring-instance catch-up scan (Stage 6b, data-model.md
   // §9) — waits for all five stores to have resolved their first snapshot

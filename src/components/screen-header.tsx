@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -22,13 +23,14 @@ export type ScreenHeaderProps = {
 };
 
 export function ScreenHeader({ title, syncStatus, onBack, style }: ScreenHeaderProps) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.row, style]}>
       <View style={styles.titleRow}>
         {onBack && (
           <IconButton
             name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }}
-            accessibilityLabel="Back"
+            accessibilityLabel={t('common.back')}
             onPress={onBack}
             size={18}
           />

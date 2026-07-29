@@ -273,19 +273,39 @@ actually resolved.)_
   today since no sensitive action (e.g. account deletion, which is
   explicitly out of scope per SRS §10) currently requires a freshly
   re-verified session; revisit if/when one is ever built.
-- **Amount-field parsing normalizes comma/period universally, not per-locale**
-  (Stage 9a.1) — `src/lib/currency-input.ts`'s `parseAmountInput` treats a
-  typed comma as an alternate decimal separator and converts it to a period
-  before `Number()` parsing, so both "12.34" and "12,34" work as valid
-  decimal entry today. This is a simple universal normalization, not real
-  locale-aware masking (e.g. it doesn't distinguish a thousands-grouping
-  comma from a decimal comma, and can't yet, since there's no per-user
-  region/locale setting to disambiguate against). Revisit once Stage 10
-  (Localization) adds a region setting to Settings — at that point the input
-  mask and `formatCurrency` (`src/lib/format-currency.ts`, which has the same
-  "revisit for richer locale formatting" note) should both read from it, and
-  ideally share one centralized parse/format pair driven by the user's
-  region rather than each guessing independently.
+- **Amount-field parsing still normalizes comma/period universally, not
+  per-locale — a deliberate safety trade-off, not an oversight** (Stage
+  9a.1, revisited at Stage 10 closeout) — `src/lib/currency-input.ts`'s
+  `parseAmountInput` still treats a typed comma as an alternate decimal
+  separator and converts it to a period before `Number()` parsing, exactly
+  as before. Stage 10 added a real driving field (`UserSettings.language`,
+  since this app has no separate region field — only `es`/`en`) and
+  considered branching this function on it, but rejected the obvious
+  approach (stripping "." as a thousands separator under `es`) because it
+  would silently misparse a plainly-typed decimal like "12.34" as "1234" — a
+  100x amount error — for any `es` user who simply uses a period, which
+  `sanitizeAmountInput` already allows. True locale-aware grouping needs a
+  real input mask constraining what can be typed, not a one-line parse
+  change; revisit only as that dedicated feature. `formatCurrency`
+  (`src/lib/format-currency.ts`) **is** now locale-aware for *output* only
+  (which carries no such ambiguity, since the numeric value is already
+  known) — it formats via `Intl.NumberFormat` using generic `'es'`/`'en'`
+  language tags driven by `i18n.language`, not region-pinned tags like
+  `es-GT` (Guatemala's real CLDR data formats identically to `en-US`, which
+  would make Spanish mode visually indistinguishable from English for this
+  app's own default-currency country).
+- **`theme`/`reminders`/`trashRetentionDays` now persist for real but stay
+  functionally inert** (Stage 10) — the `users/{uid}` settings-doc store
+  built this stage persists the entire Settings form on Save, including
+  these three fields (see CLAUDE.md's Settings Save scope decision), but
+  nothing in the app actually reads them yet: `_layout.tsx`'s
+  `ThemeProvider` still derives light/dark purely from OS `useColorScheme()`
+  (deliberately out of scope this stage), and no reminder-scheduling or
+  trash-purge engine exists yet to consume `reminders`/`trashRetentionDays`
+  (Stage 14 and the new Stage 17 respectively). Not a regression — before
+  this stage these three were `useState` placeholders that didn't persist
+  at all — but worth flagging since a user editing them in Settings now sees
+  a value that *saves* successfully with no visible effect.
 - **Creating a new recurring expense/income while offline hangs the Save
   button indefinitely** (found in Stage 7 sync validation) — `expenses/new.tsx`
   and `income/new.tsx`'s recurring branch calls
@@ -358,18 +378,6 @@ actually resolved.)_
   **Stage 9b (Google) is built on its stage branch**, pending merge to
   `develop`. Facebook remains Stage 9c, blocked on Facebook Developer
   console setup.
-- **`users/{uid}` settings-doc store deferred to Stage 10** (Stage 6) — the
-  approved Stage 6 plan included a `createDocumentStore` for `UserSettings`
-  alongside the collection stores; deliberately cut instead, since
-  `settings.tsx` still uses local `useState` placeholders (no real consumer
-  exists until Stage 10 wires localization/default-currency to it) and Stage 10
-  is already the roadmap's named home for this data. Not a silent cut this
-  time — flagged and confirmed before proceeding. **Decision for when Stage 10
-  builds this store** (colleague feedback review, Stage 6b): Settings follows
-  the same explicit Save-button pattern as Expenses/Income/Categories — apply
-  and persist on Save, not autosave-on-change, and no separate "pending sync"
-  state. Use the shared `Button` component's built-in pending/disabled state
-  (see `src/components/ui/button.tsx`) rather than inventing a new pattern.
 - **Recurring-instance generation only runs on app launch, not on
   foreground-resume** (Stage 6b) — matches data-model.md §9's literal "On
   app launch, the generator scans..." wording, but `AppState`-based
@@ -405,11 +413,33 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **9b — Google sign-in** (9a and 9a.1 are merged; 9b is built and
-verified on branch `stage-9b-google-signin`, pending merge to `develop`;
-9c remains blocked on Facebook Developer console setup — see SRS §11).
-Stage 10 (localization + default currency) is planned and ready to resume
-once 9b is merged.
+Stage: **10 — Localization (Spanish + English) + default currency setting**
+(9a, 9a.1, and 9b are merged to `develop`; 9c remains blocked on Facebook
+Developer console setup — see SRS §11). Stage 10 is built and verified on
+branch `stage-10-localization-currency`, pending merge to `develop` — see
+its own section below for what shipped. Stage 11 (multi-currency handling)
+is next once this merges.
+
+### Stage 10 summary
+- New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
+  + `user-settings.ts`) — Settings now has one real Save button persisting
+  the whole form (see the Settings Save scope decision above), replacing
+  the old `useState` placeholders.
+- `i18next`/`react-i18next`/`expo-localization` added; `src/localization/`
+  now holds real `en.json`/`es.json` covering every screen and shared
+  component. Device locale is detected on first launch and overridden by
+  the real persisted `UserSettings.language` once it loads.
+- `defaultCurrency` now actually drives new-record creation (expenses,
+  income, quick-expense, recurring definitions) instead of a hardcoded
+  `'GTQ'`; changing it batch-marks every recurring expense's cached budget
+  recommendation `'stale'` per `docs/data-model.md` §3 (new
+  `FirestoreClient.batchUpdate`, implemented on both platforms).
+- `formatCurrency` is now locale-aware for output; `parseAmountInput`
+  deliberately was not made locale-aware for input — see the Known Issues
+  entry above for why.
+- Added SRS §11 Stage 17 (Trash view & restore screen), per user feedback
+  during this stage's planning — `trashRetentionDays` becoming a real
+  setting surfaced that no stage yet owns the screen to actually use it.
 
 A `LoginScenarios.txt` audit against 9b's implementation (2026-07-28)
 found and fixed one native/web parity gap in `signInWithGoogle` (see

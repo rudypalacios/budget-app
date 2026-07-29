@@ -205,6 +205,11 @@ These were discussed and deliberately deferred rather than overlooked — worth 
     per-expense toggle)
 15. Offline/reconnect testing
 16. Deployment (EAS build for mobile, static web export)
+17. Trash view & restore screen: dedicated UI to browse archived/trashed
+    records across all types (expenses, income, categories, recurring
+    definitions), restore them back to active, or confirm permanent purge —
+    complements Stage 12's archive/trash state-transition engine with the
+    screen users actually interact with.
 
 ### Backlog — not yet scoped into a numbered stage
 

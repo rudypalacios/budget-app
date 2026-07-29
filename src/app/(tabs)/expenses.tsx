@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
@@ -22,6 +23,7 @@ import { useRecurringExpensesStore } from '@/store/recurring-expenses';
 // (src/app/(tabs)/index.tsx, the Payments screen, Stage 8), which already
 // unifies both kinds.
 export default function ExpensesScreen() {
+  const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const recurringDefinitions = useRecurringExpensesStore((state) => state.items);
@@ -38,14 +40,14 @@ export default function ExpensesScreen() {
 
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title="Expenses" />
+      <ScreenHeader title={t('expenses.title')} />
 
-      <Button label="Add expense" onPress={() => router.push('/expenses/new')} />
+      <Button label={t('expenses.addExpense')} onPress={() => router.push('/expenses/new')} />
 
       <View style={styles.section}>
-        <SectionHeader title="Recurring" />
+        <SectionHeader title={t('expenses.recurringSection')} />
         {activeRecurring.length === 0 ? (
-          <ThemedText type="caption">No recurring expenses yet.</ThemedText>
+          <ThemedText type="caption">{t('expenses.noRecurring')}</ThemedText>
         ) : (
           <Card style={styles.card}>
             {activeRecurring.map((definition, index) => (
@@ -53,17 +55,17 @@ export default function ExpensesScreen() {
                 <View style={styles.row}>
                   <View style={styles.rowMain}>
                     <ThemedText type="smallBold">{definition.name}</ThemedText>
-                    <ThemedText type="caption">Due day {definition.dueDay}</ThemedText>
+                    <ThemedText type="caption">{t('expenses.dueDay', { day: definition.dueDay })}</ThemedText>
                   </View>
                   <View style={styles.rowEnd}>
                     <ThemedText type="smallBold" themeColor="danger">
                       {formatCurrency(definition.amount, definition.currency)}
                     </ThemedText>
                     <OverflowMenu
-                      accessibilityLabel={`Actions for ${definition.name}`}
+                      accessibilityLabel={t('common.actionsFor', { name: definition.name })}
                       items={[
                         {
-                          label: 'Edit',
+                          label: t('common.edit'),
                           onPress: () =>
                             router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
                         },
@@ -79,9 +81,9 @@ export default function ExpensesScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="One-time" />
+        <SectionHeader title={t('expenses.oneTimeSection')} />
         {plannedOneTime.length === 0 ? (
-          <ThemedText type="caption">No planned one-time expenses.</ThemedText>
+          <ThemedText type="caption">{t('expenses.noOneTime')}</ThemedText>
         ) : (
           <Card style={styles.card}>
             {plannedOneTime.map((expense, index) => {
@@ -98,10 +100,10 @@ export default function ExpensesScreen() {
                         {formatCurrency(expense.amount ?? 0, expense.currency)}
                       </ThemedText>
                       <OverflowMenu
-                        accessibilityLabel={`Actions for ${expense.name}`}
+                        accessibilityLabel={t('common.actionsFor', { name: expense.name })}
                         items={[
                           {
-                            label: 'Edit',
+                            label: t('common.edit'),
                             onPress: () => router.push({ pathname: '/expenses/[id]/edit', params: { id: expense.id } }),
                           },
                         ]}

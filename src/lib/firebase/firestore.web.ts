@@ -16,6 +16,7 @@ import {
   setDoc as fsSetDoc,
   updateDoc as fsUpdateDoc,
   where as fsWhere,
+  writeBatch,
   type QueryConstraint,
 } from 'firebase/firestore';
 
@@ -68,6 +69,14 @@ export const firestoreClient: FirestoreClient = {
 
   async updateDoc(path: string, data: Record<string, unknown>) {
     await fsUpdateDoc(doc(db, path), { ...data, updatedAt: serverTimestamp() });
+  },
+
+  async batchUpdate(updates: { path: string; data: Record<string, unknown> }[]) {
+    const batch = writeBatch(db);
+    for (const { path, data } of updates) {
+      batch.update(doc(db, path), { ...data, updatedAt: serverTimestamp() });
+    }
+    await batch.commit();
   },
 
   async deleteDoc(path: string) {

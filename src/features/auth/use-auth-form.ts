@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import i18n from '@/localization/i18n';
 import { requestPasswordReset, signInWithEmail, signUpWithEmail } from '@/store/session';
 
 export type AuthFormMode = 'signUp' | 'signIn' | 'reset';
@@ -32,8 +33,9 @@ export function useAuthForm() {
     setFormError(null);
 
     const trimmedEmail = email.trim();
-    const nextEmailError = isValidEmail(trimmedEmail) ? null : 'Enter a valid email address.';
-    const nextPasswordError = mode !== 'reset' && password.length === 0 ? 'Enter your password.' : null;
+    const nextEmailError = isValidEmail(trimmedEmail) ? null : i18n.t('auth.validation.invalidEmail');
+    const nextPasswordError =
+      mode !== 'reset' && password.length === 0 ? i18n.t('auth.validation.passwordRequired') : null;
     setEmailError(nextEmailError);
     setPasswordError(nextPasswordError);
     if (nextEmailError || nextPasswordError) return false;
