@@ -53,6 +53,7 @@ export default function EditExpenseScreen() {
       <ModalHeader title={t('expenses.editTitle')} />
       <ExpenseForm
         initialValues={initialValues}
+        currency={expense.currency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

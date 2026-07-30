@@ -11,7 +11,6 @@ import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
-import { useUserSettingsStore } from '@/store/user-settings';
 
 export type ExpenseFormValues = {
   name: string;
@@ -37,6 +36,12 @@ export type ExpenseFormProps = {
   // rather than shown disabled, so it doesn't look like a control that
   // should do something.
   disableRecurringToggle?: boolean;
+  // The amount field's currency label — the record's own saved currency on
+  // Edit (never the live default-currency setting, which may have changed
+  // since this record was created — see CLAUDE.md's Known Issues), or the
+  // current default currency on Add. Passed by the caller rather than read
+  // internally here, since only the caller knows which case applies.
+  currency: string;
 };
 
 export function ExpenseForm({
@@ -45,9 +50,9 @@ export function ExpenseForm({
   onSubmit,
   onCancel,
   disableRecurringToggle,
+  currency,
 }: ExpenseFormProps) {
   const { t } = useTranslation();
-  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
@@ -93,7 +98,7 @@ export function ExpenseForm({
         placeholder={t('expenses.form.namePlaceholder')}
       />
       <TextField
-        label={t('common.amountWithCurrency', { currency: defaultCurrency })}
+        label={t('common.amountWithCurrency', { currency })}
         value={values.amount}
         onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"

@@ -54,6 +54,7 @@ export default function EditIncomeScreen() {
       <ModalHeader title={t('income.editTitle')} />
       <IncomeForm
         initialValues={initialValues}
+        currency={income.currency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

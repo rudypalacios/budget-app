@@ -50,6 +50,7 @@ export default function EditRecurringIncomeScreen() {
       <ModalHeader title={t('recurringIncome.editTitle')} />
       <RecurringIncomeForm
         initialValues={initialValues}
+        currency={definition.currency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

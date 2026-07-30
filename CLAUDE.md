@@ -289,11 +289,18 @@ actually resolved.)_
   change; revisit only as that dedicated feature. `formatCurrency`
   (`src/lib/format-currency.ts`) **is** now locale-aware for *output* only
   (which carries no such ambiguity, since the numeric value is already
-  known) — it formats via `Intl.NumberFormat` using generic `'es'`/`'en'`
-  language tags driven by `i18n.language`, not region-pinned tags like
-  `es-GT` (Guatemala's real CLDR data formats identically to `en-US`, which
-  would make Spanish mode visually indistinguishable from English for this
-  app's own default-currency country).
+  known) — but driven by the **currency being displayed**, not the app's UI
+  language: each entry in `SUPPORTED_CURRENCIES`
+  (`src/constants/currencies.ts`) carries its own fixed `formatLocale`
+  (USD/GTQ → `'en'`-style comma-grouping/period-decimal; EUR → `'es'`-style
+  period-grouping/comma-decimal), so a $ amount always reads "$1,234.56" and
+  a € amount always reads "€1.234,56" regardless of whether the viewer has
+  the app set to Spanish or English — found live (colleague feedback) that
+  driving this off `i18n.language` instead made *every* currency flip to
+  comma-decimal together whenever the UI was in Spanish, which is wrong: a
+  currency's grouping convention isn't a property of the viewer's language.
+  `i18n.language` is now only a fallback for a currency outside
+  `SUPPORTED_CURRENCIES`, which has no known convention to anchor to.
 - **`theme`/`reminders`/`trashRetentionDays` now persist for real but stay
   functionally inert** (Stage 10) — the `users/{uid}` settings-doc store
   built this stage persists the entire Settings form on Save, including
@@ -434,8 +441,10 @@ is next once this merges.
   `'GTQ'`; changing it batch-marks every recurring expense's cached budget
   recommendation `'stale'` per `docs/data-model.md` §3 (new
   `FirestoreClient.batchUpdate`, implemented on both platforms).
-- `formatCurrency` is now locale-aware for output; `parseAmountInput`
-  deliberately was not made locale-aware for input — see the Known Issues
+- `formatCurrency` is now locale-aware for output, driven by each currency's
+  own fixed convention (not the UI language — see Known Issues);
+  `parseAmountInput` deliberately was not made locale-aware for input — see
+  the Known Issues
   entry above for why.
 - Added SRS §11 Stage 17 (Trash view & restore screen), per user feedback
   during this stage's planning — `trashRetentionDays` becoming a real
