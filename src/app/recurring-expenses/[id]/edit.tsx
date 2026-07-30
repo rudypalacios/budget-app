@@ -51,6 +51,7 @@ export default function EditRecurringExpenseScreen() {
       <ModalHeader title={t('recurringExpense.editTitle')} />
       <RecurringExpenseForm
         initialValues={initialValues}
+        currency={definition.currency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

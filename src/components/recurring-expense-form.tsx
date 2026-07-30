@@ -8,7 +8,6 @@ import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
-import { useUserSettingsStore } from '@/store/user-settings';
 
 export type RecurringExpenseFormValues = {
   name: string;
@@ -22,6 +21,12 @@ export type RecurringExpenseFormProps = {
   submitLabel: string;
   onSubmit: (values: RecurringExpenseFormValues) => void | Promise<void>;
   onCancel: () => void;
+  // This form only ever appears on the Edit screen (no "new recurring
+  // expense via this form" route exists — recurring definitions are created
+  // via ExpenseForm's isRecurring toggle instead), so this is always the
+  // definition's own saved currency, never the live default-currency
+  // setting — see ExpenseForm's identical `currency` prop comment.
+  currency: string;
 };
 
 export function RecurringExpenseForm({
@@ -29,9 +34,9 @@ export function RecurringExpenseForm({
   submitLabel,
   onSubmit,
   onCancel,
+  currency,
 }: RecurringExpenseFormProps) {
   const { t } = useTranslation();
-  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
@@ -77,7 +82,7 @@ export function RecurringExpenseForm({
         placeholder={t('recurringExpense.form.namePlaceholder')}
       />
       <TextField
-        label={t('common.amountWithCurrency', { currency: defaultCurrency })}
+        label={t('common.amountWithCurrency', { currency })}
         value={values.amount}
         onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"

@@ -10,7 +10,6 @@ import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
-import { useUserSettingsStore } from '@/store/user-settings';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
 const FREQUENCY_LABEL_KEY: Record<(typeof FREQUENCIES)[number], string> = {
@@ -32,6 +31,12 @@ export type RecurringIncomeFormProps = {
   submitLabel: string;
   onSubmit: (values: RecurringIncomeFormValues) => void | Promise<void>;
   onCancel: () => void;
+  // This form only ever appears on the Edit screen (no "new recurring
+  // income via this form" route exists — recurring definitions are created
+  // via IncomeForm's isRecurring toggle instead), so this is always the
+  // definition's own saved currency, never the live default-currency
+  // setting — see ExpenseForm's identical `currency` prop comment.
+  currency: string;
 };
 
 export function RecurringIncomeForm({
@@ -39,9 +44,9 @@ export function RecurringIncomeForm({
   submitLabel,
   onSubmit,
   onCancel,
+  currency,
 }: RecurringIncomeFormProps) {
   const { t } = useTranslation();
-  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const categories = useCategoriesStore((state) => state.items);
   const incomeCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'income' || category.type === 'both'),
@@ -87,7 +92,7 @@ export function RecurringIncomeForm({
         placeholder={t('recurringIncome.form.namePlaceholder')}
       />
       <TextField
-        label={t('common.amountWithCurrency', { currency: defaultCurrency })}
+        label={t('common.amountWithCurrency', { currency })}
         value={values.amount}
         onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"

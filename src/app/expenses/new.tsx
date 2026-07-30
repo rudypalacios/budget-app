@@ -51,7 +51,12 @@ export default function NewExpenseScreen() {
   return (
     <ScreenScroll>
       <ModalHeader title={t('expenses.addTitle')} />
-      <ExpenseForm submitLabel={t('common.save')} onSubmit={handleSubmit} onCancel={() => router.back()} />
+      <ExpenseForm
+        currency={defaultCurrency}
+        submitLabel={t('common.save')}
+        onSubmit={handleSubmit}
+        onCancel={() => router.back()}
+      />
     </ScreenScroll>
   );
 }

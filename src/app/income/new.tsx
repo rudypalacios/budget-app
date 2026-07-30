@@ -60,7 +60,12 @@ export default function NewIncomeScreen() {
   return (
     <ScreenScroll>
       <ModalHeader title={t('income.addTitle')} />
-      <IncomeForm submitLabel={t('common.save')} onSubmit={handleSubmit} onCancel={() => router.back()} />
+      <IncomeForm
+        currency={defaultCurrency}
+        submitLabel={t('common.save')}
+        onSubmit={handleSubmit}
+        onCancel={() => router.back()}
+      />
     </ScreenScroll>
   );
 }

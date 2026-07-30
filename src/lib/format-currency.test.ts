@@ -6,22 +6,36 @@ afterEach(async () => {
 });
 
 describe('formatCurrency', () => {
-  it('formats with the currency symbol and English grouping/decimal style', async () => {
+  it('formats USD with its own English-style grouping/decimal, regardless of UI language', async () => {
     await i18n.changeLanguage('en');
+    expect(formatCurrency(1234567.5, 'USD')).toBe('$ 1,234,567.50');
+    await i18n.changeLanguage('es');
     expect(formatCurrency(1234567.5, 'USD')).toBe('$ 1,234,567.50');
   });
 
-  it('formats with Spanish grouping/decimal style when the language is Spanish', async () => {
+  it('formats EUR with its own Spanish-style grouping/decimal, regardless of UI language', async () => {
+    await i18n.changeLanguage('en');
+    expect(formatCurrency(1234567.5, 'EUR')).toBe('€ 1.234.567,50');
     await i18n.changeLanguage('es');
-    expect(formatCurrency(1234567.5, 'USD')).toBe('$ 1.234.567,50');
+    expect(formatCurrency(1234567.5, 'EUR')).toBe('€ 1.234.567,50');
+  });
+
+  it('formats GTQ with its own English-style grouping/decimal, regardless of UI language', async () => {
+    await i18n.changeLanguage('en');
+    expect(formatCurrency(1234567.5, 'GTQ')).toBe('Q 1,234,567.50');
+    await i18n.changeLanguage('es');
+    expect(formatCurrency(1234567.5, 'GTQ')).toBe('Q 1,234,567.50');
   });
 
   it('looks up the right symbol per currency', () => {
     expect(formatCurrency(10, 'GTQ')).toBe('Q 10.00');
-    expect(formatCurrency(10, 'EUR')).toBe('€ 10.00');
+    expect(formatCurrency(10, 'EUR')).toBe('€ 10,00');
   });
 
-  it('falls back to the raw code for an unsupported currency', () => {
-    expect(formatCurrency(10, 'XYZ')).toBe('XYZ  10.00');
+  it('falls back to the raw code and the current UI language for an unsupported currency', async () => {
+    await i18n.changeLanguage('en');
+    expect(formatCurrency(1234.5, 'XYZ')).toBe('XYZ  1,234.50');
+    await i18n.changeLanguage('es');
+    expect(formatCurrency(1234.5, 'XYZ')).toBe('XYZ  1234,50');
   });
 });
