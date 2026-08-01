@@ -12,6 +12,7 @@ import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
+import { goBack } from '@/lib/navigation';
 import { updateCategory, useCategoriesStore } from '@/store/categories';
 import type { Category } from '@/types/firestore';
 
@@ -31,7 +32,7 @@ export default function CategoriesScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader title={t('categories.title')} onBack={() => router.back()} />
+      <ScreenHeader title={t('categories.title')} onBack={() => goBack('/settings')} />
 
       <SectionHeader
         title={t('categories.allCategories')}

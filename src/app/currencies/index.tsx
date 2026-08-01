@@ -13,6 +13,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
 import { formatCurrency } from '@/lib/format-currency';
+import { goBack } from '@/lib/navigation';
 import { removeCurrency, useCurrenciesStore } from '@/store/currencies';
 import { useUserSettingsStore } from '@/store/user-settings';
 
@@ -27,7 +28,7 @@ export default function CurrenciesScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader title={t('currencies.title')} onBack={() => router.back()} />
+      <ScreenHeader title={t('currencies.title')} onBack={() => goBack('/settings')} />
 
       <SectionHeader
         title={t('currencies.allCurrencies')}
