@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -12,6 +11,7 @@ import { Divider } from '@/components/ui/divider';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { useAuthForm, type AuthFormMode } from '@/features/auth/use-auth-form';
+import { goBack } from '@/lib/navigation';
 import { completeGoogleLink, signInWithGoogle } from '@/store/session';
 
 const TITLE_KEY: Record<AuthFormMode, string> = {
@@ -25,20 +25,6 @@ const SUBMIT_LABEL_KEY: Record<AuthFormMode, string> = {
   signIn: 'auth.submitLabel.signIn',
   reset: 'auth.submitLabel.reset',
 };
-
-// This screen is normally reached by pushing from Settings, so router.back()
-// has somewhere to go — but a direct page load/reload while already on
-// /login (easy to hit on web) starts with an empty history, and router.back()
-// then silently does nothing (logs "GO_BACK was not handled" in dev),
-// stranding the user here after a successful sign-in. Falling back to the
-// home tab covers that case.
-function dismissLoginScreen() {
-  if (router.canGoBack()) {
-    router.back();
-  } else {
-    router.replace('/');
-  }
-}
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -78,14 +64,14 @@ export default function LoginScreen() {
       setGoogleLinkPrompt(null);
     }
 
-    dismissLoginScreen();
+    goBack();
   }
 
   async function handleGoogleSignIn() {
     clearGoogleState();
     const result = await signInWithGoogle();
     if (result.ok) {
-      dismissLoginScreen();
+      goBack();
       return;
     }
     if (result.reason === 'cancelled') return;
@@ -111,7 +97,7 @@ export default function LoginScreen() {
         // separate route (see useAuthForm) — back should return to Log In,
         // not dismiss the whole auth modal, mirroring the existing "Back to
         // Log In" link below.
-        onBack={form.mode === 'reset' ? () => form.setMode('signIn') : dismissLoginScreen}
+        onBack={form.mode === 'reset' ? () => form.setMode('signIn') : () => goBack()}
       />
 
       {form.mode !== 'reset' && (
