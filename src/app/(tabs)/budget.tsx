@@ -26,7 +26,10 @@ export default function BudgetScreen() {
   // currencies together.
   function actualForCategory(categoryId: string) {
     return expenses
-      .filter((expense) => expense.categoryId === categoryId && expense.paid)
+      .filter(
+        (expense) =>
+          expense.categoryId === categoryId && expense.paid && expense.lifecycleState === 'active',
+      )
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
   }
 

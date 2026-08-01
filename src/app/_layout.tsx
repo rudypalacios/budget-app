@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { Toast } from '@/components/ui/toast';
 import i18n from '@/localization/i18n';
 import { seedDefaultCategories, subscribeCategories, useCategoriesStore } from '@/store/categories';
 import { subscribeCurrencies } from '@/store/currencies';
@@ -130,6 +131,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)/login" options={{ presentation: 'modal' }} />
         </Stack.Protected>
       </Stack>
+      <Toast />
     </ThemeProvider>
   );
 }

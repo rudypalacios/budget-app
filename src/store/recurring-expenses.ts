@@ -1,17 +1,13 @@
 import { createCollectionStore } from './create-collection-store';
-import type { BudgetRecommendation, CurrencyCode, RecurringExpense, Timestamp } from '@/types/firestore';
+import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { toTimestamp } from '@/lib/timestamp';
+import { useUserSettingsStore } from './user-settings';
+import type { ArchivableState, BudgetRecommendation, CurrencyCode, RecurringExpense } from '@/types/firestore';
 
 const store = createCollectionStore<RecurringExpense>('recurringExpenses');
 
 export const useRecurringExpensesStore = store.useStore;
 export const subscribeRecurringExpenses = store.subscribe;
-
-// Firestore write paths accept a plain JS Date for a Timestamp field and
-// convert it automatically — this cast just satisfies our structural
-// Timestamp type (see src/types/firestore.ts) on the way in.
-function toTimestamp(date: Date): Timestamp {
-  return date as unknown as Timestamp;
-}
 
 const EMPTY_BUDGET_RECOMMENDATION: BudgetRecommendation = {
   rollingAverageAmount: null,
@@ -61,4 +57,38 @@ type EditableRecurringExpenseFields = Pick<
 
 export function updateRecurringExpense(id: string, patch: Partial<EditableRecurringExpenseFields>) {
   return store.update(id, patch);
+}
+
+// FR-4a/4b/4e (data-model.md §7) — archiving/trashing a definition only
+// flips its own lifecycleState; it never cascades to already-generated
+// instances (separate documents, see expenses.ts's archiveExpense/
+// trashExpense). recurring-generation.ts already scans only
+// lifecycleState === 'active' definitions, so this stops future generation
+// for free once one of these is called (FR-4e).
+export function archiveRecurringExpense(id: string) {
+  return store.update(id, archiveTransition(new Date()));
+}
+
+export function trashRecurringExpense(id: string) {
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition) throw new Error(`recurringExpenses store: trashRecurringExpense(${id}) — not found`);
+  const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
+  return store.update(
+    id,
+    trashTransition(definition.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
+  );
+}
+
+// Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
+// real screen in Stage 17. Exercised by unit tests in the meantime.
+export function restoreRecurringExpense(id: string) {
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition?.trashedFromState) {
+    throw new Error(`recurringExpenses store: restoreRecurringExpense(${id}) — not currently trashed`);
+  }
+  return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
+}
+
+export function purgeRecurringExpense(id: string) {
+  return store.remove(id);
 }

@@ -176,6 +176,17 @@ describe('buildPaymentRows', () => {
     expect(rows[0].skippedAt).toEqual(skippedAt);
   });
 
+  it('excludes archived and trashed records (FR-4a — hidden from every normal view)', () => {
+    const rows = buildPaymentRows(
+      [
+        oneTimeExpense({ id: 'archived', lifecycleState: 'archived' }),
+        oneTimeExpense({ id: 'trashed', lifecycleState: 'trashed' }),
+      ],
+      [oneTimeIncome({ id: 'archived-income', lifecycleState: 'archived' })],
+    );
+    expect(rows).toHaveLength(0);
+  });
+
   it('produces exactly one row per input document, never duplicated', () => {
     const expenses: WithId<ExpenseRecord>[] = [
       oneTimeExpense({ id: 'a' }),

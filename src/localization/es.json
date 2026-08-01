@@ -17,7 +17,13 @@
     "appName": "Budget App",
     "actionsFor": "Acciones para {{name}}",
     "amount": "Monto",
-    "remove": "Eliminar"
+    "remove": "Eliminar",
+    "archive": "Archivar",
+    "delete": "Eliminar"
+  },
+  "archive": {
+    "movedToArchive": "\"{{name}}\" se movió al archivo",
+    "movedToTrash": "\"{{name}}\" se movió a la papelera"
   },
   "nav": {
     "payments": "Pagos",

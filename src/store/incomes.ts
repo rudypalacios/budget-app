@@ -1,12 +1,15 @@
 import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
+import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { toTimestamp } from '@/lib/timestamp';
+import { useUserSettingsStore } from './user-settings';
 import type {
+  ArchivableState,
   CurrencyCode,
   IncomeRecord,
   OneTimeIncome,
   RateSource,
   RecurringIncomeInstance,
-  Timestamp,
 } from '@/types/firestore';
 
 const store = createCollectionStore<IncomeRecord>('incomes');
@@ -14,15 +17,9 @@ const store = createCollectionStore<IncomeRecord>('incomes');
 export const useIncomesStore = store.useStore;
 export const subscribeIncomes = store.subscribe;
 
-// Firestore write paths accept a plain JS Date for a Timestamp field and
-// convert it automatically — this cast just satisfies our structural
-// Timestamp type (see src/types/firestore.ts) on the way in. Reads always
-// come back as a real Timestamp instance, no cast needed there. Exported
-// for callers that build an update patch outside this module (e.g.
-// income/[id]/edit.tsx setting a picked due date).
-export function toTimestamp(date: Date): Timestamp {
-  return date as unknown as Timestamp;
-}
+// Re-exported for callers that build an update patch outside this module
+// (e.g. income/[id]/edit.tsx setting a picked due date).
+export { toTimestamp };
 
 export type NewIncomeInput = {
   name: string;
@@ -153,6 +150,38 @@ export function setIncomeInstanceAt(id: string, input: IncomeInstanceInput) {
     purgeAt: null,
   };
   return store.setAt(id, doc);
+}
+
+// FR-4a/4b (data-model.md §7) — see src/lib/lifecycle-transitions.ts for the
+// actual state-machine math shared across expenses/incomes/recurring
+// definitions. Applies to both one-time and recurring-instance rows
+// (independent per-document, never cascaded from the parent definition).
+export function archiveIncome(id: string) {
+  return store.update(id, archiveTransition(new Date()));
+}
+
+export function trashIncome(id: string) {
+  const income = store.useStore.getState().items.find((item) => item.id === id);
+  if (!income) throw new Error(`incomes store: trashIncome(${id}) — not found`);
+  const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
+  return store.update(
+    id,
+    trashTransition(income.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
+  );
+}
+
+// Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
+// real screen in Stage 17. Exercised by unit tests in the meantime.
+export function restoreIncome(id: string) {
+  const income = store.useStore.getState().items.find((item) => item.id === id);
+  if (!income?.trashedFromState) {
+    throw new Error(`incomes store: restoreIncome(${id}) — not currently trashed`);
+  }
+  return store.update(id, restoreTransition(income.trashedFromState, income.archivedAt));
+}
+
+export function purgeIncome(id: string) {
+  return store.remove(id);
 }
 
 // Catch-up generation (data-model.md §9) needs "the last period already
