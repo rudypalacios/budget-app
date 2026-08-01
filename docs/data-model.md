@@ -1,8 +1,8 @@
 # Firestore Data Model
 
 **Status:** Approved — Stage 1 deliverable (see `docs/SRS-presupuesto-app.md` §11)
-**Version:** 1.5
-**Date:** 2026-07-11
+**Version:** 1.6
+**Date:** 2026-08-01
 
 This document is the source of truth for the Firestore schema. It formalizes the collections, document shapes, and design decisions needed to satisfy the functional requirements in `docs/SRS-presupuesto-app.md` §6 (FR-1 through FR-20). TypeScript types (`src/types/firestore.ts`) and security rules (`firestore.rules`) are derived from this document, not the other way around — if they ever disagree, this document wins and the code should be updated to match.
 
@@ -46,7 +46,24 @@ users/{uid}/incomes/{incomeId}                 — one-time income + recurring i
 
 Single doc, read via one listener at app start, cached for full offline access (FR-10).
 
-**Side effect on write:** when `defaultCurrency` changes, every `recurringExpenses/{id}.budgetRecommendation.status` in the account must be set to `'stale'` in the same logical operation (batched write), since `rollingAverageAmount`/`suggestedBudgetedAmount` are cached in the old default currency (§7, resolved decision #4).
+**Side effect on write:** when `defaultCurrency` changes, every `recurringExpenses/{id}.budgetRecommendation.status` in the account must be set to `'stale'` in the same logical operation (batched write), since `rollingAverageAmount`/`suggestedBudgetedAmount` are cached in the old default currency (§7, resolved decision #4). Stage 11's redesign extends this same side effect to §3a below.
+
+---
+
+## 3a. `users/{uid}/currencies/{code}` (Stage 11 redesign)
+
+One doc per currency the user has configured for use — **doc ID is the ISO 4217 currency code itself** (deterministic, like recurring-instance IDs in §6), so a given currency can only ever be added once and existence-checks/removal are a plain path lookup, no query needed.
+
+| Field | Type | Notes |
+|---|---|---|
+| `exchangeRateToDefault` | `number` | rate FROM this currency TO `defaultCurrency` — same direction/semantics as the per-record field of the same name (§8) |
+| `rateSource` | `'manual' \| 'fetched'` | provenance of the configured rate |
+| `status` | `'ok' \| 'stale'` | `'stale'` set in bulk when `defaultCurrency` changes (same batched-write side effect as §3 above); a stale currency is excluded from every currency picker until refreshed |
+| `createdAt` / `updatedAt` | `Timestamp` | |
+
+**Not referenced by ID from any other document.** Every expense/income/recurring-definition record still snapshots its own `currency` + `exchangeRateToDefault` directly and immutably at write time, exactly as §8 describes — this collection only exists to drive *which currencies are offered* when creating/editing a record, and to hold the rate that gets copied into that record at that moment. Removing or staling an added currency here therefore never affects any already-written record or already-existing recurring definition using that currency — only what's offered going forward.
+
+Rationale for moving rate entry here instead of inline on every transaction form (the original Stage 11 shape): most records are entered in the default currency, so asking for a currency + exchange rate on every single entry was disproportionate friction for something used rarely. Configuring a currency once here, then just picking from that short list on every transaction afterward, matches actual usage far better.
 
 ---
 
@@ -164,6 +181,7 @@ Changing `trashRetentionDays` is **not retroactive** — only items trashed afte
 - Every expense/income document (a definition's *current* amount, and every instance/one-time record) carries its own `currency` + `exchangeRateToDefault` + denormalized `amountInDefaultCurrency`.
 - **Immutability boundary:** a recurring definition's `amount`/`currency`/`exchangeRateToDefault` are mutable (it's a live plan the user edits), but once an instance is generated, those values are copied into `budgetedAmount`/`budgetedCurrency`/`exchangeRateToDefault` on the instance and never touched again by later definition edits. Once an instance/one-time record is written, its own rate/converted-amount are never recalculated — even if the default currency later changes or a fresh rate is fetched for a *new* record. This satisfies FR-16 exactly.
 - If the user changes `defaultCurrency` itself, historical `amountInDefaultCurrency` values on existing records are **not** rewritten — old reports keep converting via each record's stored rate into what was the default currency *at the time*. (Budget recommendation caches are the one exception that must react to this change — see §3 and §7's `status: 'stale'`.)
+- **Where a record's rate value comes from (Stage 11 redesign):** a user configures a currency once in Settings → `currencies/{code}` (§3a) — picking it and fetching/entering its rate there. Every expense/income/recurring-definition creation or edit screen then only offers currencies already configured in §3a (plus the default currency itself, implicitly rate `1`), and copies that currency's current `exchangeRateToDefault`/`rateSource` into the record being written. There is no per-transaction rate entry or live-fetch UI anymore — FR-17's live-fetch convenience lives entirely in the §3a configuration screen instead of on every transaction form.
 
 ---
 

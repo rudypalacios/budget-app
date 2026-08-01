@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { CurrencyRateField } from '@/components/currency-rate-field';
+import { AmountCurrencyField } from '@/components/amount-currency-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
+import { parseAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 import type { CurrencyCode } from '@/types/firestore';
 
@@ -27,8 +27,6 @@ export type RecurringIncomeFormValues = {
   frequency: (typeof FREQUENCIES)[number];
   dayOfMonth: string;
   currency: CurrencyCode;
-  // Text, like amount — only meaningful when currency !== defaultCurrency.
-  exchangeRateToDefault: string;
 };
 
 export type RecurringIncomeFormProps = {
@@ -63,29 +61,18 @@ export function RecurringIncomeForm({
       frequency: 'monthly',
       dayOfMonth: '1',
       currency: defaultCurrency,
-      exchangeRateToDefault: '1',
     },
   );
 
-  function handleCurrencyChange(nextCurrency: CurrencyCode) {
-    setValues((current) => ({
-      ...current,
-      currency: nextCurrency,
-      exchangeRateToDefault: nextCurrency === defaultCurrency ? '1' : '',
-    }));
-  }
-
   const parsedAmount = parseAmountInput(values.amount);
   const parsedDayOfMonth = Number(values.dayOfMonth);
-  const parsedRate = parseAmountInput(values.exchangeRateToDefault);
   const isValid =
     !!values.name &&
     !!values.categoryId &&
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
     (values.frequency !== 'monthly' ||
-      (Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31)) &&
-    (values.currency === defaultCurrency || (Number.isFinite(parsedRate) && parsedRate > 0));
+      (Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31));
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -106,21 +93,14 @@ export function RecurringIncomeForm({
         onChangeText={(name) => setValues((current) => ({ ...current, name }))}
         placeholder={t('recurringIncome.form.namePlaceholder')}
       />
-      <TextField
-        label={t('common.amountWithCurrency', { currency: values.currency })}
-        value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        placeholder={t('recurringIncome.form.amountPlaceholder')}
-      />
 
-      <CurrencyRateField
+      <AmountCurrencyField
+        amount={values.amount}
+        onAmountChange={(amount) => setValues((current) => ({ ...current, amount }))}
+        amountPlaceholder={t('recurringIncome.form.amountPlaceholder')}
         currency={values.currency}
-        onCurrencyChange={handleCurrencyChange}
+        onCurrencyChange={(currency) => setValues((current) => ({ ...current, currency }))}
         defaultCurrency={defaultCurrency}
-        rate={values.exchangeRateToDefault}
-        onRateChange={(exchangeRateToDefault) => setValues((current) => ({ ...current, exchangeRateToDefault }))}
       />
 
       <Select

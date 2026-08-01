@@ -1,4 +1,5 @@
 import { createDocumentStore } from './create-document-store';
+import { useCurrenciesStore } from './currencies';
 import { useRecurringExpensesStore } from './recurring-expenses';
 import { useSessionStore } from './session';
 import { firestoreClient } from '@/lib/firebase/firestore';
@@ -52,6 +53,7 @@ export async function updateUserSettings(patch: UpdateUserSettingsInput) {
 
   if (currencyChanged) {
     await markBudgetRecommendationsStale();
+    await markCurrenciesStale();
   }
 }
 
@@ -69,6 +71,24 @@ async function markBudgetRecommendationsStale() {
     recurringExpenseIds.map((id) => ({
       path: `users/${uid}/recurringExpenses/${id}`,
       data: { 'budgetRecommendation.status': 'stale' },
+    })),
+  );
+}
+
+// docs/data-model.md §3a: changing defaultCurrency must flip every
+// currencies/{code}.status to 'stale' in the same logical write, since
+// each configured rate is relative to the *old* default currency — a
+// stale currency is excluded from every currency picker until refreshed.
+async function markCurrenciesStale() {
+  const uid = useSessionStore.getState().uid;
+  if (!uid) return;
+  const currencyCodes = useCurrenciesStore.getState().items.map((item) => item.id);
+  if (currencyCodes.length === 0) return;
+
+  await firestoreClient.batchUpdate(
+    currencyCodes.map((code) => ({
+      path: `users/${uid}/currencies/${code}`,
+      data: { status: 'stale' },
     })),
   );
 }

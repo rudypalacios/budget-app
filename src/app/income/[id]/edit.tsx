@@ -48,8 +48,6 @@ export default function EditIncomeScreen() {
     paid: income.paid,
     date: income.date.toDate(),
     currency: income.currency,
-    exchangeRateToDefault: String(income.exchangeRateToDefault),
-    rateSource: income.rateSource,
   };
 
   return (

@@ -9,6 +9,7 @@ import {
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { parseAmountInput } from '@/lib/currency-input';
+import { getConfiguredRate } from '@/store/currencies';
 import { updateRecurringExpense, useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { useUserSettingsStore } from '@/store/user-settings';
 
@@ -32,14 +33,14 @@ export default function EditRecurringExpenseScreen() {
     // Per data-model.md §5: editing amount/dueDay/currency here only takes
     // effect starting with the next generation cycle — already-generated
     // instances keep their own budgetedAmount/budgetedCurrency snapshot.
+    const { exchangeRateToDefault } = getConfiguredRate(values.currency, defaultCurrency);
     updateRecurringExpense(id, {
       name: values.name,
       categoryId: values.categoryId,
       amount: parseAmountInput(values.amount),
       dueDay: Number(values.dueDay),
       currency: values.currency,
-      exchangeRateToDefault:
-        values.currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault),
+      exchangeRateToDefault,
     });
     router.back();
   }
@@ -50,7 +51,6 @@ export default function EditRecurringExpenseScreen() {
     categoryId: definition.categoryId,
     dueDay: String(definition.dueDay),
     currency: definition.currency,
-    exchangeRateToDefault: String(definition.exchangeRateToDefault),
   };
 
   return (

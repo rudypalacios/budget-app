@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 
 import i18n from '@/localization/i18n';
 import { seedDefaultCategories, subscribeCategories, useCategoriesStore } from '@/store/categories';
+import { subscribeCurrencies } from '@/store/currencies';
 import { subscribeExpenses, useExpensesStore } from '@/store/expenses';
 import { subscribeIncomes, useIncomesStore } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
@@ -42,6 +43,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!uid) return;
     subscribeCategories(uid);
+    subscribeCurrencies(uid);
     subscribeExpenses(uid);
     subscribeIncomes(uid);
     subscribeRecurringExpenses(uid);
@@ -116,6 +118,9 @@ export default function RootLayout() {
         <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="currencies/index" />
+        <Stack.Screen name="currencies/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="currencies/[code]/edit" options={{ presentation: 'modal' }} />
         {/* Excludes the login screen from the navigator entirely (not just a
             post-mount redirect) once already signed in for real, so it can
             never render even for a single frame — reached while already

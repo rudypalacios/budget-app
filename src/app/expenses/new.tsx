@@ -5,6 +5,7 @@ import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { parseAmountInput } from '@/lib/currency-input';
+import { getConfiguredRate } from '@/store/currencies';
 import { addExpense } from '@/store/expenses';
 import { addRecurringExpense } from '@/store/recurring-expenses';
 import { generateExpenseInstancesForDefinition } from '@/store/recurring-generation';
@@ -18,8 +19,7 @@ export default function NewExpenseScreen() {
 
   async function handleSubmit(values: ExpenseFormValues) {
     const currency = values.currency;
-    const exchangeRateToDefault = currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault);
-    const rateSource = values.rateSource;
+    const { exchangeRateToDefault, rateSource } = getConfiguredRate(currency, defaultCurrency);
 
     if (values.isRecurring) {
       if (!uid) return;

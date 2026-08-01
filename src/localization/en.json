@@ -15,7 +15,9 @@
     "done": "Done",
     "selectDatePlaceholder": "Select date",
     "appName": "Budget App",
-    "actionsFor": "Actions for {{name}}"
+    "actionsFor": "Actions for {{name}}",
+    "amount": "Amount",
+    "remove": "Remove"
   },
   "nav": {
     "payments": "Payments",
@@ -104,6 +106,12 @@
       "manage": "Manage categories",
       "count_one": "{{count}} category",
       "count_other": "{{count}} categories"
+    },
+    "currencies": {
+      "title": "Currencies",
+      "manage": "Manage currencies",
+      "count_one": "{{count}} currency added",
+      "count_other": "{{count}} currencies added"
     },
     "reminders": {
       "title": "Reminders",
@@ -245,11 +253,25 @@
   },
   "currencyRate": {
     "currency": "Currency",
+    "currencyWithRate": "Currency ({{rate}})",
     "rate": "Exchange rate to {{defaultCurrency}}",
     "ratePlaceholder": "e.g. 7.62",
     "fetchRate": "Fetch rate",
     "fetchError": "Couldn't fetch a rate. Enter it manually.",
     "attribution": "Rates by Exchange Rate API"
+  },
+  "currencies": {
+    "title": "Currencies",
+    "allCurrencies": "All currencies",
+    "addAction": "+ Add",
+    "addTitle": "Add currency",
+    "editTitle": "Update {{currency}} rate",
+    "notFoundTitle": "Currency not found",
+    "notFoundBody": "This currency is no longer configured.",
+    "empty": "No currencies added yet.",
+    "needsRefresh": "Needs refresh",
+    "editRate": "Edit rate",
+    "allAdded": "Every supported currency has already been added."
   },
   "payments": {
     "title": "Payments",

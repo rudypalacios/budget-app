@@ -47,8 +47,6 @@ export default function EditExpenseScreen() {
     paid: expense.paid,
     date: expense.date.toDate(),
     currency: expense.currency,
-    exchangeRateToDefault: String(expense.exchangeRateToDefault),
-    rateSource: expense.rateSource,
   };
 
   return (

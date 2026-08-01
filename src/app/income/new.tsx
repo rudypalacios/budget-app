@@ -5,6 +5,7 @@ import { IncomeForm, type IncomeFormValues } from '@/components/income-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { parseAmountInput } from '@/lib/currency-input';
+import { getConfiguredRate } from '@/store/currencies';
 import { addIncome } from '@/store/incomes';
 import { generateIncomeInstancesForDefinition } from '@/store/recurring-generation';
 import { addRecurringIncome } from '@/store/recurring-incomes';
@@ -18,8 +19,7 @@ export default function NewIncomeScreen() {
 
   async function handleSubmit(values: IncomeFormValues) {
     const currency = values.currency;
-    const exchangeRateToDefault = currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault);
-    const rateSource = values.rateSource;
+    const { exchangeRateToDefault, rateSource } = getConfiguredRate(currency, defaultCurrency);
 
     if (values.isRecurring) {
       if (!uid) return;

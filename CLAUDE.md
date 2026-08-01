@@ -221,6 +221,24 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
+- **Unexplained dual-currency miscalculation spotted on one historical
+  record, not yet root-caused** (Stage 11 redesign review) — a Payments
+  dashboard row showed `-€ 25,12 (Q 14.00)`, but the real EUR→GTQ rate at
+  the time (~8.78) implies that conversion should read closer to
+  `Q 220.55`. Traced the arithmetic in `formatCurrencyWithConversion`
+  (`src/lib/format-currency.ts`) and `amountInDefaultCurrency` computation
+  (`addExpense`/`setExpenseInstanceAt` in `src/store/expenses.ts`) and
+  found no bug in either — both correctly multiply `amount *
+  exchangeRateToDefault` using a rate captured via the (now-removed)
+  inline per-transaction fetch/entry flow that existed before this
+  stage's redesign. Most likely explanation: a manually-typed rate entered
+  in the wrong direction/magnitude in that old inline UI, which the
+  redesign's Settings-based, rate-visible-before-use flow should prevent
+  going forward — but this wasn't confirmed, since the user explicitly
+  asked not to investigate further this stage ("it could be that it
+  wasn't saved properly, I'll review it later"). If it recurs under the
+  new flow, that would point at a real remaining bug rather than a
+  one-off bad manual entry.
 - **Anonymous-to-existing-account linking is silent, no merge confirmation**
   (found during Stage 9b closeout, auditing `LoginScenarios.txt`) — when an
   anonymous session with local data tries to link a credential (email,
@@ -452,12 +470,35 @@ requirements it captured for later (§3).
   write path that previously hardcoded them (`// no multi-currency yet —
   Stage 10` comments across `src/store/expenses.ts`, `incomes.ts`,
   `recurring-expenses.ts`, `recurring-incomes.ts`).
-- New `src/components/currency-rate-field.tsx` — shared currency `Select`
-  + rate `TextField` + "Fetch rate" `Button`, used by `ExpenseForm`/
-  `IncomeForm` (creation only — locked via a new `disableCurrencyEdit`
-  prop on Edit, matching FR-16) and by `RecurringExpenseForm`/
-  `RecurringIncomeForm` (always editable — a recurring definition is a
-  live template per data-model.md §5).
+- **Redesigned mid-stage after initial review**: currency setup moved out
+  of the transaction forms entirely into a one-time-per-currency
+  configuration step — new `users/{uid}/currencies/{code}` collection
+  (`docs/data-model.md` §3a, `src/store/currencies.ts`) and a "Manage
+  currencies" section in Settings (`src/app/currencies/`) where a
+  currency is added once (pick it, fetch/enter its rate). Transaction
+  forms (`ExpenseForm`/`IncomeForm`/`RecurringExpenseForm`/
+  `RecurringIncomeForm`) then only ever offer a plain pick from that
+  pre-configured list via new `src/components/amount-currency-field.tsx`
+  — no rate entry/fetch UI per transaction at all, and the picker doesn't
+  render when nothing's been configured yet. `CurrencyRateField`
+  (currency `Select` + rate `TextField` + "Fetch rate" `Button`) still
+  exists but is now exclusively the Settings add/refresh-rate building
+  block. Rationale: most records are entered in the default currency, so
+  asking for a currency + exchange rate on every entry was disproportionate
+  friction for something used rarely.
+- Changing `defaultCurrency` now also batch-marks every added currency
+  `status: 'stale'` (`markCurrenciesStale`, `src/store/user-settings.ts`,
+  mirroring the existing `budgetRecommendation.status` side effect) — a
+  stale currency drops out of every transaction-form picker until
+  refreshed from its Settings entry, since its rate is relative to the
+  *old* default and would silently be wrong for the new one.
+- `AmountCurrencyField` lays the amount field and currency picker out
+  side by side on web above a new `FormRowBreakpoint` (480px,
+  `src/constants/theme.ts`), stacked into a column below it — native is
+  always narrower than that, so it always renders as a column with no
+  platform-split file needed. Once a non-default currency is picked, the
+  picker's own label shows its configured rate (e.g. `Currency (Q 8.78)`)
+  via the existing `formatCurrency` convention.
 - New `src/lib/exchange-rate.ts` — live-rate fetch via
   `open.er-api.com` (free, no API key), gated behind an explicit "Fetch
   rate" button and `useNetworkStatus()` (disabled offline); manual entry
@@ -471,16 +512,20 @@ requirements it captured for later (§3).
   Payments dashboard rows whenever a record's own currency differs from
   the default; reuses `formatCurrency`'s existing convention for both
   halves.
-- Fixed two correctness gaps this stage's mixed-currency data would
-  otherwise have exposed: `updateExpense`/`updateIncome` now recompute
-  `amountInDefaultCurrency` when `amount` changes (previously never
-  recalculated after creation — the prior Known Issues entry on this is
-  now resolved); `budget.tsx`'s category-actual total now sums
+- Fixed one correctness gap this stage's mixed-currency data would
+  otherwise have exposed: `budget.tsx`'s category-actual total now sums
   `amountInDefaultCurrency` and displays in the real `defaultCurrency`
   instead of summing raw `amount` under a hardcoded `'GTQ'` label. The
   "budgeted" side of that screen is still `sample-data.ts` — real
-  budget-vs-actual wiring stays Stage 12/13's job.
+  budget-vs-actual wiring stays Stage 12/13's job. (A separate reported
+  miscalculation on one specific historical record was flagged but
+  deliberately not investigated this stage, at the user's request — see
+  Known Issues.)
 - `firestore.rules` gained a new `unchanged('currency')` lock on
   `expenses`/`incomes` update (paralleling the existing
   `exchangeRateToDefault` lock) — `currency` stays mutable on
-  `recurringExpenses`/`recurringIncomes`, deliberately not locked there.
+  `recurringExpenses`/`recurringIncomes`, deliberately not locked there —
+  plus a plain owner-only CRUD block for the new `currencies` collection.
+  **Deployed to the live Firebase project** (`lighthouse-budget-app`) via
+  `firebase deploy --only firestore:rules` — this stage's rules changes
+  did not exist in production before that deploy.

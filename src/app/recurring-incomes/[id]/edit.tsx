@@ -6,6 +6,7 @@ import { RecurringIncomeForm, type RecurringIncomeFormValues } from '@/component
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { parseAmountInput } from '@/lib/currency-input';
+import { getConfiguredRate } from '@/store/currencies';
 import { updateRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { useUserSettingsStore } from '@/store/user-settings';
 
@@ -29,6 +30,7 @@ export default function EditRecurringIncomeScreen() {
     // Per data-model.md §5: editing amount/frequency/dayOfMonth here only
     // takes effect starting with the next generation cycle —
     // already-generated instances are untouched.
+    const { exchangeRateToDefault } = getConfiguredRate(values.currency, defaultCurrency);
     updateRecurringIncome(id, {
       name: values.name,
       categoryId: values.categoryId,
@@ -36,8 +38,7 @@ export default function EditRecurringIncomeScreen() {
       frequency: values.frequency,
       dayOfMonth: values.frequency === 'monthly' ? Number(values.dayOfMonth) : null,
       currency: values.currency,
-      exchangeRateToDefault:
-        values.currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault),
+      exchangeRateToDefault,
     });
     router.back();
   }
@@ -49,7 +50,6 @@ export default function EditRecurringIncomeScreen() {
     frequency: definition.frequency,
     dayOfMonth: String(definition.dayOfMonth ?? 1),
     currency: definition.currency,
-    exchangeRateToDefault: String(definition.exchangeRateToDefault),
   };
 
   return (

@@ -69,6 +69,16 @@ service cloud.firestore {
         allow delete: if isOwner(uid);
       }
 
+      // Currencies configured for use in transaction forms (Stage 11
+      // redesign, docs/data-model.md §3a) — plain owner-only CRUD, no
+      // lifecycle state machine needed. Safe to hard-delete: unlike
+      // categories, nothing references a currency doc by ID, since every
+      // expense/income/recurring definition snapshots its own currency +
+      // rate directly at write time.
+      match /currencies/{code} {
+        allow read, create, update, delete: if isOwner(uid);
+      }
+
       match /recurringExpenses/{id} {
         allow read: if isOwner(uid);
         allow create: if isOwner(uid) && isValidNewLifecycle();

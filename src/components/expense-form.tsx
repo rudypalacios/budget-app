@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { CurrencyRateField } from '@/components/currency-rate-field';
+import { AmountCurrencyField } from '@/components/amount-currency-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -12,7 +12,7 @@ import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
-import type { CurrencyCode, RateSource } from '@/types/firestore';
+import type { CurrencyCode } from '@/types/firestore';
 
 export type ExpenseFormValues = {
   name: string;
@@ -26,9 +26,6 @@ export type ExpenseFormValues = {
   paid: boolean;
   date: Date | null;
   currency: CurrencyCode;
-  // Text, like amount — only meaningful when currency !== defaultCurrency.
-  exchangeRateToDefault: string;
-  rateSource: RateSource;
 };
 
 export type ExpenseFormProps = {
@@ -44,14 +41,16 @@ export type ExpenseFormProps = {
   disableRecurringToggle?: boolean;
   // Set on Edit — a one-time/instance record's own currency+rate are never
   // recalculated once written (data-model.md §8, FR-16; firestore.rules
-  // locks both). The picker is hidden outright rather than shown disabled,
-  // same convention as disableRecurringToggle above.
+  // locks both). The currency picker is hidden outright rather than shown
+  // disabled, same convention as disableRecurringToggle above — Edit falls
+  // back to a plain amount field with the record's own currency baked into
+  // its label, since AmountCurrencyField's picker is only for the still-
+  // editable case.
   disableCurrencyEdit?: boolean;
   // The app's current default-currency setting — seeds a new record's
-  // initial currency selection and drives CurrencyRateField's "does this
-  // record need a rate field" comparison. Not meaningful when
-  // disableCurrencyEdit is set (the record's own saved currency, carried
-  // in initialValues.currency, is what's shown instead).
+  // initial currency selection. Not meaningful when disableCurrencyEdit is
+  // set (the record's own saved currency, carried in initialValues.currency,
+  // is what's shown instead).
   defaultCurrency: CurrencyCode;
 };
 
@@ -80,31 +79,16 @@ export function ExpenseForm({
       paid: false,
       date: null,
       currency: defaultCurrency,
-      exchangeRateToDefault: '1',
-      rateSource: 'manual',
     },
   );
 
-  function handleCurrencyChange(nextCurrency: CurrencyCode) {
-    setValues((current) => ({
-      ...current,
-      currency: nextCurrency,
-      exchangeRateToDefault: nextCurrency === defaultCurrency ? '1' : '',
-      rateSource: 'manual',
-    }));
-  }
-
   const parsedAmount = parseAmountInput(values.amount);
-  const parsedRate = parseAmountInput(values.exchangeRateToDefault);
   const isValid =
     !!values.name &&
     !!values.categoryId &&
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
-    (values.isRecurring || values.date !== null) &&
-    (disableCurrencyEdit ||
-      values.currency === defaultCurrency ||
-      (Number.isFinite(parsedRate) && parsedRate > 0));
+    (values.isRecurring || values.date !== null);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -125,25 +109,24 @@ export function ExpenseForm({
         onChangeText={(name) => setValues((current) => ({ ...current, name }))}
         placeholder={t('expenses.form.namePlaceholder')}
       />
-      <TextField
-        label={t('common.amountWithCurrency', { currency: values.currency })}
-        value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        placeholder={t('expenses.form.amountPlaceholder')}
-      />
 
-      {!disableCurrencyEdit && (
-        <CurrencyRateField
+      {disableCurrencyEdit ? (
+        <TextField
+          label={t('common.amountWithCurrency', { currency: values.currency })}
+          value={values.amount}
+          onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+          placeholder={t('expenses.form.amountPlaceholder')}
+        />
+      ) : (
+        <AmountCurrencyField
+          amount={values.amount}
+          onAmountChange={(amount) => setValues((current) => ({ ...current, amount }))}
+          amountPlaceholder={t('expenses.form.amountPlaceholder')}
           currency={values.currency}
-          onCurrencyChange={handleCurrencyChange}
+          onCurrencyChange={(currency) => setValues((current) => ({ ...current, currency }))}
           defaultCurrency={defaultCurrency}
-          rate={values.exchangeRateToDefault}
-          onRateChange={(exchangeRateToDefault) =>
-            setValues((current) => ({ ...current, exchangeRateToDefault }))
-          }
-          onRateSourceChange={(rateSource) => setValues((current) => ({ ...current, rateSource }))}
         />
       )}
 
