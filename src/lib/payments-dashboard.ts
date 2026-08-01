@@ -17,6 +17,7 @@ export type PaymentRow = {
   date: Date;
   amount: number;
   currency: string;
+  amountInDefaultCurrency: number;
   paid: boolean;
   paidDate: Date | null;
   skipped: boolean;
@@ -39,6 +40,7 @@ export function buildPaymentRows(
     // src/app/(tabs)/expenses.tsx.
     amount: expense.amount ?? expense.budgetedAmount ?? 0,
     currency: expense.currency,
+    amountInDefaultCurrency: expense.amountInDefaultCurrency,
     paid: expense.paid,
     paidDate: expense.paidDate ? expense.paidDate.toDate() : null,
     skipped: expense.kind === 'recurringInstance' ? expense.skipped : false,
@@ -55,6 +57,7 @@ export function buildPaymentRows(
     date: income.date.toDate(),
     amount: income.amount,
     currency: income.currency,
+    amountInDefaultCurrency: income.amountInDefaultCurrency,
     paid: income.paid,
     paidDate: income.paidDate ? income.paidDate.toDate() : null,
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,

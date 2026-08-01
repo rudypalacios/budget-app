@@ -243,6 +243,14 @@
     },
     "chartAccessibilityLabel": "Budget history chart"
   },
+  "currencyRate": {
+    "currency": "Currency",
+    "rate": "Exchange rate to {{defaultCurrency}}",
+    "ratePlaceholder": "e.g. 7.62",
+    "fetchRate": "Fetch rate",
+    "fetchError": "Couldn't fetch a rate. Enter it manually.",
+    "attribution": "Rates by Exchange Rate API"
+  },
   "payments": {
     "title": "Payments",
     "quickExpense": "Quick expense",

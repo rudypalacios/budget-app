@@ -46,6 +46,9 @@ export default function EditExpenseScreen() {
     dueDay: String(expense.date.toDate().getDate()),
     paid: expense.paid,
     date: expense.date.toDate(),
+    currency: expense.currency,
+    exchangeRateToDefault: String(expense.exchangeRateToDefault),
+    rateSource: expense.rateSource,
   };
 
   return (
@@ -53,11 +56,12 @@ export default function EditExpenseScreen() {
       <ModalHeader title={t('expenses.editTitle')} />
       <ExpenseForm
         initialValues={initialValues}
-        currency={expense.currency}
+        defaultCurrency={expense.currency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
         disableRecurringToggle
+        disableCurrencyEdit
       />
     </ScreenScroll>
   );

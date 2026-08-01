@@ -17,11 +17,14 @@ export default function NewIncomeScreen() {
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   async function handleSubmit(values: IncomeFormValues) {
+    const currency = values.currency;
+    const exchangeRateToDefault = currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault);
+    const rateSource = values.rateSource;
+
     if (values.isRecurring) {
       if (!uid) return;
       const startDate = new Date();
       const categoryId = values.categoryId;
-      const currency = defaultCurrency;
       const amount = parseAmountInput(values.amount);
       const dayOfMonth = values.frequency === 'monthly' ? Number(values.dayOfMonth) : null;
 
@@ -30,6 +33,7 @@ export default function NewIncomeScreen() {
         categoryId,
         amount,
         currency,
+        exchangeRateToDefault,
         startDate,
         frequency: values.frequency,
         dayOfMonth,
@@ -39,7 +43,18 @@ export default function NewIncomeScreen() {
       // the next app launch's catch-up scan (src/app/_layout.tsx).
       await generateIncomeInstancesForDefinition(
         uid,
-        { id, categoryId, name: values.name, currency, amount, frequency: values.frequency, dayOfMonth, anchorDate: null, startDate },
+        {
+          id,
+          categoryId,
+          name: values.name,
+          currency,
+          exchangeRateToDefault,
+          amount,
+          frequency: values.frequency,
+          dayOfMonth,
+          anchorDate: null,
+          startDate,
+        },
         new Date(),
       );
     } else {
@@ -47,7 +62,9 @@ export default function NewIncomeScreen() {
         name: values.name,
         categoryId: values.categoryId,
         amount: parseAmountInput(values.amount),
-        currency: defaultCurrency,
+        currency,
+        exchangeRateToDefault,
+        rateSource,
         // isValid requires values.date to be set on the one-time branch —
         // the fallback here only guards the type, it's never actually hit.
         date: values.date ?? new Date(),
@@ -61,7 +78,7 @@ export default function NewIncomeScreen() {
     <ScreenScroll>
       <ModalHeader title={t('income.addTitle')} />
       <IncomeForm
-        currency={defaultCurrency}
+        defaultCurrency={defaultCurrency}
         submitLabel={t('common.save')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { CurrencyRateField } from '@/components/currency-rate-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -10,6 +11,7 @@ import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
+import type { CurrencyCode } from '@/types/firestore';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
 const FREQUENCY_LABEL_KEY: Record<(typeof FREQUENCIES)[number], string> = {
@@ -24,6 +26,9 @@ export type RecurringIncomeFormValues = {
   categoryId: string;
   frequency: (typeof FREQUENCIES)[number];
   dayOfMonth: string;
+  currency: CurrencyCode;
+  // Text, like amount — only meaningful when currency !== defaultCurrency.
+  exchangeRateToDefault: string;
 };
 
 export type RecurringIncomeFormProps = {
@@ -31,12 +36,10 @@ export type RecurringIncomeFormProps = {
   submitLabel: string;
   onSubmit: (values: RecurringIncomeFormValues) => void | Promise<void>;
   onCancel: () => void;
-  // This form only ever appears on the Edit screen (no "new recurring
-  // income via this form" route exists — recurring definitions are created
-  // via IncomeForm's isRecurring toggle instead), so this is always the
-  // definition's own saved currency, never the live default-currency
-  // setting — see ExpenseForm's identical `currency` prop comment.
-  currency: string;
+  // The app's current default-currency setting — a recurring definition's
+  // currency/rate stay genuinely editable here (data-model.md §5: a "live
+  // template", re-editable), unlike the one-time/instance forms.
+  defaultCurrency: CurrencyCode;
 };
 
 export function RecurringIncomeForm({
@@ -44,7 +47,7 @@ export function RecurringIncomeForm({
   submitLabel,
   onSubmit,
   onCancel,
-  currency,
+  defaultCurrency,
 }: RecurringIncomeFormProps) {
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
@@ -59,18 +62,30 @@ export function RecurringIncomeForm({
       categoryId: incomeCategories[0]?.id ?? '',
       frequency: 'monthly',
       dayOfMonth: '1',
+      currency: defaultCurrency,
+      exchangeRateToDefault: '1',
     },
   );
 
+  function handleCurrencyChange(nextCurrency: CurrencyCode) {
+    setValues((current) => ({
+      ...current,
+      currency: nextCurrency,
+      exchangeRateToDefault: nextCurrency === defaultCurrency ? '1' : '',
+    }));
+  }
+
   const parsedAmount = parseAmountInput(values.amount);
   const parsedDayOfMonth = Number(values.dayOfMonth);
+  const parsedRate = parseAmountInput(values.exchangeRateToDefault);
   const isValid =
     !!values.name &&
     !!values.categoryId &&
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
     (values.frequency !== 'monthly' ||
-      (Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31));
+      (Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31)) &&
+    (values.currency === defaultCurrency || (Number.isFinite(parsedRate) && parsedRate > 0));
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -92,12 +107,20 @@ export function RecurringIncomeForm({
         placeholder={t('recurringIncome.form.namePlaceholder')}
       />
       <TextField
-        label={t('common.amountWithCurrency', { currency })}
+        label={t('common.amountWithCurrency', { currency: values.currency })}
         value={values.amount}
         onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
         keyboardType="decimal-pad"
         inputMode="decimal"
         placeholder={t('recurringIncome.form.amountPlaceholder')}
+      />
+
+      <CurrencyRateField
+        currency={values.currency}
+        onCurrencyChange={handleCurrencyChange}
+        defaultCurrency={defaultCurrency}
+        rate={values.exchangeRateToDefault}
+        onRateChange={(exchangeRateToDefault) => setValues((current) => ({ ...current, exchangeRateToDefault }))}
       />
 
       <Select

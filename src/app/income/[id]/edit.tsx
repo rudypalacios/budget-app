@@ -47,6 +47,9 @@ export default function EditIncomeScreen() {
     dayOfMonth: '1',
     paid: income.paid,
     date: income.date.toDate(),
+    currency: income.currency,
+    exchangeRateToDefault: String(income.exchangeRateToDefault),
+    rateSource: income.rateSource,
   };
 
   return (
@@ -54,11 +57,12 @@ export default function EditIncomeScreen() {
       <ModalHeader title={t('income.editTitle')} />
       <IncomeForm
         initialValues={initialValues}
-        currency={income.currency}
+        defaultCurrency={income.currency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
         disableRecurringToggle
+        disableCurrencyEdit
       />
     </ScreenScroll>
   );

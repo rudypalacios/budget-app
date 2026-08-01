@@ -4,6 +4,7 @@ import type {
   CurrencyCode,
   IncomeRecord,
   OneTimeIncome,
+  RateSource,
   RecurringIncomeInstance,
   Timestamp,
 } from '@/types/firestore';
@@ -28,6 +29,11 @@ export type NewIncomeInput = {
   categoryId: string;
   amount: number;
   currency: CurrencyCode;
+  // Rate for `currency` -> the app's default currency at entry time,
+  // captured once and never recalculated (FR-16). 1 when currency already
+  // is the default currency.
+  exchangeRateToDefault: number;
+  rateSource: RateSource;
   date: Date;
   // Whether this income has already been received — user-set initial state,
   // defaulting to unpaid (expected/future income) unless the caller's form
@@ -48,9 +54,9 @@ export function addIncome(input: NewIncomeInput) {
     categoryId: input.categoryId,
     date: toTimestamp(input.date),
     currency: input.currency,
-    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
-    amountInDefaultCurrency: input.amount,
-    rateSource: 'manual',
+    exchangeRateToDefault: input.exchangeRateToDefault,
+    amountInDefaultCurrency: input.amount * input.exchangeRateToDefault,
+    rateSource: input.rateSource,
     amount: input.amount,
     paid,
     paidDate: paid ? toTimestamp(new Date()) : null,
@@ -71,7 +77,19 @@ type EditableIncomeFields = Pick<
 // exchangeRateToDefault/kind/recurringIncomeId are deliberately excluded —
 // firestore.rules locks them after creation (FR-16).
 export function updateIncome(id: string, patch: Partial<EditableIncomeFields>) {
-  return store.update(id, patch);
+  if (patch.amount === undefined) {
+    return store.update(id, patch);
+  }
+  // amountInDefaultCurrency is denormalized from amount * the record's own
+  // immutable exchangeRateToDefault — recompute it here whenever amount
+  // changes so it doesn't go stale (previously a Known Issue: edits never
+  // touched this field at all).
+  const income = store.useStore.getState().items.find((item) => item.id === id);
+  const exchangeRateToDefault = income?.exchangeRateToDefault ?? 1;
+  return store.update(id, {
+    ...patch,
+    amountInDefaultCurrency: patch.amount * exchangeRateToDefault,
+  });
 }
 
 export function setIncomeReceived(id: string, paid: boolean) {
@@ -100,6 +118,9 @@ export type IncomeInstanceInput = {
   name: string;
   date: Date;
   currency: CurrencyCode;
+  // Snapshotted from the recurring definition's own rate at generation
+  // time (data-model.md §8) — never touched again by later definition edits.
+  exchangeRateToDefault: number;
   amount: number;
 };
 
@@ -114,8 +135,8 @@ export function setIncomeInstanceAt(id: string, input: IncomeInstanceInput) {
     categoryId: input.categoryId,
     date: toTimestamp(input.date),
     currency: input.currency,
-    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
-    amountInDefaultCurrency: input.amount,
+    exchangeRateToDefault: input.exchangeRateToDefault,
+    amountInDefaultCurrency: input.amount * input.exchangeRateToDefault,
     rateSource: 'manual',
     // Unlike expenses, income's `amount` is never null — it's the
     // expected/received amount, pre-filled from the definition and editable

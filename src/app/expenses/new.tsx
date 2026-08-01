@@ -17,20 +17,31 @@ export default function NewExpenseScreen() {
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   async function handleSubmit(values: ExpenseFormValues) {
+    const currency = values.currency;
+    const exchangeRateToDefault = currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault);
+    const rateSource = values.rateSource;
+
     if (values.isRecurring) {
       if (!uid) return;
       const startDate = new Date();
       const categoryId = values.categoryId;
-      const currency = defaultCurrency;
       const amount = parseAmountInput(values.amount);
       const dueDay = Number(values.dueDay);
 
-      const id = await addRecurringExpense({ name: values.name, categoryId, amount, currency, dueDay, startDate });
+      const id = await addRecurringExpense({
+        name: values.name,
+        categoryId,
+        amount,
+        currency,
+        exchangeRateToDefault,
+        dueDay,
+        startDate,
+      });
       // Generate this period's instance immediately rather than waiting for
       // the next app launch's catch-up scan (src/app/_layout.tsx).
       await generateExpenseInstancesForDefinition(
         uid,
-        { id, categoryId, name: values.name, currency, amount, dueDay, startDate },
+        { id, categoryId, name: values.name, currency, exchangeRateToDefault, amount, dueDay, startDate },
         new Date(),
       );
     } else {
@@ -38,7 +49,9 @@ export default function NewExpenseScreen() {
         name: values.name,
         categoryId: values.categoryId,
         amount: parseAmountInput(values.amount),
-        currency: defaultCurrency,
+        currency,
+        exchangeRateToDefault,
+        rateSource,
         // isValid requires values.date to be set on the one-time branch —
         // the fallback here only guards the type, it's never actually hit.
         date: values.date ?? new Date(),
@@ -52,7 +65,7 @@ export default function NewExpenseScreen() {
     <ScreenScroll>
       <ModalHeader title={t('expenses.addTitle')} />
       <ExpenseForm
-        currency={defaultCurrency}
+        defaultCurrency={defaultCurrency}
         submitLabel={t('common.save')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

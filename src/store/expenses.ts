@@ -4,6 +4,7 @@ import type {
   CurrencyCode,
   ExpenseRecord,
   OneTimeExpense,
+  RateSource,
   RecurringExpenseInstance,
   Timestamp,
 } from '@/types/firestore';
@@ -28,6 +29,11 @@ export type NewExpenseInput = {
   categoryId: string;
   amount: number;
   currency: CurrencyCode;
+  // Rate for `currency` -> the app's default currency at entry time,
+  // captured once and never recalculated (FR-16). 1 when currency already
+  // is the default currency.
+  exchangeRateToDefault: number;
+  rateSource: RateSource;
   date: Date;
   // A one-time expense can be something already spent (paid) or a planned
   // future expense entered ahead of time (unpaid) — the caller's form
@@ -47,9 +53,9 @@ export function addExpense(input: NewExpenseInput) {
     categoryId: input.categoryId,
     date: toTimestamp(input.date),
     currency: input.currency,
-    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
-    amountInDefaultCurrency: input.amount,
-    rateSource: 'manual',
+    exchangeRateToDefault: input.exchangeRateToDefault,
+    amountInDefaultCurrency: input.amount * input.exchangeRateToDefault,
+    rateSource: input.rateSource,
     budgetedAmount: null,
     budgetedCurrency: null,
     amount: input.amount,
@@ -72,7 +78,19 @@ type EditableExpenseFields = Pick<
 // exchangeRateToDefault/budgetedAmount/budgetedCurrency/kind/recurringExpenseId
 // are deliberately excluded — firestore.rules locks them after creation (FR-16).
 export function updateExpense(id: string, patch: Partial<EditableExpenseFields>) {
-  return store.update(id, patch);
+  if (patch.amount === undefined) {
+    return store.update(id, patch);
+  }
+  // amountInDefaultCurrency is denormalized from amount * the record's own
+  // immutable exchangeRateToDefault — recompute it here whenever amount
+  // changes so it doesn't go stale (previously a Known Issue: edits never
+  // touched this field at all).
+  const expense = store.useStore.getState().items.find((item) => item.id === id);
+  const exchangeRateToDefault = expense?.exchangeRateToDefault ?? 1;
+  return store.update(id, {
+    ...patch,
+    amountInDefaultCurrency: patch.amount * exchangeRateToDefault,
+  });
 }
 
 export function setExpensePaid(id: string, paid: boolean) {
@@ -105,6 +123,9 @@ export type ExpenseInstanceInput = {
   name: string;
   date: Date;
   currency: CurrencyCode;
+  // Snapshotted from the recurring definition's own rate at generation
+  // time (data-model.md §8) — never touched again by later definition edits.
+  exchangeRateToDefault: number;
   budgetedAmount: number;
   budgetedCurrency: CurrencyCode;
 };
@@ -120,12 +141,12 @@ export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
     categoryId: input.categoryId,
     date: toTimestamp(input.date),
     currency: input.currency,
-    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
+    exchangeRateToDefault: input.exchangeRateToDefault,
     // amount is null until paid (data-model.md §6), so there's no real
     // "amount in default currency" yet either — the budgeted figure is the
     // best available estimate until setExpensePaid/updateExpense supply a
     // real amount.
-    amountInDefaultCurrency: input.budgetedAmount,
+    amountInDefaultCurrency: input.budgetedAmount * input.exchangeRateToDefault,
     rateSource: 'manual',
     budgetedAmount: input.budgetedAmount,
     budgetedCurrency: input.budgetedCurrency,

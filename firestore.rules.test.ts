@@ -165,6 +165,13 @@ describe('recurringExpenses: lifecycle state machine (FR-4a-4e)', () => {
     });
     await assertSucceeds(deleteDoc(doc(ownerDb(), path)));
   });
+
+  test('changing currency on update succeeds — a recurring definition is a live, re-editable template (data-model.md §5), unlike a written instance/one-time record', async () => {
+    await seed(path, baseDoc);
+    await assertSucceeds(
+      updateDoc(doc(ownerDb(), path), { currency: 'USD', exchangeRateToDefault: 0.13 }),
+    );
+  });
 });
 
 describe('expenses: field immutability (FR-16, data-model.md §8)', () => {
@@ -198,6 +205,11 @@ describe('expenses: field immutability (FR-16, data-model.md §8)', () => {
   test('changing exchangeRateToDefault on update is rejected', async () => {
     await seed(path, baseDoc);
     await assertFails(updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 2 }));
+  });
+
+  test('changing currency on update is rejected (Stage 11 — locked alongside exchangeRateToDefault)', async () => {
+    await seed(path, baseDoc);
+    await assertFails(updateDoc(doc(ownerDb(), path), { currency: 'USD' }));
   });
 
   test('changing budgetedAmount on update is rejected', async () => {
@@ -258,6 +270,11 @@ describe('incomes: field immutability (FR-16) and paid/unpaid parity (FR-5c)', (
   test('changing exchangeRateToDefault on update is rejected', async () => {
     await seed(path, baseDoc);
     await assertFails(updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 2 }));
+  });
+
+  test('changing currency on update is rejected (Stage 11 — locked alongside exchangeRateToDefault)', async () => {
+    await seed(path, baseDoc);
+    await assertFails(updateDoc(doc(ownerDb(), path), { currency: 'USD' }));
   });
 
   test('changing recurringIncomeId on update is rejected', async () => {

@@ -86,10 +86,14 @@ service cloud.firestore {
       }
 
       // expenses: one-time expenses + recurring expense instances.
-      // exchangeRateToDefault and budgetedAmount/budgetedCurrency are
-      // snapshotted once (generation time or entry time) and must never be
-      // rewritten afterward (FR-16) — only the recurring *definition*'s
-      // live template amount/rate is editable, not an already-written record.
+      // currency, exchangeRateToDefault, and budgetedAmount/budgetedCurrency
+      // are snapshotted once (generation time or entry time) and must never
+      // be rewritten afterward (FR-16, data-model.md §8) — only the
+      // recurring *definition*'s live template currency/amount/rate is
+      // editable, not an already-written record. currency is locked
+      // alongside exchangeRateToDefault (Stage 11) since the two are only
+      // meaningful together — changing one without the other would leave a
+      // record's stored rate describing the wrong currency pair.
       // kind and recurringExpenseId are locked too: allowing either to
       // change post-creation would let an instance be silently reparented
       // to a different recurring definition, corrupting the rolling-average
@@ -99,6 +103,7 @@ service cloud.firestore {
         allow create: if isOwner(uid) && isValidNewLifecycle();
         allow update: if isOwner(uid)
           && isValidLifecycleTransition()
+          && unchanged('currency')
           && unchanged('exchangeRateToDefault')
           && unchanged('budgetedAmount')
           && unchanged('budgetedCurrency')
@@ -109,13 +114,14 @@ service cloud.firestore {
 
       // incomes: one-time income + recurring income instances.
       // No budgetedAmount/budgetedCurrency fields on this collection
-      // (docs/data-model.md §6) — exchange rate, kind, and
+      // (docs/data-model.md §6) — currency, exchange rate, kind, and
       // recurringIncomeId are locked for the same reasons as expenses above.
       match /incomes/{id} {
         allow read: if isOwner(uid);
         allow create: if isOwner(uid) && isValidNewLifecycle();
         allow update: if isOwner(uid)
           && isValidLifecycleTransition()
+          && unchanged('currency')
           && unchanged('exchangeRateToDefault')
           && unchanged('kind')
           && unchanged('recurringIncomeId');

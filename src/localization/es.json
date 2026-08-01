@@ -243,6 +243,14 @@
     },
     "chartAccessibilityLabel": "Gráfico del historial de presupuesto"
   },
+  "currencyRate": {
+    "currency": "Moneda",
+    "rate": "Tipo de cambio a {{defaultCurrency}}",
+    "ratePlaceholder": "p. ej. 7.62",
+    "fetchRate": "Obtener tasa",
+    "fetchError": "No se pudo obtener la tasa. Ingrésala manualmente.",
+    "attribution": "Tasas por Exchange Rate API"
+  },
   "payments": {
     "title": "Pagos",
     "quickExpense": "Gasto rápido",

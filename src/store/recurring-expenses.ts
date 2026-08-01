@@ -28,6 +28,7 @@ export type NewRecurringExpenseInput = {
   categoryId: string;
   amount: number;
   currency: CurrencyCode;
+  exchangeRateToDefault: number;
   dueDay: number;
   startDate: Date;
 };
@@ -38,7 +39,7 @@ export function addRecurringExpense(input: NewRecurringExpenseInput) {
     categoryId: input.categoryId,
     amount: input.amount,
     currency: input.currency,
-    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
+    exchangeRateToDefault: input.exchangeRateToDefault,
     dueDay: input.dueDay,
     startDate: toTimestamp(input.startDate),
     remindersEnabled: null,

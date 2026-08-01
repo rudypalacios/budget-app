@@ -10,12 +10,14 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { parseAmountInput } from '@/lib/currency-input';
 import { updateRecurringExpense, useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function EditRecurringExpenseScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useRecurringExpensesStore((state) => state.items);
   const definition = items.find((item) => item.id === id);
+  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   if (!definition) {
     return (
@@ -35,6 +37,9 @@ export default function EditRecurringExpenseScreen() {
       categoryId: values.categoryId,
       amount: parseAmountInput(values.amount),
       dueDay: Number(values.dueDay),
+      currency: values.currency,
+      exchangeRateToDefault:
+        values.currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault),
     });
     router.back();
   }
@@ -44,6 +49,8 @@ export default function EditRecurringExpenseScreen() {
     amount: String(definition.amount),
     categoryId: definition.categoryId,
     dueDay: String(definition.dueDay),
+    currency: definition.currency,
+    exchangeRateToDefault: String(definition.exchangeRateToDefault),
   };
 
   return (
@@ -51,7 +58,7 @@ export default function EditRecurringExpenseScreen() {
       <ModalHeader title={t('recurringExpense.editTitle')} />
       <RecurringExpenseForm
         initialValues={initialValues}
-        currency={definition.currency}
+        defaultCurrency={defaultCurrency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

@@ -7,12 +7,14 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { parseAmountInput } from '@/lib/currency-input';
 import { updateRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
+import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function EditRecurringIncomeScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useRecurringIncomesStore((state) => state.items);
   const definition = items.find((item) => item.id === id);
+  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   if (!definition) {
     return (
@@ -33,6 +35,9 @@ export default function EditRecurringIncomeScreen() {
       amount: parseAmountInput(values.amount),
       frequency: values.frequency,
       dayOfMonth: values.frequency === 'monthly' ? Number(values.dayOfMonth) : null,
+      currency: values.currency,
+      exchangeRateToDefault:
+        values.currency === defaultCurrency ? 1 : parseAmountInput(values.exchangeRateToDefault),
     });
     router.back();
   }
@@ -43,6 +48,8 @@ export default function EditRecurringIncomeScreen() {
     categoryId: definition.categoryId,
     frequency: definition.frequency,
     dayOfMonth: String(definition.dayOfMonth ?? 1),
+    currency: definition.currency,
+    exchangeRateToDefault: String(definition.exchangeRateToDefault),
   };
 
   return (
@@ -50,7 +57,7 @@ export default function EditRecurringIncomeScreen() {
       <ModalHeader title={t('recurringIncome.editTitle')} />
       <RecurringIncomeForm
         initialValues={initialValues}
-        currency={definition.currency}
+        defaultCurrency={defaultCurrency}
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}

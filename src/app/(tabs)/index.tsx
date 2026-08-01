@@ -16,12 +16,13 @@ import { Spacing } from '@/constants/theme';
 import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
-import { formatCurrency } from '@/lib/format-currency';
+import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
 import type { PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
 import { setExpensePaid, setExpenseSkipped } from '@/store/expenses';
 import { setIncomeReceived, setIncomeSkipped } from '@/store/incomes';
+import { useUserSettingsStore } from '@/store/user-settings';
 
 function editHref(row: PaymentRow): Href {
   return row.direction === 'expense'
@@ -55,6 +56,7 @@ export default function PaymentsScreen() {
   const { t } = useTranslation();
   const { overdueUnpaid, upcomingUnpaid, completedThisCycle } = usePaymentsDashboard();
   const categories = useCategoriesStore((state) => state.items);
+  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const theme = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
 
@@ -142,7 +144,12 @@ export default function PaymentsScreen() {
                           style={[isCompleted && styles.completedText]}
                         >
                           {row.direction === 'income' ? '+' : '-'}
-                          {formatCurrency(row.amount, row.currency)}
+                          {formatCurrencyWithConversion(
+                            row.amount,
+                            row.currency,
+                            row.amountInDefaultCurrency,
+                            defaultCurrency,
+                          )}
                         </ThemedText>
                         <OverflowMenu
                           accessibilityLabel={t('common.actionsFor', { name: row.name })}
