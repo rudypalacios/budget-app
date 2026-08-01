@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AmountCurrencyField } from '@/components/amount-currency-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
+import { parseAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
+import type { CurrencyCode } from '@/types/firestore';
 
 const FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const;
 const FREQUENCY_LABEL_KEY: Record<(typeof FREQUENCIES)[number], string> = {
@@ -24,6 +26,7 @@ export type RecurringIncomeFormValues = {
   categoryId: string;
   frequency: (typeof FREQUENCIES)[number];
   dayOfMonth: string;
+  currency: CurrencyCode;
 };
 
 export type RecurringIncomeFormProps = {
@@ -31,12 +34,10 @@ export type RecurringIncomeFormProps = {
   submitLabel: string;
   onSubmit: (values: RecurringIncomeFormValues) => void | Promise<void>;
   onCancel: () => void;
-  // This form only ever appears on the Edit screen (no "new recurring
-  // income via this form" route exists — recurring definitions are created
-  // via IncomeForm's isRecurring toggle instead), so this is always the
-  // definition's own saved currency, never the live default-currency
-  // setting — see ExpenseForm's identical `currency` prop comment.
-  currency: string;
+  // The app's current default-currency setting — a recurring definition's
+  // currency/rate stay genuinely editable here (data-model.md §5: a "live
+  // template", re-editable), unlike the one-time/instance forms.
+  defaultCurrency: CurrencyCode;
 };
 
 export function RecurringIncomeForm({
@@ -44,7 +45,7 @@ export function RecurringIncomeForm({
   submitLabel,
   onSubmit,
   onCancel,
-  currency,
+  defaultCurrency,
 }: RecurringIncomeFormProps) {
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
@@ -59,6 +60,7 @@ export function RecurringIncomeForm({
       categoryId: incomeCategories[0]?.id ?? '',
       frequency: 'monthly',
       dayOfMonth: '1',
+      currency: defaultCurrency,
     },
   );
 
@@ -91,13 +93,14 @@ export function RecurringIncomeForm({
         onChangeText={(name) => setValues((current) => ({ ...current, name }))}
         placeholder={t('recurringIncome.form.namePlaceholder')}
       />
-      <TextField
-        label={t('common.amountWithCurrency', { currency })}
-        value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        placeholder={t('recurringIncome.form.amountPlaceholder')}
+
+      <AmountCurrencyField
+        amount={values.amount}
+        onAmountChange={(amount) => setValues((current) => ({ ...current, amount }))}
+        amountPlaceholder={t('recurringIncome.form.amountPlaceholder')}
+        currency={values.currency}
+        onCurrencyChange={(currency) => setValues((current) => ({ ...current, currency }))}
+        defaultCurrency={defaultCurrency}
       />
 
       <Select

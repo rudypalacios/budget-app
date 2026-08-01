@@ -165,6 +165,13 @@ describe('recurringExpenses: lifecycle state machine (FR-4a-4e)', () => {
     });
     await assertSucceeds(deleteDoc(doc(ownerDb(), path)));
   });
+
+  test('changing currency on update succeeds — a recurring definition is a live, re-editable template (data-model.md §5), unlike a written instance/one-time record', async () => {
+    await seed(path, baseDoc);
+    await assertSucceeds(
+      updateDoc(doc(ownerDb(), path), { currency: 'USD', exchangeRateToDefault: 0.13 }),
+    );
+  });
 });
 
 describe('expenses: field immutability (FR-16, data-model.md §8)', () => {
@@ -198,6 +205,11 @@ describe('expenses: field immutability (FR-16, data-model.md §8)', () => {
   test('changing exchangeRateToDefault on update is rejected', async () => {
     await seed(path, baseDoc);
     await assertFails(updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 2 }));
+  });
+
+  test('changing currency on update is rejected (Stage 11 — locked alongside exchangeRateToDefault)', async () => {
+    await seed(path, baseDoc);
+    await assertFails(updateDoc(doc(ownerDb(), path), { currency: 'USD' }));
   });
 
   test('changing budgetedAmount on update is rejected', async () => {
@@ -260,6 +272,11 @@ describe('incomes: field immutability (FR-16) and paid/unpaid parity (FR-5c)', (
     await assertFails(updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 2 }));
   });
 
+  test('changing currency on update is rejected (Stage 11 — locked alongside exchangeRateToDefault)', async () => {
+    await seed(path, baseDoc);
+    await assertFails(updateDoc(doc(ownerDb(), path), { currency: 'USD' }));
+  });
+
   test('changing recurringIncomeId on update is rejected', async () => {
     await seed(path, baseDoc);
     await assertFails(updateDoc(doc(ownerDb(), path), { recurringIncomeId: 'recInc2' }));
@@ -268,5 +285,42 @@ describe('incomes: field immutability (FR-16) and paid/unpaid parity (FR-5c)', (
   test('marking received (unrelated fields) succeeds', async () => {
     await seed(path, baseDoc);
     await assertSucceeds(updateDoc(doc(ownerDb(), path), { paid: true, paidDate: new Date() }));
+  });
+});
+
+describe('currencies: owner-only CRUD, no lifecycle machinery (Stage 11 redesign, docs/data-model.md §3a)', () => {
+  const path = `users/${OWNER_UID}/currencies/EUR`;
+  const baseDoc = {
+    exchangeRateToDefault: 8.78,
+    rateSource: 'fetched',
+    status: 'ok',
+  };
+
+  test('owner can create', async () => {
+    await assertSucceeds(setDoc(doc(ownerDb(), path), baseDoc));
+  });
+
+  test("a different authenticated user cannot create in another owner's subcollection", async () => {
+    await assertFails(setDoc(doc(otherDb(), path), baseDoc));
+  });
+
+  test('owner can update the rate (e.g. refreshing it)', async () => {
+    await seed(path, baseDoc);
+    await assertSucceeds(updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 9.01, status: 'ok' }));
+  });
+
+  test('owner can mark it stale (defaultCurrency-change batch write)', async () => {
+    await seed(path, baseDoc);
+    await assertSucceeds(updateDoc(doc(ownerDb(), path), { status: 'stale' }));
+  });
+
+  test('owner can delete (removing a previously-added currency)', async () => {
+    await seed(path, baseDoc);
+    await assertSucceeds(deleteDoc(doc(ownerDb(), path)));
+  });
+
+  test("a different authenticated user cannot read another owner's added currency", async () => {
+    await seed(path, baseDoc);
+    await assertFails(getDoc(doc(otherDb(), path)));
   });
 });

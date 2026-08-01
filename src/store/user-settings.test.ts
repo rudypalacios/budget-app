@@ -32,6 +32,11 @@ jest.mock('@/store/recurring-expenses', () => ({
   useRecurringExpensesStore: { getState: () => ({ items: mockRecurringExpenseItems }) },
 }));
 
+let mockCurrencyItems: { id: string }[] = [];
+jest.mock('@/store/currencies', () => ({
+  useCurrenciesStore: { getState: () => ({ items: mockCurrencyItems }) },
+}));
+
 import {
   seedDefaultUserSettings,
   subscribeUserSettings,
@@ -66,6 +71,7 @@ beforeEach(() => {
   mockUpdateDoc.mockClear();
   mockBatchUpdate.mockClear();
   mockRecurringExpenseItems = [];
+  mockCurrencyItems = [];
   useUserSettingsStore.setState({ data: null, isLoading: true, error: null, fromCache: false, hasPendingWrites: false });
 });
 
@@ -131,6 +137,41 @@ describe('updateUserSettings', () => {
       reminders: { enabled: true, leadDays: 1, timeOfDay: null },
     });
     mockRecurringExpenseItems = [];
+
+    await updateUserSettings({ defaultCurrency: 'USD' });
+
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+  });
+
+  it('batch-marks every added currency as stale when defaultCurrency changes (docs/data-model.md §3a)', async () => {
+    emitSnapshot({
+      id: 'test-uid',
+      defaultCurrency: 'GTQ',
+      language: 'en',
+      theme: 'system',
+      trashRetentionDays: 30,
+      reminders: { enabled: true, leadDays: 1, timeOfDay: null },
+    });
+    mockCurrencyItems = [{ id: 'EUR' }, { id: 'USD' }];
+
+    await updateUserSettings({ defaultCurrency: 'MXN' });
+
+    expect(mockBatchUpdate).toHaveBeenCalledWith([
+      { path: 'users/test-uid/currencies/EUR', data: { status: 'stale' } },
+      { path: 'users/test-uid/currencies/USD', data: { status: 'stale' } },
+    ]);
+  });
+
+  it('does not batch-update currencies when there are none added', async () => {
+    emitSnapshot({
+      id: 'test-uid',
+      defaultCurrency: 'GTQ',
+      language: 'en',
+      theme: 'system',
+      trashRetentionDays: 30,
+      reminders: { enabled: true, leadDays: 1, timeOfDay: null },
+    });
+    mockCurrencyItems = [];
 
     await updateUserSettings({ defaultCurrency: 'USD' });
 

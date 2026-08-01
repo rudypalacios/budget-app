@@ -12,11 +12,12 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
 import { sampleMonthlyTotals } from '@/constants/sample-data';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { formatCurrency } from '@/lib/format-currency';
+import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { buildPaymentRows, type PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
 import { useIncomesStore } from '@/store/incomes';
+import { useUserSettingsStore } from '@/store/user-settings';
 
 // History is a settled ledger: paid rows (real money moved) plus skipped
 // rows (a recurring instance the user explicitly chose not to pay this
@@ -45,6 +46,7 @@ export default function HistoryScreen() {
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
+  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const rows = buildHistoryRows(buildPaymentRows(expenses, incomes));
   const groups = groupByMonth(rows, i18n.language === 'es' ? 'es' : 'en');
   const { refreshing, onRefresh } = usePullToRefresh();
@@ -79,7 +81,12 @@ export default function HistoryScreen() {
                       themeColor={row.skipped ? 'text' : row.direction === 'income' ? 'success' : 'danger'}
                     >
                       {row.direction === 'income' ? '+' : '-'}
-                      {formatCurrency(row.amount, row.currency)}
+                      {formatCurrencyWithConversion(
+                        row.amount,
+                        row.currency,
+                        row.amountInDefaultCurrency,
+                        defaultCurrency,
+                      )}
                     </ThemedText>
                   </View>
                   {index < monthRows.length - 1 && <Divider style={styles.divider} />}

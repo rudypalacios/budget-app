@@ -15,7 +15,9 @@
     "done": "Listo",
     "selectDatePlaceholder": "Seleccionar fecha",
     "appName": "Budget App",
-    "actionsFor": "Acciones para {{name}}"
+    "actionsFor": "Acciones para {{name}}",
+    "amount": "Monto",
+    "remove": "Eliminar"
   },
   "nav": {
     "payments": "Pagos",
@@ -104,6 +106,12 @@
       "manage": "Administrar categorías",
       "count_one": "{{count}} categoría",
       "count_other": "{{count}} categorías"
+    },
+    "currencies": {
+      "title": "Monedas",
+      "manage": "Administrar monedas",
+      "count_one": "{{count}} moneda agregada",
+      "count_other": "{{count}} monedas agregadas"
     },
     "reminders": {
       "title": "Recordatorios",
@@ -242,6 +250,28 @@
       "sixMonthAvg": "Promedio de 6 meses"
     },
     "chartAccessibilityLabel": "Gráfico del historial de presupuesto"
+  },
+  "currencyRate": {
+    "currency": "Moneda",
+    "currencyWithRate": "Moneda ({{rate}})",
+    "rate": "Tipo de cambio a {{defaultCurrency}}",
+    "ratePlaceholder": "p. ej. 7.62",
+    "fetchRate": "Obtener tasa",
+    "fetchError": "No se pudo obtener la tasa. Ingrésala manualmente.",
+    "attribution": "Tasas por Exchange Rate API"
+  },
+  "currencies": {
+    "title": "Monedas",
+    "allCurrencies": "Todas las monedas",
+    "addAction": "+ Agregar",
+    "addTitle": "Agregar moneda",
+    "editTitle": "Actualizar tasa de {{currency}}",
+    "notFoundTitle": "Moneda no encontrada",
+    "notFoundBody": "Esta moneda ya no está configurada.",
+    "empty": "Aún no hay monedas agregadas.",
+    "needsRefresh": "Necesita actualización",
+    "editRate": "Editar tasa",
+    "allAdded": "Ya se agregaron todas las monedas admitidas."
   },
   "payments": {
     "title": "Pagos",

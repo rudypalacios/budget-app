@@ -2,18 +2,21 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { AmountCurrencyField } from '@/components/amount-currency-field';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
+import { parseAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
+import type { CurrencyCode } from '@/types/firestore';
 
 export type RecurringExpenseFormValues = {
   name: string;
   amount: string;
   categoryId: string;
   dueDay: string;
+  currency: CurrencyCode;
 };
 
 export type RecurringExpenseFormProps = {
@@ -21,12 +24,10 @@ export type RecurringExpenseFormProps = {
   submitLabel: string;
   onSubmit: (values: RecurringExpenseFormValues) => void | Promise<void>;
   onCancel: () => void;
-  // This form only ever appears on the Edit screen (no "new recurring
-  // expense via this form" route exists — recurring definitions are created
-  // via ExpenseForm's isRecurring toggle instead), so this is always the
-  // definition's own saved currency, never the live default-currency
-  // setting — see ExpenseForm's identical `currency` prop comment.
-  currency: string;
+  // The app's current default-currency setting — a recurring definition's
+  // currency/rate stay genuinely editable here (data-model.md §5: a "live
+  // template", re-editable), unlike the one-time/instance forms.
+  defaultCurrency: CurrencyCode;
 };
 
 export function RecurringExpenseForm({
@@ -34,7 +35,7 @@ export function RecurringExpenseForm({
   submitLabel,
   onSubmit,
   onCancel,
-  currency,
+  defaultCurrency,
 }: RecurringExpenseFormProps) {
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
@@ -48,6 +49,7 @@ export function RecurringExpenseForm({
       amount: '',
       categoryId: expenseCategories[0]?.id ?? '',
       dueDay: '1',
+      currency: defaultCurrency,
     },
   );
 
@@ -81,13 +83,14 @@ export function RecurringExpenseForm({
         onChangeText={(name) => setValues((current) => ({ ...current, name }))}
         placeholder={t('recurringExpense.form.namePlaceholder')}
       />
-      <TextField
-        label={t('common.amountWithCurrency', { currency })}
-        value={values.amount}
-        onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        placeholder={t('recurringExpense.form.amountPlaceholder')}
+
+      <AmountCurrencyField
+        amount={values.amount}
+        onAmountChange={(amount) => setValues((current) => ({ ...current, amount }))}
+        amountPlaceholder={t('recurringExpense.form.amountPlaceholder')}
+        currency={values.currency}
+        onCurrencyChange={(currency) => setValues((current) => ({ ...current, currency }))}
+        defaultCurrency={defaultCurrency}
       />
 
       <Select

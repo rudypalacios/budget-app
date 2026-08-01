@@ -25,3 +25,21 @@ export function formatCurrency(amount: number, currency: string): string {
   });
   return `${symbol} ${formatted}`;
 }
+
+// Stage 11 (FR-18): a record's own amount/currency alongside its
+// default-currency equivalent, e.g. "$ 1.00 (Q 8.00)" — used anywhere a
+// single record's own currency is displayed and may differ from the
+// user's default currency (History rows, Payments dashboard rows). Falls
+// back to plain formatCurrency (no parenthetical) when the record is
+// already in the default currency, matching every other amount in the app.
+export function formatCurrencyWithConversion(
+  amount: number,
+  currency: string,
+  amountInDefaultCurrency: number,
+  defaultCurrency: string,
+): string {
+  if (currency === defaultCurrency) {
+    return formatCurrency(amount, currency);
+  }
+  return `${formatCurrency(amount, currency)} (${formatCurrency(amountInDefaultCurrency, defaultCurrency)})`;
+}

@@ -29,6 +29,7 @@ export type ExpenseDefinitionForGeneration = {
   categoryId: string;
   name: string;
   currency: CurrencyCode;
+  exchangeRateToDefault: number;
   amount: number;
   dueDay: number;
   startDate: Date;
@@ -39,6 +40,7 @@ export type IncomeDefinitionForGeneration = {
   categoryId: string;
   name: string;
   currency: CurrencyCode;
+  exchangeRateToDefault: number;
   amount: number;
   frequency: RecurringIncomeFrequency;
   dayOfMonth: number | null;
@@ -67,6 +69,7 @@ export async function generateExpenseInstancesForDefinition(
       name: definition.name,
       date,
       currency: definition.currency,
+      exchangeRateToDefault: definition.exchangeRateToDefault,
       budgetedAmount: definition.amount,
       budgetedCurrency: definition.currency,
     });
@@ -98,6 +101,7 @@ export async function generateIncomeInstancesForDefinition(
       name: definition.name,
       date,
       currency: definition.currency,
+      exchangeRateToDefault: definition.exchangeRateToDefault,
       amount: definition.amount,
     });
   }
@@ -129,6 +133,7 @@ export async function runRecurringGeneration(uid: string): Promise<void> {
           categoryId: definition.categoryId,
           name: definition.name,
           currency: definition.currency,
+          exchangeRateToDefault: definition.exchangeRateToDefault,
           amount: definition.amount,
           dueDay: definition.dueDay,
           startDate: definition.startDate.toDate(),
@@ -144,6 +149,7 @@ export async function runRecurringGeneration(uid: string): Promise<void> {
           categoryId: definition.categoryId,
           name: definition.name,
           currency: definition.currency,
+          exchangeRateToDefault: definition.exchangeRateToDefault,
           amount: definition.amount,
           frequency: definition.frequency,
           dayOfMonth: definition.dayOfMonth,

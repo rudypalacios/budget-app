@@ -221,6 +221,24 @@ _(Gaps and deferred items that don't already have a home in the SRS §11 roadmap
 tracked here instead of only living in chat history. Remove an entry once it's
 actually resolved.)_
 
+- **Unexplained dual-currency miscalculation spotted on one historical
+  record, not yet root-caused** (Stage 11 redesign review) — a Payments
+  dashboard row showed `-€ 25,12 (Q 14.00)`, but the real EUR→GTQ rate at
+  the time (~8.78) implies that conversion should read closer to
+  `Q 220.55`. Traced the arithmetic in `formatCurrencyWithConversion`
+  (`src/lib/format-currency.ts`) and `amountInDefaultCurrency` computation
+  (`addExpense`/`setExpenseInstanceAt` in `src/store/expenses.ts`) and
+  found no bug in either — both correctly multiply `amount *
+  exchangeRateToDefault` using a rate captured via the (now-removed)
+  inline per-transaction fetch/entry flow that existed before this
+  stage's redesign. Most likely explanation: a manually-typed rate entered
+  in the wrong direction/magnitude in that old inline UI, which the
+  redesign's Settings-based, rate-visible-before-use flow should prevent
+  going forward — but this wasn't confirmed, since the user explicitly
+  asked not to investigate further this stage ("it could be that it
+  wasn't saved properly, I'll review it later"). If it recurs under the
+  new flow, that would point at a real remaining bug rather than a
+  one-off bad manual entry.
 - **Anonymous-to-existing-account linking is silent, no merge confirmation**
   (found during Stage 9b closeout, auditing `LoginScenarios.txt`) — when an
   anonymous session with local data tries to link a credential (email,
@@ -392,19 +410,6 @@ actually resolved.)_
   in the background across a month boundary without a fresh launch, that
   period's instance won't appear until the next cold start. Cheap follow-up
   if this turns out to matter in practice — not implemented preemptively.
-- **`amountInDefaultCurrency` isn't recomputed when `amount` is edited**
-  (pre-existing since Stage 6, newly reachable in Stage 6b) — editing an
-  expense/income's `amount` via `updateExpense`/`updateIncome` never
-  recalculates `amountInDefaultCurrency` (`amount * exchangeRateToDefault`),
-  so it goes stale after any edit. Applied equally to one-time records since
-  Stage 6; Stage 6b's generated `RecurringExpenseInstance` docs additionally
-  snapshot `amountInDefaultCurrency` to the *budgeted* amount at generation
-  time (since `amount` is null until paid — data-model.md §6), which is
-  never corrected once a real `amount` is set either. Not user-visible yet
-  (Budget/History screens read `amount` directly, not
-  `amountInDefaultCurrency` — see `src/app/(tabs)/index.tsx`), but will need
-  fixing before Stage 11 (multi-currency) or any feature that aggregates via
-  `amountInDefaultCurrency` instead of `amount`.
 - **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
   "Recurring" section on the Expenses/Income tabs (`src/app/(tabs)/expenses.tsx`,
   `income.tsx` — folded in from the old standalone `/recurring-expenses`,
@@ -420,12 +425,12 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **10 — Localization (Spanish + English) + default currency setting**
-(9a, 9a.1, and 9b are merged to `develop`; 9c remains blocked on Facebook
-Developer console setup — see SRS §11). Stage 10 is built and verified on
-branch `stage-10-localization-currency`, pending merge to `develop` — see
-its own section below for what shipped. Stage 11 (multi-currency handling)
-is next once this merges.
+Stage: **11 — Multi-currency handling** (9a, 9a.1, 9b, and 10 are all
+merged to `develop`; 9c remains blocked on Facebook Developer console
+setup — see SRS §11). Stage 11 is built and verified on branch
+`stage-11-multi-currency`, pending merge to `develop` — see its own
+section below for what shipped. Stage 12 (Archive/Trash flows) is next
+once this merges.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -457,3 +462,70 @@ future stage — **Account Data Merge** — not yet numbered/scheduled, whose
 full design lives in `docs/auth-scenarios.md` §2. See that file for the
 complete scenario-by-scenario audit and the Facebook (9c) forward-looking
 requirements it captured for later (§3).
+
+### Stage 11 summary
+- The `currency`/`exchangeRateToDefault`/`amountInDefaultCurrency`/
+  `rateSource` schema was already fully designed back in Stage 6
+  (`docs/data-model.md` §8) — this stage wired real values through every
+  write path that previously hardcoded them (`// no multi-currency yet —
+  Stage 10` comments across `src/store/expenses.ts`, `incomes.ts`,
+  `recurring-expenses.ts`, `recurring-incomes.ts`).
+- **Redesigned mid-stage after initial review**: currency setup moved out
+  of the transaction forms entirely into a one-time-per-currency
+  configuration step — new `users/{uid}/currencies/{code}` collection
+  (`docs/data-model.md` §3a, `src/store/currencies.ts`) and a "Manage
+  currencies" section in Settings (`src/app/currencies/`) where a
+  currency is added once (pick it, fetch/enter its rate). Transaction
+  forms (`ExpenseForm`/`IncomeForm`/`RecurringExpenseForm`/
+  `RecurringIncomeForm`) then only ever offer a plain pick from that
+  pre-configured list via new `src/components/amount-currency-field.tsx`
+  — no rate entry/fetch UI per transaction at all, and the picker doesn't
+  render when nothing's been configured yet. `CurrencyRateField`
+  (currency `Select` + rate `TextField` + "Fetch rate" `Button`) still
+  exists but is now exclusively the Settings add/refresh-rate building
+  block. Rationale: most records are entered in the default currency, so
+  asking for a currency + exchange rate on every entry was disproportionate
+  friction for something used rarely.
+- Changing `defaultCurrency` now also batch-marks every added currency
+  `status: 'stale'` (`markCurrenciesStale`, `src/store/user-settings.ts`,
+  mirroring the existing `budgetRecommendation.status` side effect) — a
+  stale currency drops out of every transaction-form picker until
+  refreshed from its Settings entry, since its rate is relative to the
+  *old* default and would silently be wrong for the new one.
+- `AmountCurrencyField` lays the amount field and currency picker out
+  side by side on web above a new `FormRowBreakpoint` (480px,
+  `src/constants/theme.ts`), stacked into a column below it — native is
+  always narrower than that, so it always renders as a column with no
+  platform-split file needed. Once a non-default currency is picked, the
+  picker's own label shows its configured rate (e.g. `Currency (Q 8.78)`)
+  via the existing `formatCurrency` convention.
+- New `src/lib/exchange-rate.ts` — live-rate fetch via
+  `open.er-api.com` (free, no API key), gated behind an explicit "Fetch
+  rate" button and `useNetworkStatus()` (disabled offline); manual entry
+  is always the field's default state either way (FR-17).
+- `src/constants/currencies.ts` expanded from 3 to 15 currencies (added
+  MXN, CAD, GBP, COP, ARS, CLP, PEN, BRL, DOP, HNL, CRC, PAB), each
+  `formatLocale` verified against `Intl.NumberFormat` for that country's
+  real grouping/decimal convention rather than assumed.
+- New `formatCurrencyWithConversion` (`src/lib/format-currency.ts`) —
+  dual-currency display (e.g. `$ 1.00 (Q 7.62)`) applied to History and
+  Payments dashboard rows whenever a record's own currency differs from
+  the default; reuses `formatCurrency`'s existing convention for both
+  halves.
+- Fixed one correctness gap this stage's mixed-currency data would
+  otherwise have exposed: `budget.tsx`'s category-actual total now sums
+  `amountInDefaultCurrency` and displays in the real `defaultCurrency`
+  instead of summing raw `amount` under a hardcoded `'GTQ'` label. The
+  "budgeted" side of that screen is still `sample-data.ts` — real
+  budget-vs-actual wiring stays Stage 12/13's job. (A separate reported
+  miscalculation on one specific historical record was flagged but
+  deliberately not investigated this stage, at the user's request — see
+  Known Issues.)
+- `firestore.rules` gained a new `unchanged('currency')` lock on
+  `expenses`/`incomes` update (paralleling the existing
+  `exchangeRateToDefault` lock) — `currency` stays mutable on
+  `recurringExpenses`/`recurringIncomes`, deliberately not locked there —
+  plus a plain owner-only CRUD block for the new `currencies` collection.
+  **Deployed to the live Firebase project** (`lighthouse-budget-app`) via
+  `firebase deploy --only firestore:rules` — this stage's rules changes
+  did not exist in production before that deploy.

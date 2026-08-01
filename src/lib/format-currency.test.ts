@@ -1,4 +1,4 @@
-import { formatCurrency } from './format-currency';
+import { formatCurrency, formatCurrencyWithConversion } from './format-currency';
 import i18n from '@/localization/i18n';
 
 afterEach(async () => {
@@ -37,5 +37,15 @@ describe('formatCurrency', () => {
     expect(formatCurrency(1234.5, 'XYZ')).toBe('XYZ  1,234.50');
     await i18n.changeLanguage('es');
     expect(formatCurrency(1234.5, 'XYZ')).toBe('XYZ  1234,50');
+  });
+});
+
+describe('formatCurrencyWithConversion', () => {
+  it('returns plain formatCurrency, no parenthetical, when the record is already in the default currency', () => {
+    expect(formatCurrencyWithConversion(10, 'GTQ', 10, 'GTQ')).toBe('Q 10.00');
+  });
+
+  it('appends the default-currency equivalent in parentheses when currencies differ', () => {
+    expect(formatCurrencyWithConversion(1, 'USD', 7.62, 'GTQ')).toBe('$ 1.00 (Q 7.62)');
   });
 });

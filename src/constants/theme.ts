@@ -91,6 +91,14 @@ export const MaxContentWidth = 800;
 // + slide-in drawer instead.
 export const NavBreakpoint = 800;
 
+// Below this viewport width, AmountCurrencyField (Stage 11 redesign)
+// stacks its amount field and currency picker into a column instead of a
+// row — a much smaller threshold than NavBreakpoint since two form fields
+// need far less width than the full nav bar. Native screens are always
+// narrower than this, so they always render as a column with no
+// platform-split file needed.
+export const FormRowBreakpoint = 480;
+
 // SRS §4 — touch targets should match patterns users already recognize;
 // 44x44 is the iOS HIG / WCAG 2.5.5 minimum.
 export const MinTouchTarget = 44;

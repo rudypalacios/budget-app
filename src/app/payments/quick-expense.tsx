@@ -40,7 +40,18 @@ export default function QuickExpenseScreen() {
   const isValid = !!name && !!categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   async function handleSave() {
-    addExpense({ name, categoryId, amount: parsedAmount, currency: defaultCurrency, date: new Date(), paid });
+    // Always the default currency — this is deliberately the fast/minimal
+    // path (see the module comment above), no currency picker here.
+    addExpense({
+      name,
+      categoryId,
+      amount: parsedAmount,
+      currency: defaultCurrency,
+      exchangeRateToDefault: 1,
+      rateSource: 'manual',
+      date: new Date(),
+      paid,
+    });
     router.back();
   }
 

@@ -72,5 +72,14 @@ export function createCollectionStore<T extends { createdAt: unknown; updatedAt:
     await firestoreClient.setDoc<T>(`${path(currentUid)}/${id}`, data);
   }
 
-  return { useStore, subscribe, add, update, setAt };
+  // Hard delete — unlike expenses/incomes/recurring definitions, not every
+  // collection needs the archive/trash lifecycle (e.g. an added currency,
+  // Stage 11 redesign: nothing else references it by ID, so removing it
+  // outright is safe).
+  async function remove(id: string) {
+    if (!currentUid) throw new Error(`${collectionName} store: remove() called before subscribe()`);
+    await firestoreClient.deleteDoc(`${path(currentUid)}/${id}`);
+  }
+
+  return { useStore, subscribe, add, update, setAt, remove };
 }

@@ -59,6 +59,18 @@ export interface Category {
   updatedAt: Timestamp;
 }
 
+// --- users/{uid}/currencies/{code} — §3a (Stage 11 redesign) ---
+
+export type AddedCurrencyStatus = 'ok' | 'stale'; // 'stale' set in bulk when defaultCurrency changes — see §3
+
+export interface AddedCurrency {
+  exchangeRateToDefault: number; // rate FROM this currency TO defaultCurrency
+  rateSource: RateSource;
+  status: AddedCurrencyStatus;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // --- Recurring definitions — §5 ---
 
 export type BudgetRecommendationStatus = 'none' | 'pending' | 'dismissed' | 'accepted' | 'stale'; // set in bulk when defaultCurrency changes — see §3, §9

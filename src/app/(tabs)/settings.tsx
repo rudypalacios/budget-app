@@ -16,6 +16,7 @@ import { TextField } from '@/components/ui/text-field';
 import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
 import { useCategoriesStore } from '@/store/categories';
+import { useCurrenciesStore } from '@/store/currencies';
 import { signOutAndRestartAnonymous, useSessionStore } from '@/store/session';
 import { updateUserSettings, useUserSettingsStore } from '@/store/user-settings';
 import type { UserSettings } from '@/types/firestore';
@@ -61,6 +62,7 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
   const [trashRetentionDays, setTrashRetentionDays] = useState(String(settings.trashRetentionDays));
 
   const categories = useCategoriesStore((state) => state.items);
+  const addedCurrencies = useCurrenciesStore((state) => state.items);
   const email = useSessionStore((state) => state.email);
   const isAnonymous = useSessionStore((state) => state.isAnonymous);
 
@@ -148,6 +150,27 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
             <View>
               <ThemedText type="smallBold">{t('settings.categories.manage')}</ThemedText>
               <ThemedText type="caption">{t('settings.categories.count', { count: categories.length })}</ThemedText>
+            </View>
+            <ThemedText themeColor="textSecondary">›</ThemedText>
+          </Card>
+        </Pressable>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader title={t('settings.currencies.title')} />
+        <Pressable
+          // Same expo-router typed-routes workaround as the Categories
+          // section above — see its comment for why the cast is needed.
+          onPress={() => router.push('/currencies' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.currencies.manage')}
+        >
+          <Card style={styles.manageRow}>
+            <View>
+              <ThemedText type="smallBold">{t('settings.currencies.manage')}</ThemedText>
+              <ThemedText type="caption">
+                {t('settings.currencies.count', { count: addedCurrencies.length })}
+              </ThemedText>
             </View>
             <ThemedText themeColor="textSecondary">›</ThemedText>
           </Card>

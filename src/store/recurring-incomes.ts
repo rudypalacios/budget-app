@@ -18,6 +18,7 @@ export type NewRecurringIncomeInput = {
   categoryId: string;
   amount: number;
   currency: CurrencyCode;
+  exchangeRateToDefault: number;
   startDate: Date;
   frequency: RecurringIncomeFrequency;
   dayOfMonth: number | null;
@@ -30,7 +31,7 @@ export function addRecurringIncome(input: NewRecurringIncomeInput) {
     categoryId: input.categoryId,
     amount: input.amount,
     currency: input.currency,
-    exchangeRateToDefault: 1, // no multi-currency yet — Stage 10
+    exchangeRateToDefault: input.exchangeRateToDefault,
     startDate: toTimestamp(input.startDate),
     frequency: input.frequency,
     dayOfMonth: input.dayOfMonth,
