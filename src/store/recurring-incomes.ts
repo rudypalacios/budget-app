@@ -1,17 +1,13 @@
 import { createCollectionStore } from './create-collection-store';
-import type { CurrencyCode, RecurringIncome, RecurringIncomeFrequency, Timestamp } from '@/types/firestore';
+import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { toTimestamp } from '@/lib/timestamp';
+import { useUserSettingsStore } from './user-settings';
+import type { ArchivableState, CurrencyCode, RecurringIncome, RecurringIncomeFrequency } from '@/types/firestore';
 
 const store = createCollectionStore<RecurringIncome>('recurringIncomes');
 
 export const useRecurringIncomesStore = store.useStore;
 export const subscribeRecurringIncomes = store.subscribe;
-
-// Firestore write paths accept a plain JS Date for a Timestamp field and
-// convert it automatically — this cast just satisfies our structural
-// Timestamp type (see src/types/firestore.ts) on the way in.
-function toTimestamp(date: Date): Timestamp {
-  return date as unknown as Timestamp;
-}
 
 export type NewRecurringIncomeInput = {
   name: string;
@@ -60,4 +56,34 @@ type EditableRecurringIncomeFields = Pick<
 
 export function updateRecurringIncome(id: string, patch: Partial<EditableRecurringIncomeFields>) {
   return store.update(id, patch);
+}
+
+// FR-4a/4b/4e (data-model.md §7) — see the matching comment on
+// archiveRecurringExpense/trashRecurringExpense in recurring-expenses.ts.
+export function archiveRecurringIncome(id: string) {
+  return store.update(id, archiveTransition(new Date()));
+}
+
+export function trashRecurringIncome(id: string) {
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition) throw new Error(`recurringIncomes store: trashRecurringIncome(${id}) — not found`);
+  const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
+  return store.update(
+    id,
+    trashTransition(definition.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
+  );
+}
+
+// Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
+// real screen in Stage 17. Exercised by unit tests in the meantime.
+export function restoreRecurringIncome(id: string) {
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition?.trashedFromState) {
+    throw new Error(`recurringIncomes store: restoreRecurringIncome(${id}) — not currently trashed`);
+  }
+  return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
+}
+
+export function purgeRecurringIncome(id: string) {
+  return store.remove(id);
 }

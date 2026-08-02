@@ -20,8 +20,9 @@ import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
 import type { PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
-import { setExpensePaid, setExpenseSkipped } from '@/store/expenses';
-import { setIncomeReceived, setIncomeSkipped } from '@/store/incomes';
+import { archiveExpense, setExpensePaid, setExpenseSkipped, trashExpense } from '@/store/expenses';
+import { archiveIncome, setIncomeReceived, setIncomeSkipped, trashIncome } from '@/store/incomes';
+import { showToast } from '@/store/toast';
 import { useUserSettingsStore } from '@/store/user-settings';
 
 function editHref(row: PaymentRow): Href {
@@ -49,6 +50,25 @@ function toggleSkipped(row: PaymentRow) {
     setExpenseSkipped(row.id, !row.skipped);
   } else {
     setIncomeSkipped(row.id, !row.skipped);
+  }
+}
+
+// FR-4a/4b (data-model.md §7) — a generated instance can be archived/
+// trashed independently of its parent recurring definition, same as a
+// one-time record. Applies to both kind values shown on this dashboard.
+function archiveRow(row: PaymentRow) {
+  if (row.direction === 'expense') {
+    archiveExpense(row.id);
+  } else {
+    archiveIncome(row.id);
+  }
+}
+
+function trashRow(row: PaymentRow) {
+  if (row.direction === 'expense') {
+    trashExpense(row.id);
+  } else {
+    trashIncome(row.id);
   }
 }
 
@@ -92,6 +112,22 @@ export default function PaymentsScreen() {
                   onPress: () => toggleSkipped(row),
                 });
               }
+              overflowItems.push(
+                {
+                  label: t('common.archive'),
+                  onPress: () => {
+                    archiveRow(row);
+                    showToast(t('archive.movedToArchive', { name: row.name }));
+                  },
+                },
+                {
+                  label: t('common.delete'),
+                  onPress: () => {
+                    trashRow(row);
+                    showToast(t('archive.movedToTrash', { name: row.name }));
+                  },
+                },
+              );
 
               return (
                 <View key={row.id}>

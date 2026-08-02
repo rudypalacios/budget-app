@@ -410,27 +410,41 @@ actually resolved.)_
   in the background across a month boundary without a fresh launch, that
   period's instance won't appear until the next cold start. Cheap follow-up
   if this turns out to matter in practice — not implemented preemptively.
-- **No archive/trash UI for recurring definitions yet** (Stage 6b) — the
-  "Recurring" section on the Expenses/Income tabs (`src/app/(tabs)/expenses.tsx`,
-  `income.tsx` — folded in from the old standalone `/recurring-expenses`,
-  `/recurring-incomes` management screens as part of the Stage 8.1 Add/Manage
-  consolidation) only ever shows `lifecycleState: 'active'` definitions;
-  archiving is Stage 12's job. The generation engine
-  (`src/store/recurring-generation.ts`) already filters
-  `lifecycleState === 'active'` per FR-4e, so archiving will correctly stop
-  regeneration as soon as that UI exists — nothing to change in the
-  generation logic itself when Stage 12 lands.
+- **Restore/Purge (FR-4b/4c) are engine-only — no UI until Stage 17** (Stage
+  12) — `restoreExpense`/`purgeExpense` and their `incomes`/
+  `recurringExpenses`/`recurringIncomes` equivalents exist and are unit
+  tested, but nothing in the app calls them yet: there's no Archived/Trash
+  browse screen to restore or purge *from*. SRS Stage 17 ("Trash view &
+  restore screen") is explicitly where that UI lands, across all record
+  types at once, per the user's Stage 12 planning decision to keep this
+  stage to archive/trash actions + the underlying state-transition engine
+  only. Don't mistake the absence of a Trash screen for a bug — it's
+  deliberately deferred, not missed.
+- **No TTL policy enabled yet on `purgeAt`** (Stage 12) — `trashX()`
+  functions now set a real `purgeAt` on every record they trash, but the
+  Firestore TTL policy that would actually auto-delete once that timestamp
+  passes (`docs/data-model.md` §13's deployment checklist) hasn't been
+  enabled against the live `lighthouse-budget-app` project — that's a
+  manual Google Cloud/Firebase Console action (no `gcloud`/`firebase` CLI
+  available in this dev environment), held until explicitly confirmed by
+  the user. Until enabled, trashed docs accumulate indefinitely instead of
+  auto-expiring after `trashRetentionDays`; manual purge (once Stage 17
+  builds it) is unaffected either way, since that's a direct `deleteDoc()`.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **11 — Multi-currency handling** (9a, 9a.1, 9b, and 10 are all
+Stage: **12 — Archive/Trash flows** (9a, 9a.1, 9b, 10, and 11 are all
 merged to `develop`; 9c remains blocked on Facebook Developer console
-setup — see SRS §11). Stage 11 is built and verified on branch
-`stage-11-multi-currency`, pending merge to `develop` — see its own
-section below for what shipped. Stage 12 (Archive/Trash flows) is next
-once this merges.
+setup — see SRS §11). The small, unrelated back-navigation-fallback
+bugfix from this session is also merged to `develop` (was its own branch,
+`fix/back-navigation-fallback`). Stage 12 is built and verified on branch
+`stage-12-archive-trash` (originally stacked on Stage 11's branch before
+Stage 11 merged; since merged forward with current `develop` to pick up
+Stage 11's real merged history and drop a since-redundant duplicate of
+the back-nav fix), pending merge — see its own section below for what
+shipped and what's deliberately deferred to Stage 17.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -529,3 +543,54 @@ requirements it captured for later (§3).
   **Deployed to the live Firebase project** (`lighthouse-budget-app`) via
   `firebase deploy --only firestore:rules` — this stage's rules changes
   did not exist in production before that deploy.
+
+### Stage 12 summary
+- The `lifecycleState`/`trashedFromState`/`archivedAt`/`trashedAt`/
+  `purgeAt` schema and its `firestore.rules` state-machine validation
+  (`isValidLifecycleTransition` etc.) were already fully designed and
+  deployed back at the data-modeling stage — every `add*`/`setAt` call
+  already initialized these fields. This stage wired real
+  archive/trash/restore/purge functions on top of that for the first time;
+  **no `firestore.rules` changes were needed**.
+- New `src/lib/lifecycle-transitions.ts` — pure state-machine math
+  (`archiveTransition`/`trashTransition`/`restoreTransition`), unit tested
+  in isolation, shared by four new store functions each in
+  `expenses.ts`/`incomes.ts`/`recurring-expenses.ts`/
+  `recurring-incomes.ts` (`archiveX`/`trashX`/`restoreX`/`purgeX`).
+  `trashX` reads `trashRetentionDays` from `useUserSettingsStore` to
+  compute `purgeAt`, mirroring the existing synchronous cross-store-read
+  pattern in `user-settings.ts`'s `markBudgetRecommendationsStale`.
+- **Scope decision, confirmed with the user during planning**: only
+  Archive and Delete(→Trash) got UI this stage, added to every existing
+  `OverflowMenu` (`expenses.tsx`/`income.tsx`'s recurring-definition and
+  one-time rows, plus the Payments Dashboard's per-instance rows in
+  `(tabs)/index.tsx`). Restore/Purge are engine + tests only — no UI —
+  since SRS Stage 17 is explicitly where the cross-type browse/restore/
+  purge screen lands. See Known Issues.
+- **Fixed a real, previously-silent gap this stage's testing surfaced**:
+  `createCollectionStore`'s `subscribe()` has no server-side query filter,
+  so every store's `items` already contained every document ever created,
+  unfiltered — before this stage, only `categories/index.tsx` and the two
+  screens' recurring-definition sections filtered by `lifecycleState` at
+  all. Archiving/trashing a record would have flipped its Firestore field
+  with zero visible effect. Added `lifecycleState === 'active'` filtering
+  to `expenses.tsx`/`income.tsx`'s one-time sections, `budget.tsx`'s
+  category-actual total, and — centrally — `buildPaymentRows`
+  (`src/lib/payments-dashboard.ts`), which both the Payments Dashboard and
+  History already share, so both are covered by the one change.
+- New minimal toast primitive (`src/store/toast.ts` +
+  `src/components/ui/toast.tsx`, mounted once in `_layout.tsx`) gives
+  Archive/Delete a visible confirmation ("moved to Archive"/"moved to
+  Trash") now that a row simply disappearing from its list would otherwise
+  be the only feedback. Deliberately a small custom store, not a toast
+  library — see the user's explicit reasoning in this stage's planning
+  session for why a dependency wasn't worth it here specifically.
+- Extracted `toTimestamp` (previously duplicated across all four
+  `expenses.ts`/`incomes.ts`/`recurring-expenses.ts`/
+  `recurring-incomes.ts`) to `src/lib/timestamp.ts`; `expenses.ts`/
+  `incomes.ts` re-export it unchanged so existing external imports
+  (`expenses/[id]/edit.tsx`, `income/[id]/edit.tsx`) didn't need to change.
+- **Firestore TTL policy on `purgeAt` intentionally not enabled yet** —
+  see Known Issues. This is the one piece of this stage's originally
+  planned scope not executed, pending the user's explicit go-ahead on a
+  live production Console change.

@@ -21,7 +21,7 @@ export type RateSource = 'manual' | 'fetched';
 export type LifecycleState = 'active' | 'archived' | 'trashed';
 export type ArchivableState = 'active' | 'archived';
 
-interface TrashableLifecycle {
+export interface TrashableLifecycle {
   lifecycleState: LifecycleState;
   trashedFromState: ArchivableState | null;
   archivedAt: Timestamp | null;

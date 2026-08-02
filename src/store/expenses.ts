@@ -1,12 +1,15 @@
 import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
+import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { toTimestamp } from '@/lib/timestamp';
+import { useUserSettingsStore } from './user-settings';
 import type {
+  ArchivableState,
   CurrencyCode,
   ExpenseRecord,
   OneTimeExpense,
   RateSource,
   RecurringExpenseInstance,
-  Timestamp,
 } from '@/types/firestore';
 
 const store = createCollectionStore<ExpenseRecord>('expenses');
@@ -14,15 +17,9 @@ const store = createCollectionStore<ExpenseRecord>('expenses');
 export const useExpensesStore = store.useStore;
 export const subscribeExpenses = store.subscribe;
 
-// Firestore write paths accept a plain JS Date for a Timestamp field and
-// convert it automatically — this cast just satisfies our structural
-// Timestamp type (see src/types/firestore.ts) on the way in. Reads always
-// come back as a real Timestamp instance, no cast needed there. Exported
-// for callers that build an update patch outside this module (e.g.
-// expenses/[id]/edit.tsx setting a picked due date).
-export function toTimestamp(date: Date): Timestamp {
-  return date as unknown as Timestamp;
-}
+// Re-exported for callers that build an update patch outside this module
+// (e.g. expenses/[id]/edit.tsx setting a picked due date).
+export { toTimestamp };
 
 export type NewExpenseInput = {
   name: string;
@@ -162,6 +159,38 @@ export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
     purgeAt: null,
   };
   return store.setAt(id, doc);
+}
+
+// FR-4a/4b (data-model.md §7) — see src/lib/lifecycle-transitions.ts for the
+// actual state-machine math shared across expenses/incomes/recurring
+// definitions. Applies to both one-time and recurring-instance rows
+// (independent per-document, never cascaded from the parent definition).
+export function archiveExpense(id: string) {
+  return store.update(id, archiveTransition(new Date()));
+}
+
+export function trashExpense(id: string) {
+  const expense = store.useStore.getState().items.find((item) => item.id === id);
+  if (!expense) throw new Error(`expenses store: trashExpense(${id}) — not found`);
+  const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
+  return store.update(
+    id,
+    trashTransition(expense.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
+  );
+}
+
+// Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
+// real screen in Stage 17. Exercised by unit tests in the meantime.
+export function restoreExpense(id: string) {
+  const expense = store.useStore.getState().items.find((item) => item.id === id);
+  if (!expense?.trashedFromState) {
+    throw new Error(`expenses store: restoreExpense(${id}) — not currently trashed`);
+  }
+  return store.update(id, restoreTransition(expense.trashedFromState, expense.archivedAt));
+}
+
+export function purgeExpense(id: string) {
+  return store.remove(id);
 }
 
 // Catch-up generation (data-model.md §9) needs "the last period already

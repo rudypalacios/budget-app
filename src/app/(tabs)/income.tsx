@@ -14,8 +14,9 @@ import { Spacing } from '@/constants/theme';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
-import { useIncomesStore } from '@/store/incomes';
-import { useRecurringIncomesStore } from '@/store/recurring-incomes';
+import { archiveIncome, trashIncome, useIncomesStore } from '@/store/incomes';
+import { archiveRecurringIncome, trashRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
+import { showToast } from '@/store/toast';
 
 // This screen is config-only: creating/editing planned income (one-time or
 // recurring templates). Marking a specific occurrence received/expected/
@@ -33,10 +34,31 @@ export default function IncomeScreen() {
 
   // Once a one-time income is received it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and
-  // the History tab, but drops off this planning list.
-  const plannedOneTime = [...incomes.filter((income) => income.kind === 'oneTime' && !income.paid)].sort(
-    (a, b) => b.date.toMillis() - a.date.toMillis(),
-  );
+  // the History tab, but drops off this planning list. Archived/trashed
+  // income drops off every normal view, per FR-4a.
+  const plannedOneTime = [
+    ...incomes.filter((income) => income.kind === 'oneTime' && !income.paid && income.lifecycleState === 'active'),
+  ].sort((a, b) => b.date.toMillis() - a.date.toMillis());
+
+  function handleArchiveDefinition(id: string, name: string) {
+    archiveRecurringIncome(id);
+    showToast(t('archive.movedToArchive', { name }));
+  }
+
+  function handleTrashDefinition(id: string, name: string) {
+    trashRecurringIncome(id);
+    showToast(t('archive.movedToTrash', { name }));
+  }
+
+  function handleArchiveIncome(id: string, name: string) {
+    archiveIncome(id);
+    showToast(t('archive.movedToArchive', { name }));
+  }
+
+  function handleTrashIncome(id: string, name: string) {
+    trashIncome(id);
+    showToast(t('archive.movedToTrash', { name }));
+  }
 
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
@@ -75,6 +97,14 @@ export default function IncomeScreen() {
                           onPress: () =>
                             router.push({ pathname: '/recurring-incomes/[id]/edit', params: { id: definition.id } }),
                         },
+                        {
+                          label: t('common.archive'),
+                          onPress: () => handleArchiveDefinition(definition.id, definition.name),
+                        },
+                        {
+                          label: t('common.delete'),
+                          onPress: () => handleTrashDefinition(definition.id, definition.name),
+                        },
                       ]}
                     />
                   </View>
@@ -111,6 +141,14 @@ export default function IncomeScreen() {
                           {
                             label: t('common.edit'),
                             onPress: () => router.push({ pathname: '/income/[id]/edit', params: { id: income.id } }),
+                          },
+                          {
+                            label: t('common.archive'),
+                            onPress: () => handleArchiveIncome(income.id, income.name),
+                          },
+                          {
+                            label: t('common.delete'),
+                            onPress: () => handleTrashIncome(income.id, income.name),
                           },
                         ]}
                       />

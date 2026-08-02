@@ -14,8 +14,9 @@ import { Spacing } from '@/constants/theme';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
-import { useExpensesStore } from '@/store/expenses';
-import { useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { archiveExpense, trashExpense, useExpensesStore } from '@/store/expenses';
+import { archiveRecurringExpense, trashRecurringExpense, useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { showToast } from '@/store/toast';
 
 // This screen is config-only: creating/editing planned expenses (one-time
 // or recurring templates). Marking a specific occurrence paid/unpaid/skipped
@@ -33,10 +34,33 @@ export default function ExpensesScreen() {
 
   // Once a one-time expense is paid it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and
-  // the History tab, but drops off this planning list.
-  const plannedOneTime = [...expenses.filter((expense) => expense.kind === 'oneTime' && !expense.paid)].sort(
-    (a, b) => b.date.toMillis() - a.date.toMillis(),
-  );
+  // the History tab, but drops off this planning list. Archived/trashed
+  // expenses drop off every normal view, per FR-4a.
+  const plannedOneTime = [
+    ...expenses.filter(
+      (expense) => expense.kind === 'oneTime' && !expense.paid && expense.lifecycleState === 'active',
+    ),
+  ].sort((a, b) => b.date.toMillis() - a.date.toMillis());
+
+  function handleArchiveDefinition(id: string, name: string) {
+    archiveRecurringExpense(id);
+    showToast(t('archive.movedToArchive', { name }));
+  }
+
+  function handleTrashDefinition(id: string, name: string) {
+    trashRecurringExpense(id);
+    showToast(t('archive.movedToTrash', { name }));
+  }
+
+  function handleArchiveExpense(id: string, name: string) {
+    archiveExpense(id);
+    showToast(t('archive.movedToArchive', { name }));
+  }
+
+  function handleTrashExpense(id: string, name: string) {
+    trashExpense(id);
+    showToast(t('archive.movedToTrash', { name }));
+  }
 
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
@@ -68,6 +92,14 @@ export default function ExpensesScreen() {
                           label: t('common.edit'),
                           onPress: () =>
                             router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
+                        },
+                        {
+                          label: t('common.archive'),
+                          onPress: () => handleArchiveDefinition(definition.id, definition.name),
+                        },
+                        {
+                          label: t('common.delete'),
+                          onPress: () => handleTrashDefinition(definition.id, definition.name),
                         },
                       ]}
                     />
@@ -105,6 +137,14 @@ export default function ExpensesScreen() {
                           {
                             label: t('common.edit'),
                             onPress: () => router.push({ pathname: '/expenses/[id]/edit', params: { id: expense.id } }),
+                          },
+                          {
+                            label: t('common.archive'),
+                            onPress: () => handleArchiveExpense(expense.id, expense.name),
+                          },
+                          {
+                            label: t('common.delete'),
+                            onPress: () => handleTrashExpense(expense.id, expense.name),
                           },
                         ]}
                       />

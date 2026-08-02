@@ -28,7 +28,14 @@ export function buildPaymentRows(
   expenses: WithId<ExpenseRecord>[],
   incomes: WithId<IncomeRecord>[],
 ): PaymentRow[] {
-  const expenseRows: PaymentRow[] = expenses.map((expense) => ({
+  // Archived/trashed records are hidden from every normal view (FR-4a) —
+  // filtered here, upstream of the overdue/upcoming/completed grouping
+  // below, so archive/delete removes a row the same way paying/skipping
+  // moves it, without either group needing its own lifecycleState check.
+  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
+  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
+
+  const expenseRows: PaymentRow[] = activeExpenses.map((expense) => ({
     id: expense.id,
     direction: 'expense',
     kind: expense.kind,
@@ -48,7 +55,7 @@ export function buildPaymentRows(
       expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
   }));
 
-  const incomeRows: PaymentRow[] = incomes.map((income) => ({
+  const incomeRows: PaymentRow[] = activeIncomes.map((income) => ({
     id: income.id,
     direction: 'income',
     kind: income.kind,
