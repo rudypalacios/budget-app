@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { BudgetRecommendationBadge } from '@/components/budget-recommendation-badge';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -15,7 +17,12 @@ import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, trashExpense, useExpensesStore } from '@/store/expenses';
-import { archiveRecurringExpense, trashRecurringExpense, useRecurringExpensesStore } from '@/store/recurring-expenses';
+import {
+  archiveRecurringExpense,
+  recomputeStaleBudgetRecommendations,
+  trashRecurringExpense,
+  useRecurringExpensesStore,
+} from '@/store/recurring-expenses';
 import { showToast } from '@/store/toast';
 
 // This screen is config-only: creating/editing planned expenses (one-time
@@ -31,6 +38,13 @@ export default function ExpensesScreen() {
 
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
   const { refreshing, onRefresh } = usePullToRefresh();
+
+  // data-model.md §9: catches drift missed by a stale cache — e.g. a bulk
+  // 'stale' write from another device's defaultCurrency change (Stage 11)
+  // finally gets a real recompute once this tab is viewed again.
+  useEffect(() => {
+    recomputeStaleBudgetRecommendations();
+  }, []);
 
   // Once a one-time expense is paid it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and
@@ -105,6 +119,7 @@ export default function ExpensesScreen() {
                     />
                   </View>
                 </View>
+                <BudgetRecommendationBadge definition={definition} />
                 {index < activeRecurring.length - 1 && <Divider style={styles.divider} />}
               </View>
             ))}

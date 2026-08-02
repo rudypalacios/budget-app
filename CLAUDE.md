@@ -435,16 +435,17 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **12 — Archive/Trash flows** (9a, 9a.1, 9b, 10, and 11 are all
-merged to `develop`; 9c remains blocked on Facebook Developer console
-setup — see SRS §11). The small, unrelated back-navigation-fallback
-bugfix from this session is also merged to `develop` (was its own branch,
-`fix/back-navigation-fallback`). Stage 12 is built and verified on branch
-`stage-12-archive-trash` (originally stacked on Stage 11's branch before
-Stage 11 merged; since merged forward with current `develop` to pick up
-Stage 11's real merged history and drop a since-redundant duplicate of
-the back-nav fix), pending merge — see its own section below for what
-shipped and what's deliberately deferred to Stage 17.
+Stage: **13 — Budget recommendation engine** (9a, 9a.1, 9b, 10, 11, and 12
+are all merged to `develop` — Stage 12 via squash-merge PR #16, commit
+`2d138ac`; 9c remains blocked on Facebook Developer console setup — see
+SRS §11). The small, unrelated back-navigation-fallback bugfix is also
+merged to `develop`. Stage 12's own section below still documents what
+shipped and what's deliberately deferred to Stage 17 (Restore/Purge UI,
+no data-model changes needed).
+
+Stage 13 is built and verified on branch `stage-13-budget-recommendations`
+(off `develop`), pending merge — see its own summary below for what
+shipped.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -594,3 +595,68 @@ requirements it captured for later (§3).
   see Known Issues. This is the one piece of this stage's originally
   planned scope not executed, pending the user's explicit go-ahead on a
   live production Console change.
+
+### Stage 13 summary
+- Two-part scope, confirmed with the user during planning: **Part A**
+  (FR-6a-6d, the stage's literal title) — per-recurring-expense 6-month
+  rolling average + accept/dismiss budget recommendations. **Part B**
+  (general FR-6, folded in at the user's request after reviewing the
+  plan) — real per-category budgeted amounts on the Budget tab, replacing
+  the hardcoded `sampleBudgets` placeholder, plus a per-recurring-expense
+  breakdown reachable from each category card, since the user pointed out
+  a single category total can hide which specific bill actually drifted
+  (e.g. "Services" masking that only the Electrical bill changed).
+- **Part A**: new `src/lib/budget-recommendation.ts`
+  (`computeBudgetRecommendation`, unit tested in isolation, same
+  pure-function/store-wiring split as `lifecycle-transitions.ts`) plus
+  three new `recurring-expenses.ts` store functions —
+  `recomputeBudgetRecommendation` (queries the definition's last 6 paid
+  instances per `docs/data-model.md` §9's spec), `acceptBudgetRecommendation`,
+  `dismissBudgetRecommendation`. Recompute is triggered from
+  `expenses.ts`'s `setExpensePaid`/`updateExpense`/`restoreExpense`
+  (whenever the touched record is a recurring instance) and from
+  `updateRecurringExpense` (when its own `amount` changes). A new
+  `recomputeStaleBudgetRecommendations`, called on mount from both the
+  Expenses and Budget tabs, resolves the bulk `status: 'stale'` write
+  Stage 11 already made on `defaultCurrency` change into a real recompute
+  (data-model.md §9's "re-evaluated at read time" requirement). New shared
+  `src/components/budget-recommendation-badge.tsx` renders the
+  accept/dismiss UI once, reused on both the Expenses tab row and the
+  Budget tab's per-category breakdown (Part B) rather than duplicated.
+  **Design decision**: `docs/data-model.md` §9's "lets a dismissal
+  re-surface once the average drifts further" was underspecified —
+  implemented as "stays dismissed unless the new average is farther from
+  the budgeted amount than it was at the moment of dismissal," not simply
+  "changed at all."
+- **Part B**: new `Category.monthlyBudget: number | null` field
+  (`src/types/firestore.ts`, `docs/data-model.md` §4) — manually set, but
+  the category-edit form pre-fills it with a suggestion
+  (`suggestCategoryMonthlyBudget` in `budget-recommendation.ts`: sum of
+  that category's active recurring-expense amounts, converted to
+  `defaultCurrency`) when unset. Deliberately not a live derivation —
+  the user's stated goal was catching *total* real spend (recurring **and**
+  one-time expenses combined) exceeding what they expect, which a
+  recurring-only sum would undercount. `budget.tsx`'s existing
+  `actualForCategory` already summed both kinds correctly and needed no
+  change. New `src/components/category-budget-card.tsx` extracts each
+  category card into its own component: a summary (budgeted/actual/
+  over-budget) by default, with an in-place accordion (not a modal/dialog)
+  revealing the per-recurring-expense breakdown on tap — the accordion
+  choice deliberately avoids this codebase's documented, still-open web
+  modal/dialog-overlay gap (see Known Issues) rather than building the
+  missing primitive as a side effect of this stage.
+- `sample-data.ts`'s `sampleBudgets`/`SampleBudgetLine` removed (nothing
+  imports them anymore); `sampleMonthlyTotals` is untouched, still used by
+  `history.tsx`'s FR-7 chart — a different, still-out-of-scope aggregate.
+- `expenses.test.ts`/`recurring-expenses.test.ts` needed a new
+  `jest.mock('@/store/session', ...)` (mirroring the existing
+  `@/store/user-settings` mock already in both files) — `recomputeBudgetRecommendation`
+  reads `useSessionStore`, and without the mock, loading it transitively
+  pulled in the real `@react-native-firebase/app` native module, which
+  Jest can't load. Also had to keep `expenses.ts`'s `restoreExpense`
+  **not** `async` (chaining via `.then()` instead) despite adding an
+  await-driven recompute after its write — an `async function`'s
+  not-currently-trashed guard would otherwise throw as a rejected Promise
+  instead of synchronously, breaking the existing
+  `expect(() => restoreExpense(...)).toThrow()` test and crashing the
+  Jest worker on the unhandled rejection.

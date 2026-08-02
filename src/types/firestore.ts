@@ -55,6 +55,11 @@ export interface Category {
   order: number;
   isSystemDefault: boolean;
   lifecycleState: ArchivableState; // no Trash for categories — see §4
+  // In defaultCurrency, manually set (Stage 13, FR-6) — a target the user is
+  // free to set below what active recurringExpenses in this category sum to,
+  // since the point is catching total real spend (recurring + one-time)
+  // exceeding what they expect, not re-deriving a number already known.
+  monthlyBudget: number | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

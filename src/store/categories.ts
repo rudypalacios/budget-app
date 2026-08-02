@@ -39,6 +39,7 @@ export async function seedDefaultCategories() {
         order: index,
         isSystemDefault: true,
         lifecycleState: 'active',
+        monthlyBudget: null,
       });
     }
   } catch (error) {
@@ -54,7 +55,7 @@ export async function seedDefaultCategories() {
   }
 }
 
-export function addCategory(input: { name: string; type: Category['type'] }) {
+export function addCategory(input: { name: string; type: Category['type']; monthlyBudget?: number | null }) {
   return store.add({
     name: input.name,
     type: input.type,
@@ -63,12 +64,16 @@ export function addCategory(input: { name: string; type: Category['type'] }) {
     order: Date.now(),
     isSystemDefault: false,
     lifecycleState: 'active',
+    // No suggestion is possible yet at creation time — the category doesn't
+    // exist, so it can't already be a recurring expense's categoryId (Stage
+    // 13). Left unset unless the user typed one in on the create form.
+    monthlyBudget: input.monthlyBudget ?? null,
   });
 }
 
 export function updateCategory(
   id: string,
-  patch: Partial<Pick<Category, 'name' | 'type' | 'color' | 'icon' | 'order' | 'lifecycleState'>>,
+  patch: Partial<Pick<Category, 'name' | 'type' | 'color' | 'icon' | 'order' | 'lifecycleState' | 'monthlyBudget'>>,
 ) {
   return store.update(id, patch);
 }
