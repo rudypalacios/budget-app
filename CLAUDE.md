@@ -435,16 +435,16 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **12 — Archive/Trash flows** (9a, 9a.1, 9b, and 10 are all merged
-to `develop`; 9c remains blocked on Facebook Developer console setup —
-see SRS §11). Stage 11 (multi-currency) is built and verified on branch
-`stage-11-multi-currency`, pending merge to `develop`. Stage 12 is built
-and verified on branch `stage-12-archive-trash` (stacked on top of Stage
-11's branch, since it edits the same store files), also pending merge —
-see its own section below for what shipped and what's deliberately
-deferred to Stage 17. A small, unrelated bugfix (back-navigation
-fallback) was also done this session on its own branch,
-`fix/back-navigation-fallback`, off `develop`.
+Stage: **12 — Archive/Trash flows** (9a, 9a.1, 9b, 10, and 11 are all
+merged to `develop`; 9c remains blocked on Facebook Developer console
+setup — see SRS §11). The small, unrelated back-navigation-fallback
+bugfix from this session is also merged to `develop` (was its own branch,
+`fix/back-navigation-fallback`). Stage 12 is built and verified on branch
+`stage-12-archive-trash` (originally stacked on Stage 11's branch before
+Stage 11 merged; since merged forward with current `develop` to pick up
+Stage 11's real merged history and drop a since-redundant duplicate of
+the back-nav fix), pending merge — see its own section below for what
+shipped and what's deliberately deferred to Stage 17.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
