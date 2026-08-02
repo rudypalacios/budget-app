@@ -51,8 +51,11 @@ export default function BudgetScreen() {
   // Skips categories with no activity and no budget set, to avoid clutter
   // from unused categories — a category only needs to appear once it's
   // either being spent in or has an explicit target.
+  // != null (not !== null) deliberately catches both null and undefined —
+  // a category document created before Stage 13 has no monthlyBudget field
+  // at all, which reads back as undefined rather than null.
   const categoriesWithActivity = activeExpenseCategories.filter(
-    (category) => category.monthlyBudget !== null || actualForCategory(category.id) > 0,
+    (category) => category.monthlyBudget != null || actualForCategory(category.id) > 0,
   );
 
   const totalBudgeted = categoriesWithActivity.reduce((sum, category) => sum + (category.monthlyBudget ?? 0), 0);

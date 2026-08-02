@@ -36,7 +36,11 @@ export function CategoryBudgetCard({
   const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
 
-  const budgeted = category.monthlyBudget;
+  // Firestore documents created before Stage 13 have no monthlyBudget field
+  // at all, which reads back as undefined, not null — normalize once here
+  // so every downstream `budgeted !== null` check (and passing budgeted as
+  // a number prop) behaves correctly for those pre-existing categories too.
+  const budgeted = category.monthlyBudget ?? null;
   const isOverBudget = budgeted !== null && actual > budgeted;
   const hasBreakdown = recurringExpensesInCategory.length > 0;
 

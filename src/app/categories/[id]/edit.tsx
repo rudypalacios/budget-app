@@ -40,7 +40,10 @@ export default function EditCategoryScreen() {
   const initialValues: CategoryFormValues = {
     name: category.name,
     type: category.type,
-    monthlyBudget: category.monthlyBudget === null ? '' : String(category.monthlyBudget),
+    // == null (not === null) deliberately catches both null and undefined —
+    // a category document created before Stage 13 has no monthlyBudget
+    // field at all, which reads back as undefined rather than null.
+    monthlyBudget: category.monthlyBudget == null ? '' : String(category.monthlyBudget),
   };
 
   const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
