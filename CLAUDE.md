@@ -660,3 +660,31 @@ requirements it captured for later (§3).
   instead of synchronously, breaking the existing
   `expect(() => restoreExpense(...)).toThrow()` test and crashing the
   Jest worker on the unhandled rejection.
+- **Manually verified end-to-end against the live `lighthouse-budget-app`
+  project** (`npm run web` + a scripted Playwright session, since the user
+  confirmed the account had no real data yet and wanted a full DB reset
+  afterward anyway — test records prefixed `ZZ_TEST*`, left in place for
+  that planned reset rather than individually cleaned up). Confirmed
+  working with zero console errors: creating a recurring expense shows no
+  badge with no paid history; editing a generated instance's amount +
+  marking it paid surfaces the recommendation chip with the correct
+  rolling-average message; **Accept** updates the budgeted amount, clears
+  the badge, and toasts; **Dismiss** leaves the amount untouched, clears
+  the badge, and toasts; the Budget tab shows real per-category
+  budgeted/actual/remaining totals (not `sampleBudgets`); the accordion
+  expands to the correct per-recurring-expense breakdown with the same
+  badge reused inline; the category-edit form's Monthly budget suggestion
+  correctly tracks the recurring expense's current `amount` (50 before
+  Accept, 150 after); the Add Category screen renders the new field
+  cleanly with no regression.
+- **This verification pass caught a real bug**: `recomputeBudgetRecommendation`'s
+  query (`recurringExpenseId ==`, `paid ==`, `orderBy date`) had no
+  matching Firestore composite index, so every call threw
+  `failed-precondition` as an unhandled promise rejection — the
+  recommendation engine would have silently never worked for any user.
+  Fixed by adding the index to `firestore.indexes.json` (commit
+  `3e3f52a`) and deploying it to the live project via
+  `firebase deploy --only firestore:indexes`, run by the user after
+  Claude Code's auto-mode classifier correctly blocked doing it
+  autonomously (a live production-infrastructure change). Confirmed
+  enabled in the Firebase console (3 indexes total) before re-verifying.
