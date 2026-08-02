@@ -71,7 +71,13 @@ export function addExpense(input: NewExpenseInput) {
     budgetedCurrency: null,
     amount: input.amount,
     paid,
-    paidDate: paid ? toTimestamp(new Date()) : null,
+    // input.date, not new Date() — creating an already-paid one-time
+    // expense is often a retroactive log entry (e.g. yesterday's
+    // restaurant, already settled), so paidDate should reflect the date
+    // the user entered, not the moment of data entry. Contrast with
+    // setExpensePaid below, where "now" is correct: that's a live
+    // "marking this paid right now" action, not a backdated log.
+    paidDate: paid ? toTimestamp(input.date) : null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,

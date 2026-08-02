@@ -191,7 +191,7 @@ export function IncomeForm({
 
       {!values.isRecurring && (
         <DatePicker
-          label={t('income.form.dueDate')}
+          label={t('income.form.date')}
           value={values.date}
           onChange={(date) => setValues((current) => ({ ...current, date }))}
         />

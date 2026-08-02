@@ -8,15 +8,18 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Spacing } from '@/constants/theme';
+import { getCurrentCycleRange, isWithinCycle } from '@/lib/cycle';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
+import { useIncomesStore } from '@/store/incomes';
 import { recomputeStaleBudgetRecommendations, useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function BudgetScreen() {
   const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
+  const incomes = useIncomesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const recurringExpenses = useRecurringExpensesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
@@ -28,17 +31,28 @@ export default function BudgetScreen() {
     recomputeStaleBudgetRecommendations();
   }, []);
 
+  // Keyed by paidDate, not date — matches the same established convention
+  // as payments-dashboard.ts's groupPaymentRows ("a payment settled today
+  // for a 3-month-old bill belongs to *this* cycle, not the cycle it was
+  // originally due in").
+  const cycleRange = getCurrentCycleRange();
+
   // Sums each record's amountInDefaultCurrency (not the raw, possibly
   // foreign-currency amount) — records in the same category can carry
   // different currencies (FR-15/FR-18), so summing raw `amount` would mix
   // currencies together. Includes one-time expenses alongside recurring
   // instances (FR-6) — a category's real spend isn't just what its recurring
-  // bills say it should be.
+  // bills say it should be. Scoped to the current month (paidDate is
+  // guaranteed non-null once paid is true) so "this month" totals actually
+  // mean that, rather than an all-time sum.
   function actualForCategory(categoryId: string) {
     return expenses
       .filter(
         (expense) =>
-          expense.categoryId === categoryId && expense.paid && expense.lifecycleState === 'active',
+          expense.categoryId === categoryId &&
+          expense.paid &&
+          expense.lifecycleState === 'active' &&
+          isWithinCycle(expense.paidDate!.toDate(), cycleRange),
       )
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
   }
@@ -63,9 +77,17 @@ export default function BudgetScreen() {
   // budget set — the point is seeing total actual spend versus what's
   // expected, not silently excluding categories the user hasn't budgeted yet.
   const totalActual = expenses
-    .filter((expense) => expense.paid && expense.lifecycleState === 'active')
+    .filter((expense) => expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange))
     .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
   const remaining = totalBudgeted - totalActual;
+
+  // FR-6/income relation: money actually received this month, not expected/
+  // upcoming income — answers "do I literally have this much right now,"
+  // which is what "already on red numbers" is really asking.
+  const totalIncomeReceived = incomes
+    .filter((income) => income.paid && income.lifecycleState === 'active' && isWithinCycle(income.paidDate!.toDate(), cycleRange))
+    .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
+  const netCashPosition = totalIncomeReceived - totalActual;
 
   return (
     <ScreenScroll>
@@ -77,6 +99,23 @@ export default function BudgetScreen() {
         <ThemedText type="smallBold" themeColor={remaining >= 0 ? 'success' : 'danger'}>
           {formatCurrency(Math.abs(remaining), defaultCurrency)}{' '}
           {remaining >= 0 ? t('budget.remaining') : t('budget.overBudget')}
+        </ThemedText>
+      </Card>
+
+      <Card style={styles.incomeCard}>
+        <ThemedText type="caption">{t('budget.income.title')}</ThemedText>
+        <View style={styles.incomeRow}>
+          <ThemedText type="smallBold" themeColor="success">
+            {t('budget.income.received', { amount: formatCurrency(totalIncomeReceived, defaultCurrency) })}
+          </ThemedText>
+          <ThemedText type="smallBold" themeColor="danger">
+            {t('budget.income.spent', { amount: formatCurrency(totalActual, defaultCurrency) })}
+          </ThemedText>
+        </View>
+        <ThemedText type="title" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
+          {netCashPosition >= 0
+            ? t('budget.income.leftToSpend', { amount: formatCurrency(netCashPosition, defaultCurrency) })
+            : t('budget.income.overspent', { amount: formatCurrency(Math.abs(netCashPosition), defaultCurrency) })}
         </ThemedText>
       </Card>
 
@@ -100,5 +139,12 @@ export default function BudgetScreen() {
 const styles = StyleSheet.create({
   list: {
     gap: Spacing.three,
+  },
+  incomeCard: {
+    gap: Spacing.two,
+  },
+  incomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });

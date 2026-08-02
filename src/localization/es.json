@@ -26,7 +26,7 @@
     "movedToTrash": "\"{{name}}\" se movió a la papelera"
   },
   "nav": {
-    "payments": "Pagos",
+    "payments": "Panel",
     "expenses": "Gastos",
     "income": "Ingresos",
     "budget": "Presupuesto",
@@ -146,7 +146,7 @@
       "amountPlaceholder": "0.00",
       "recurringLabel": "Recurrente mensual",
       "dueDayOfMonth": "Día de vencimiento del mes",
-      "dueDate": "Fecha de vencimiento",
+      "date": "Fecha",
       "paid": "Pagado",
       "accessibility": {
         "recurring": "Gasto recurrente",
@@ -177,7 +177,7 @@
       "recurringLabel": "Recurrente",
       "frequency": "Frecuencia",
       "dayOfMonth": "Día del mes",
-      "dueDate": "Fecha de vencimiento",
+      "date": "Fecha",
       "received": "Recibido",
       "accessibility": {
         "recurring": "Ingreso recurrente",
@@ -259,7 +259,14 @@
     "hideDetails": "Ocultar detalles",
     "noHistoryYet": "Aún sin historial de pagos",
     "recurringBudgeted": "Presupuestado {{amount}}",
-    "recurringAverage": "Promedio 6 meses {{amount}}"
+    "recurringAverage": "Promedio 6 meses {{amount}}",
+    "income": {
+      "title": "Ingresos vs. Gastos",
+      "received": "{{amount}} recibido",
+      "spent": "{{amount}} gastado",
+      "leftToSpend": "{{amount}} disponible para gastar",
+      "overspent": "{{amount}} de más — estás gastando más de lo que recibes"
+    }
   },
   "history": {
     "title": "Historial",
@@ -295,7 +302,7 @@
     "allAdded": "Ya se agregaron todas las monedas admitidas."
   },
   "payments": {
-    "title": "Pagos",
+    "title": "Panel",
     "quickExpense": "Gasto rápido",
     "overdue": "Vencidos",
     "nothingOverdue": "Nada vencido.",

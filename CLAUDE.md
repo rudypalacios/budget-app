@@ -445,7 +445,13 @@ no data-model changes needed).
 
 Stage 13 is built and verified on branch `stage-13-budget-recommendations`
 (off `develop`), pending merge — see its own summary below for what
-shipped.
+shipped. A round of user review against that branch surfaced seven
+smaller product/UX gaps spanning several already-shipped stages (date
+labels, a recurring-generation edge case, Dashboard naming, mark-paid
+placement, income-aware budgeting) — fixed on branch
+`fix/post-stage-13-review`, stacked on top of `stage-13-budget-recommendations`
+per the user's explicit direction to keep this work separate. See its own
+summary below.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -688,3 +694,88 @@ requirements it captured for later (§3).
   Claude Code's auto-mode classifier correctly blocked doing it
   autonomously (a live production-infrastructure change). Confirmed
   enabled in the Firebase console (3 indexes total) before re-verifying.
+
+### fix/post-stage-13-review summary
+
+Branch stacked on `stage-13-budget-recommendations` (not `develop` — item
+7 depends on that branch's not-yet-merged `budget.tsx`/`Category.monthlyBudget`
+work), per the user's explicit direction to keep this batch of fixes
+separate rather than piling onto Stage 13 itself. Seven gaps found during
+live review of Stage 13, spanning several already-shipped stages:
+
+- **One-time expense/income date field relabeled** "Due date" → "Date"
+  (`expenses.form.date`/`income.form.date`, `expense-form.tsx`/
+  `income-form.tsx`) — a one-time entry can be past, present, or future
+  (e.g. money borrowed to repay later), so "due" was misleading.
+  **Bundled alongside**: `addExpense`/`addIncome` (`expenses.ts`/
+  `incomes.ts`) now stamp `paidDate` from the entered `date` rather than
+  `new Date()` when created already-paid — a retroactive log entry (e.g.
+  "yesterday's coffee, already paid") should carry yesterday's paidDate,
+  not today's. `setExpensePaid`/`setIncomeReceived` (the live toggle, on
+  Dashboard and the two new tab toggles below) deliberately keep stamping
+  "now" — that's a real-time action, not a backdated log.
+- **"Payments" renamed "Dashboard"** (`nav.payments`, `payments.title`) —
+  display-string only; internal identifiers (`payments-dashboard.ts`,
+  `usePaymentsDashboard`, the `payments.*` i18n namespace itself) are
+  unchanged, deliberately, to avoid pure-churn renames.
+  Both native (`app-tabs.tsx`) and web (`app-tabs.web.tsx`) tab bars
+  already drove off `nav.payments`, so no code changes were needed beyond
+  the string values.
+- **Recurring generation now includes the current month's occurrence even
+  when its due day already passed** (`recurring-schedule.ts`'s
+  `computeMonthlyOccurrenceDates`) — e.g. creating a due-day-1 recurring
+  expense on the 2nd used to generate nothing until next month; it now
+  generates immediately, showing as overdue. **This reverses a documented
+  Stage 6b decision** (the removed guard, `if (occurrence >=
+  normalizedStartDate)`, was explicitly locked in by a test named `'never
+  generates an occurrence before startDate'`) — done per this session's
+  explicit user request, not a bug that was silently patched; the test
+  was renamed and its expectation flipped accordingly, with a comment
+  explaining the reversal so a future reader doesn't mistake this for an
+  accidental regression. Traced (not just patched) to confirm the fix is
+  narrowly scoped: both affected branches (first-ever generation and the
+  catch-up-from-`lastGeneratedDate` branch) only ever differed in this one
+  edge case; removing the guard entirely was correct, not a partial fix.
+- **Mark paid/received directly on the Expenses/Income tabs**, not just
+  the Dashboard — added a `Switch` + status `Chip` to each one-time row in
+  both tabs' "One-time" sections (recurring instances aren't listed
+  individually on these screens, so nothing to add there). Reuses the
+  exact same `setExpensePaid`/`setIncomeReceived` functions the Dashboard
+  already calls — no new store logic. Since a row shown here is by
+  definition still unpaid (the existing list filter already excludes paid
+  ones), this is a simple always-off toggle: mark it paid, it disappears
+  from the list on the next render, no new local state needed. Each
+  screen's header comment was reframed from "config-only... lives
+  exclusively on the Payments tab" to reflect this broadened (but still
+  primarily planning-focused) scope.
+- **Budget tab now relates income to expenses.** New "Income vs. Expenses"
+  card (`budget.tsx`) showing money actually **received** this month
+  (not expected/upcoming — confirmed with the user: this answers "do I
+  literally have this much right now," not a projection) minus money
+  actually **paid**, net colored green ("left to spend") or red
+  ("overspent"). **Bundled alongside, confirmed with the user**: this
+  also fixed a pre-existing, unrelated gap where `actualForCategory`/
+  `totalActual` summed *all* paid expenses ever with no date filtering,
+  despite the "this month" label — both the expense totals and the new
+  income figure are now scoped to the current calendar month via
+  `src/lib/cycle.ts`'s `getCurrentCycleRange()`/`isWithinCycle()` (already
+  the established, tested utility for this — reused, not reinvented),
+  keyed by **`paidDate`**, matching the same documented convention
+  already used by `payments-dashboard.ts`'s `groupPaymentRows` ("a
+  payment settled today for a 3-month-old bill belongs to *this* cycle").
+  The per-recurring-expense 6-month rolling average (Stage 13) is
+  deliberately left un-scoped — a separate, intentional multi-month
+  calculation.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 20/20 suites, 165/165 tests (one test renamed
+  and its expectation flipped for the generation-logic reversal above; no
+  new tests added for the tab-level paid/received toggles or the
+  Dashboard rename, consistent with this project's testing strategy of
+  deferring UI-level coverage and relying on manual verification instead).
+- **Manually verified end-to-end on the live project** (same throwaway
+  `ZZ_TEST*`-record approach as Stage 13, per the user's standing
+  go-ahead) — confirmed all seven items working with zero console errors,
+  including the paidDate-backdating fix (a coffee logged as "yesterday,
+  already paid" correctly shows paidDate = yesterday on the Dashboard,
+  not today) and the income-vs-expenses math (Q100 received − Q15 spent
+  → "Q85.00 left to spend", correctly green).
