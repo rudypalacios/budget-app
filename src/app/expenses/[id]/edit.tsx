@@ -6,6 +6,7 @@ import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { parseAmountInput } from '@/lib/currency-input';
+import { getExpenseAmount } from '@/lib/payments-dashboard';
 import { setExpensePaid, toTimestamp, updateExpense, useExpensesStore } from '@/store/expenses';
 
 export default function EditExpenseScreen() {
@@ -40,7 +41,7 @@ export default function EditExpenseScreen() {
 
   const initialValues: ExpenseFormValues = {
     name: expense.name,
-    amount: String(expense.amount ?? 0),
+    amount: String(getExpenseAmount(expense)),
     categoryId: expense.categoryId,
     isRecurring: expense.kind === 'recurringInstance',
     dueDay: String(expense.date.toDate().getDate()),

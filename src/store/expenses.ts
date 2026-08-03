@@ -114,8 +114,23 @@ export async function updateExpense(id: string, patch: Partial<EditableExpenseFi
   }
 }
 
-export async function setExpensePaid(id: string, paid: boolean) {
-  await store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
+// `amount` is only meaningful when marking paid (the Dashboard's
+// confirm-amount modal, recurring instances only — see
+// confirm-amount-modal.tsx) — it corrects the instance's amount in the same
+// write, rather than needing a separate updateExpense call.
+export async function setExpensePaid(id: string, paid: boolean, amount?: number) {
+  if (paid && amount !== undefined) {
+    const expense = store.useStore.getState().items.find((item) => item.id === id);
+    const exchangeRateToDefault = expense?.exchangeRateToDefault ?? 1;
+    await store.update(id, {
+      paid,
+      paidDate: toTimestamp(new Date()),
+      amount,
+      amountInDefaultCurrency: amount * exchangeRateToDefault,
+    });
+  } else {
+    await store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
+  }
   await recomputeIfRecurringInstance(id);
 }
 

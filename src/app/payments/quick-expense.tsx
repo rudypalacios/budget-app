@@ -7,6 +7,7 @@ import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
@@ -34,6 +35,9 @@ export default function QuickExpenseScreen() {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState(expenseCategories[0]?.id ?? '');
+  // Optional — the date the expense was actually made, defaulting to today
+  // when left unset (handleSave below), same convention as the full form.
+  const [date, setDate] = useState<Date | null>(null);
   const [paid, setPaid] = useState(true);
 
   const parsedAmount = parseAmountInput(amount);
@@ -49,7 +53,7 @@ export default function QuickExpenseScreen() {
       currency: defaultCurrency,
       exchangeRateToDefault: 1,
       rateSource: 'manual',
-      date: new Date(),
+      date: date ?? new Date(),
       paid,
     });
     router.back();
@@ -79,6 +83,7 @@ export default function QuickExpenseScreen() {
           options={expenseCategories.map((category) => ({ value: category.id, label: category.name }))}
           onChange={setCategoryId}
         />
+        <DatePicker label={t('quickExpense.date')} value={date} onChange={setDate} />
         <View style={styles.switchRow}>
           <Switch value={paid} onValueChange={setPaid} accessibilityLabel={t('quickExpense.paid')} />
           <ThemedText>{t('quickExpense.paid')}</ThemedText>

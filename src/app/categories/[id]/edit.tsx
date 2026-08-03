@@ -46,8 +46,11 @@ export default function EditCategoryScreen() {
     monthlyBudget: category.monthlyBudget == null ? '' : String(category.monthlyBudget),
   };
 
+  // Income categories never show the monthlyBudget field (CategoryForm), so
+  // there's no suggestion to compute for one.
   const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
-  const suggestedMonthlyBudget = suggestCategoryMonthlyBudget(id, activeRecurringExpenses, defaultCurrency);
+  const suggestedMonthlyBudget =
+    category.type === 'income' ? null : suggestCategoryMonthlyBudget(id, activeRecurringExpenses, defaultCurrency);
 
   return (
     <ScreenScroll>

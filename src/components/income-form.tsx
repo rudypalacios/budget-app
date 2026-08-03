@@ -157,18 +157,21 @@ export function IncomeForm({
         </View>
       )}
 
-      {values.isRecurring && (
+      {/* Only relevant when creating a brand-new recurring definition —
+          disableRecurringToggle is only ever passed on Edit, where
+          values.isRecurring is forced true for an already-generated
+          instance. Editing an instance's frequency/dayOfMonth here would be
+          dead UI: neither is ever included in the edit screen's onSubmit
+          payload, since a single occurrence can't change its own template's
+          schedule. */}
+      {values.isRecurring && !disableRecurringToggle && (
         <>
           <ThemedText type="smallBold" themeColor="textSecondary">
             {t('income.form.frequency')}
           </ThemedText>
           <View style={styles.chipRow}>
             {FREQUENCIES.map((option) => (
-              <Pressable
-                key={option}
-                disabled={disableRecurringToggle}
-                onPress={() => setValues((current) => ({ ...current, frequency: option }))}
-              >
+              <Pressable key={option} onPress={() => setValues((current) => ({ ...current, frequency: option }))}>
                 <Chip label={t(FREQUENCY_LABEL_KEY[option])} tone={values.frequency === option ? 'success' : 'neutral'} />
               </Pressable>
             ))}
@@ -183,7 +186,6 @@ export function IncomeForm({
               value={values.dayOfMonth}
               onChangeText={(dayOfMonth) => setValues((current) => ({ ...current, dayOfMonth }))}
               keyboardType="number-pad"
-              editable={!disableRecurringToggle}
             />
           )}
         </>

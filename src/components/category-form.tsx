@@ -67,7 +67,10 @@ export function CategoryForm({
   async function handleSave() {
     setIsSaving(true);
     try {
-      await onSubmit(values);
+      // An income-only category never carries a budget through Save, even if
+      // one was typed before switching type to 'income' (the field is hidden
+      // below, but local state could still hold a stale value).
+      await onSubmit(values.type === 'income' ? { ...values, monthlyBudget: '' } : values);
     } finally {
       setIsSaving(false);
     }
@@ -93,13 +96,16 @@ export function CategoryForm({
         ))}
       </View>
 
-      <TextField
-        label={t('categories.form.monthlyBudget', { currency: defaultCurrency })}
-        value={values.monthlyBudget}
-        onChangeText={(monthlyBudget) => setValues((current) => ({ ...current, monthlyBudget }))}
-        placeholder={t('categories.form.monthlyBudgetPlaceholder')}
-        keyboardType="decimal-pad"
-      />
+      {values.type !== 'income' && (
+        <TextField
+          label={t('categories.form.monthlyBudget', { currency: defaultCurrency })}
+          value={values.monthlyBudget}
+          onChangeText={(monthlyBudget) => setValues((current) => ({ ...current, monthlyBudget }))}
+          placeholder={t('categories.form.monthlyBudgetPlaceholder')}
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+        />
+      )}
 
       <View style={styles.actionRow}>
         <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
