@@ -59,6 +59,16 @@ export const authClient: AuthClient = {
   },
 
   async signInWithGoogle() {
+    // GoogleSignin.signIn() silently reuses whichever Google account is
+    // still cached as the native module's "current user" from a previous
+    // sign-in, skipping the interactive account picker entirely once one
+    // exists — confirmed live (multiple accounts on-device, chooser never
+    // reappeared). signOut() here only clears that local cache (per this
+    // library's docs, it does not revoke the underlying OAuth grant), so it
+    // doesn't sign the user out of anything real — it just forces the
+    // account picker to show every time, matching web's signInWithPopup,
+    // which already lets the user pick an account on every attempt.
+    await GoogleSignin.signOut();
     if (Platform.OS === 'android') {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     }
