@@ -10,6 +10,7 @@
     "amountWithCurrency": "Amount ({{currency}})",
     "selectPlaceholder": "Select…",
     "closeMenu": "Close menu",
+    "closeDialog": "Close dialog",
     "openMenu": "Open menu",
     "back": "Back",
     "done": "Done",
@@ -217,6 +218,7 @@
     "title": "Quick expense",
     "namePlaceholder": "e.g. Coffee",
     "amountPlaceholder": "0.00",
+    "date": "Date",
     "paid": "Paid"
   },
   "categories": {
@@ -327,6 +329,11 @@
       "received": "received",
       "unpaid": "unpaid",
       "paid": "paid"
+    },
+    "confirmAmount": {
+      "title": "Confirm amount for {{name}}",
+      "save": "Save",
+      "discard": "Discard"
     }
   }
 }

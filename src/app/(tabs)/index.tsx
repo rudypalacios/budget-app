@@ -1,7 +1,9 @@
 import { router, type Href } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { ConfirmAmountModal } from '@/components/confirm-amount-modal';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -45,6 +47,18 @@ function togglePaid(row: PaymentRow) {
   }
 }
 
+// Same as togglePaid, but with a user-confirmed amount from
+// ConfirmAmountModal (recurring instances only — see handleTogglePaid).
+function confirmMarkPaid(row: PaymentRow, amount: number) {
+  if (row.direction === 'expense') {
+    setExpensePaid(row.id, true, amount);
+    if (row.skipped) setExpenseSkipped(row.id, false);
+  } else {
+    setIncomeReceived(row.id, true, amount);
+    if (row.skipped) setIncomeSkipped(row.id, false);
+  }
+}
+
 function toggleSkipped(row: PaymentRow) {
   if (row.direction === 'expense') {
     setExpenseSkipped(row.id, !row.skipped);
@@ -79,6 +93,19 @@ export default function PaymentsScreen() {
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const theme = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
+  // Only recurring instances go through the confirm-amount modal — a
+  // one-time row's amount is already exact and not in question, so it keeps
+  // the instant one-tap toggle (see togglePaid).
+  const [confirmRow, setConfirmRow] = useState<PaymentRow | null>(null);
+
+  function handleTogglePaid(row: PaymentRow) {
+    const nextPaid = !row.paid;
+    if (nextPaid && row.kind === 'recurringInstance') {
+      setConfirmRow(row);
+    } else {
+      togglePaid(row);
+    }
+  }
 
   function renderGroup(title: string, rows: PaymentRow[], emptyLabel: string, isOverdue = false) {
     return (
@@ -200,7 +227,7 @@ export default function PaymentsScreen() {
                         )}
                         <Switch
                           value={row.paid}
-                          onValueChange={() => togglePaid(row)}
+                          onValueChange={() => handleTogglePaid(row)}
                           accessibilityLabel={t('payments.markAs', {
                             name: row.name,
                             state:
@@ -227,16 +254,32 @@ export default function PaymentsScreen() {
   }
 
   return (
-    <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title={t('payments.title')} />
+    <>
+      <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
+        <ScreenHeader title={t('payments.title')} />
 
-      <Button label={t('payments.quickExpense')} onPress={() => router.push('/payments/quick-expense')} />
+        <Button label={t('payments.quickExpense')} onPress={() => router.push('/payments/quick-expense')} />
 
-      {renderGroup(t('payments.overdue'), overdueUnpaid, t('payments.nothingOverdue'), true)}
-      {renderGroup(t('payments.upcoming'), upcomingUnpaid, t('payments.nothingUpcoming'))}
-      {completedThisCycle.length > 0 &&
-        renderGroup(t('payments.completedThisCycle'), completedThisCycle, '')}
-    </ScreenScroll>
+        {renderGroup(t('payments.overdue'), overdueUnpaid, t('payments.nothingOverdue'), true)}
+        {renderGroup(t('payments.upcoming'), upcomingUnpaid, t('payments.nothingUpcoming'))}
+        {completedThisCycle.length > 0 &&
+          renderGroup(t('payments.completedThisCycle'), completedThisCycle, '')}
+      </ScreenScroll>
+      {confirmRow && (
+        <ConfirmAmountModal
+          key={confirmRow.id}
+          isOpen
+          title={t('payments.confirmAmount.title', { name: confirmRow.name })}
+          currency={confirmRow.currency}
+          initialAmount={confirmRow.amount}
+          onSave={(amount) => {
+            confirmMarkPaid(confirmRow, amount);
+            setConfirmRow(null);
+          }}
+          onDiscard={() => setConfirmRow(null)}
+        />
+      )}
+    </>
   );
 }
 

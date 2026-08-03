@@ -10,6 +10,7 @@
     "amountWithCurrency": "Monto ({{currency}})",
     "selectPlaceholder": "Seleccionar…",
     "closeMenu": "Cerrar menú",
+    "closeDialog": "Cerrar diálogo",
     "openMenu": "Abrir menú",
     "back": "Atrás",
     "done": "Listo",
@@ -217,6 +218,7 @@
     "title": "Gasto rápido",
     "namePlaceholder": "p. ej. Café",
     "amountPlaceholder": "0.00",
+    "date": "Fecha",
     "paid": "Pagado"
   },
   "categories": {
@@ -327,6 +329,11 @@
       "received": "recibido",
       "unpaid": "sin pagar",
       "paid": "pagado"
+    },
+    "confirmAmount": {
+      "title": "Confirmar monto de {{name}}",
+      "save": "Guardar",
+      "discard": "Descartar"
     }
   }
 }

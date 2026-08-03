@@ -93,7 +93,21 @@ export function updateIncome(id: string, patch: Partial<EditableIncomeFields>) {
   });
 }
 
-export function setIncomeReceived(id: string, paid: boolean) {
+// `amount` is only meaningful when marking received (the Dashboard's
+// confirm-amount modal, recurring instances only — see
+// confirm-amount-modal.tsx) — it corrects the instance's amount in the same
+// write, rather than needing a separate updateIncome call.
+export function setIncomeReceived(id: string, paid: boolean, amount?: number) {
+  if (paid && amount !== undefined) {
+    const income = store.useStore.getState().items.find((item) => item.id === id);
+    const exchangeRateToDefault = income?.exchangeRateToDefault ?? 1;
+    return store.update(id, {
+      paid,
+      paidDate: toTimestamp(new Date()),
+      amount,
+      amountInDefaultCurrency: amount * exchangeRateToDefault,
+    });
+  }
   return store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
 }
 

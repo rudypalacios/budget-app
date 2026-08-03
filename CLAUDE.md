@@ -390,7 +390,12 @@ actually resolved.)_
   worse than no confirmation at all. Needs a real custom confirm-dialog
   component to do properly, which is the same missing primitive as the web
   modal-overlay gap above — worth solving both together rather than building a
-  one-off. Revisit once that primitive exists.
+  one-off. **That primitive now exists** (`src/components/ui/dialog.tsx`'s
+  `Dialog`, built for the Payments Dashboard's confirm-amount-on-mark-paid
+  modal — post-Stage-13 review) — this entry stays open since
+  discard-changes-on-Cancel itself still isn't built, but a future pass can
+  compose it on top of `Dialog` instead of inventing the primitive from
+  scratch.
 - **Anonymous auth is per-device/per-browser-profile, no cross-device sync
   yet** (Stage 6) — `bootstrapSession` signs in anonymously with no linked
   credential, so each device/browser profile gets its own separate uid and

@@ -2,6 +2,16 @@ import { isWithinCycle, type CycleRange } from './cycle';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type { ExpenseRecord, IncomeRecord } from '@/types/firestore';
 
+// amount is only null for an unpaid RecurringExpenseInstance (data-model.md
+// §6) — fall back to its budgetedAmount snapshot so callers always have a
+// real number to display/prefill, whether or not the instance has been paid
+// yet. Exported so expenses/[id]/edit.tsx's amount-prefill uses the exact
+// same fallback as this dashboard, after a missed copy of this logic once
+// left that screen prefilling "0" for an unpaid instance instead.
+export function getExpenseAmount(expense: ExpenseRecord): number {
+  return expense.amount ?? expense.budgetedAmount ?? 0;
+}
+
 export type PaymentDirection = 'expense' | 'income';
 
 // Unified shape over ExpenseRecord/IncomeRecord, shared by this dashboard
@@ -42,10 +52,7 @@ export function buildPaymentRows(
     name: expense.name,
     categoryId: expense.categoryId,
     date: expense.date.toDate(),
-    // amount is only null for an unpaid RecurringExpenseInstance
-    // (data-model.md §6) — fall back to budgetedAmount, same as
-    // src/app/(tabs)/expenses.tsx.
-    amount: expense.amount ?? expense.budgetedAmount ?? 0,
+    amount: getExpenseAmount(expense),
     currency: expense.currency,
     amountInDefaultCurrency: expense.amountInDefaultCurrency,
     paid: expense.paid,

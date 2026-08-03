@@ -148,13 +148,18 @@ export function ExpenseForm({
         </View>
       )}
 
-      {values.isRecurring && (
+      {/* Only relevant when creating a brand-new recurring definition —
+          disableRecurringToggle is only ever passed on Edit, where
+          values.isRecurring is forced true for an already-generated
+          instance. Editing an instance's dueDay here would be dead UI: it's
+          never included in the edit screens' onSubmit payload, since a
+          single occurrence can't change its own template's schedule. */}
+      {values.isRecurring && !disableRecurringToggle && (
         <TextField
           label={t('expenses.form.dueDayOfMonth')}
           value={values.dueDay}
           onChangeText={(dueDay) => setValues((current) => ({ ...current, dueDay }))}
           keyboardType="number-pad"
-          editable={!disableRecurringToggle}
         />
       )}
 
