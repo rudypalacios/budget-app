@@ -51,13 +51,19 @@ describe('computeMonthlyOccurrenceDates', () => {
     expect(dates.map((d) => d.getDate())).toEqual([31, 28, 31, 30]); // Jan, Feb, Mar, Apr
   });
 
-  it('never generates an occurrence before startDate', () => {
+  // Reverses a prior Stage 6b decision, per explicit user request (found
+  // during Stage 13 review): a due day earlier in the current month than
+  // the creation date used to be skipped entirely, deferring to next
+  // month. It should instead generate immediately, showing as overdue —
+  // symmetric with the "due later in the current month" case above.
+  it("generates the current month's occurrence even when its due day is earlier than startDate", () => {
     const startDate = new Date(2026, 2, 10); // Mar 10
     const now = new Date(2026, 2, 31);
     const dates = computeMonthlyOccurrenceDates(1, startDate, null, now);
 
-    // Day-of-month 1 in March falls before startDate (Mar 10) — should be skipped.
-    expect(dates).toHaveLength(0);
+    expect(dates).toHaveLength(1);
+    expect(dates[0].getMonth()).toBe(2);
+    expect(dates[0].getDate()).toBe(1);
   });
 
   it('returns nothing when throughInclusive is before the next due occurrence', () => {

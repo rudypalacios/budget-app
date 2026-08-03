@@ -9,14 +9,16 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
+import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
-import { archiveExpense, trashExpense, useExpensesStore } from '@/store/expenses';
+import { archiveExpense, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
 import {
   archiveRecurringExpense,
   recomputeStaleBudgetRecommendations,
@@ -25,11 +27,11 @@ import {
 } from '@/store/recurring-expenses';
 import { showToast } from '@/store/toast';
 
-// This screen is config-only: creating/editing planned expenses (one-time
-// or recurring templates). Marking a specific occurrence paid/unpaid/skipped
-// — and the overdue tag — lives exclusively on the Payments tab
-// (src/app/(tabs)/index.tsx, the Payments screen, Stage 8), which already
-// unifies both kinds.
+// Primarily for planning/config (creating/editing one-time expenses and
+// recurring templates), with a quick paid toggle on one-time rows below —
+// full paid/unpaid/skipped triage across both expenses and income, plus the
+// overdue tag, still lives on the Dashboard tab (src/app/(tabs)/index.tsx,
+// Stage 8), which unifies both kinds in one prioritized view.
 export default function ExpensesScreen() {
   const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
@@ -74,6 +76,14 @@ export default function ExpensesScreen() {
   function handleTrashExpense(id: string, name: string) {
     trashExpense(id);
     showToast(t('archive.movedToTrash', { name }));
+  }
+
+  // A row shown in the One-time section is always currently unpaid (see
+  // plannedOneTime's filter above) — marking it paid here just removes it
+  // from this list on the next render, same reasoning as the Payments
+  // dashboard's own toggle, which this calls directly.
+  function handleMarkExpensePaid(id: string) {
+    setExpensePaid(id, true);
   }
 
   return (
@@ -165,6 +175,17 @@ export default function ExpensesScreen() {
                       />
                     </View>
                   </View>
+                  <View style={styles.bottomLine}>
+                    <Chip label={t('payments.status.unpaid')} tone="warning" />
+                    <Switch
+                      value={false}
+                      onValueChange={() => handleMarkExpensePaid(expense.id)}
+                      accessibilityLabel={t('payments.markAs', {
+                        name: expense.name,
+                        state: t('payments.state.paid'),
+                      })}
+                    />
+                  </View>
                   {index < plannedOneTime.length - 1 && <Divider style={styles.divider} />}
                 </View>
               );
@@ -197,6 +218,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  bottomLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingBottom: Spacing.two,
   },
   divider: {
     marginVertical: Spacing.one,

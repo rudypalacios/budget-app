@@ -26,7 +26,7 @@
     "movedToTrash": "\"{{name}}\" moved to Trash"
   },
   "nav": {
-    "payments": "Payments",
+    "payments": "Dashboard",
     "expenses": "Expenses",
     "income": "Income",
     "budget": "Budget",
@@ -146,7 +146,7 @@
       "amountPlaceholder": "0.00",
       "recurringLabel": "Recurring monthly",
       "dueDayOfMonth": "Due day of month",
-      "dueDate": "Due date",
+      "date": "Date",
       "paid": "Paid",
       "accessibility": {
         "recurring": "Recurring expense",
@@ -177,7 +177,7 @@
       "recurringLabel": "Recurring",
       "frequency": "Frequency",
       "dayOfMonth": "Day of month",
-      "dueDate": "Due date",
+      "date": "Date",
       "received": "Received",
       "accessibility": {
         "recurring": "Recurring income",
@@ -259,7 +259,14 @@
     "hideDetails": "Hide details",
     "noHistoryYet": "No paid history yet",
     "recurringBudgeted": "Budgeted {{amount}}",
-    "recurringAverage": "6-month avg {{amount}}"
+    "recurringAverage": "6-month avg {{amount}}",
+    "income": {
+      "title": "Income vs. Expenses",
+      "received": "{{amount}} received",
+      "spent": "{{amount}} spent",
+      "leftToSpend": "{{amount}} left to spend",
+      "overspent": "{{amount}} over — spending more than you're receiving"
+    }
   },
   "history": {
     "title": "History",
@@ -295,7 +302,7 @@
     "allAdded": "Every supported currency has already been added."
   },
   "payments": {
-    "title": "Payments",
+    "title": "Dashboard",
     "quickExpense": "Quick expense",
     "overdue": "Overdue",
     "nothingOverdue": "Nothing overdue.",

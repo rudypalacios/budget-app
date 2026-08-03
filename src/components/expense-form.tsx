@@ -160,7 +160,7 @@ export function ExpenseForm({
 
       {!values.isRecurring && (
         <DatePicker
-          label={t('expenses.form.dueDate')}
+          label={t('expenses.form.date')}
           value={values.date}
           onChange={(date) => setValues((current) => ({ ...current, date }))}
         />

@@ -33,11 +33,16 @@ function startOfDay(date: Date): Date {
 // RecurringIncome.dayOfMonth: catches up every missed month between
 // (lastGeneratedDate, exclusive) or startDate and throughInclusive.
 //
-// The upper bound is compared by *calendar month*, not exact date — per
+// Both bounds are compared by *calendar month*, not exact date — per
 // data-model.md §9 ("...forward through the current period"), a bill due
 // later in the current month (e.g. due on the 20th, created on the 9th) is
 // still part of the current period and should generate immediately, not
-// wait until its specific due-day arrives.
+// wait until its specific due-day arrives. Symmetrically (per explicit
+// user request, reversing an earlier Stage 6b decision that generated
+// nothing at all in this case): a bill due *earlier* in the current month
+// than today (e.g. due on the 1st, created on the 2nd) is also still part
+// of the current period — it should generate immediately too, showing as
+// overdue, rather than silently waiting until next month.
 export function computeMonthlyOccurrenceDates(
   dayOfMonth: number,
   startDate: Date,
@@ -69,7 +74,7 @@ export function computeMonthlyOccurrenceDates(
     if (year > throughYear || (year === throughYear && month > throughMonth)) break;
     const day = clampDueDay(year, month, dayOfMonth);
     const occurrence = new Date(year, month, day);
-    if (occurrence >= normalizedStartDate) dates.push(occurrence);
+    dates.push(occurrence);
     month += 1;
   }
 

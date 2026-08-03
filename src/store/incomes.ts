@@ -56,7 +56,11 @@ export function addIncome(input: NewIncomeInput) {
     rateSource: input.rateSource,
     amount: input.amount,
     paid,
-    paidDate: paid ? toTimestamp(new Date()) : null,
+    // input.date, not new Date() — same reasoning as addExpense in
+    // expenses.ts: creating an already-received one-time income is often
+    // a retroactive log entry, so paidDate should reflect the entered
+    // date, not the moment of data entry.
+    paidDate: paid ? toTimestamp(input.date) : null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
