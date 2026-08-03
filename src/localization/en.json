@@ -193,6 +193,13 @@
       "namePlaceholder": "e.g. Rent",
       "amountPlaceholder": "0.00",
       "dueDayOfMonth": "Due day of month"
+    },
+    "recommendation": {
+      "message": "6-month avg {{average}} vs budgeted {{budgeted}}",
+      "accept": "Update budget",
+      "dismiss": "Keep current",
+      "accepted": "Updated {{name}}'s budget",
+      "dismissed": "Dismissed for {{name}}"
     }
   },
   "recurringIncome": {
@@ -234,7 +241,9 @@
         "expense": "Expense",
         "income": "Income",
         "both": "Both"
-      }
+      },
+      "monthlyBudget": "Monthly budget ({{currency}})",
+      "monthlyBudgetPlaceholder": "0.00"
     }
   },
   "budget": {
@@ -244,7 +253,13 @@
     "overBudget": "over budget",
     "overBudgetChip": "Over budget",
     "spent": "{{amount}} spent",
-    "ofBudgeted": "of {{amount}}"
+    "ofBudgeted": "of {{amount}}",
+    "noBudgetSet": "No budget set",
+    "details": "Details",
+    "hideDetails": "Hide details",
+    "noHistoryYet": "No paid history yet",
+    "recurringBudgeted": "Budgeted {{amount}}",
+    "recurringAverage": "6-month avg {{amount}}"
   },
   "history": {
     "title": "History",

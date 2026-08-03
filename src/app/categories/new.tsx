@@ -4,20 +4,32 @@ import { useTranslation } from 'react-i18next';
 import { CategoryForm, type CategoryFormValues } from '@/components/category-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
+import { parseAmountInput } from '@/lib/currency-input';
 import { addCategory } from '@/store/categories';
+import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function NewCategoryScreen() {
   const { t } = useTranslation();
+  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   function handleSubmit(values: CategoryFormValues) {
-    addCategory({ name: values.name, type: values.type });
+    addCategory({
+      name: values.name,
+      type: values.type,
+      monthlyBudget: values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+    });
     router.back();
   }
 
   return (
     <ScreenScroll>
       <ModalHeader title={t('categories.addTitle')} />
-      <CategoryForm submitLabel={t('common.save')} onSubmit={handleSubmit} onCancel={() => router.back()} />
+      <CategoryForm
+        submitLabel={t('common.save')}
+        onSubmit={handleSubmit}
+        onCancel={() => router.back()}
+        defaultCurrency={defaultCurrency}
+      />
     </ScreenScroll>
   );
 }

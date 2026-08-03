@@ -1,8 +1,11 @@
 import { createCollectionStore } from './create-collection-store';
+import { computeBudgetRecommendation } from '@/lib/budget-recommendation';
+import { firestoreClient } from '@/lib/firebase/firestore';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
+import { useSessionStore } from './session';
 import { useUserSettingsStore } from './user-settings';
-import type { ArchivableState, BudgetRecommendation, CurrencyCode, RecurringExpense } from '@/types/firestore';
+import type { ArchivableState, BudgetRecommendation, CurrencyCode, ExpenseRecord, RecurringExpense } from '@/types/firestore';
 
 const store = createCollectionStore<RecurringExpense>('recurringExpenses');
 
@@ -55,8 +58,16 @@ type EditableRecurringExpenseFields = Pick<
   'name' | 'categoryId' | 'amount' | 'currency' | 'exchangeRateToDefault' | 'dueDay' | 'startDate'
 >;
 
-export function updateRecurringExpense(id: string, patch: Partial<EditableRecurringExpenseFields>) {
-  return store.update(id, patch);
+// Editing amount changes whether drift holds against the (now-current)
+// budgeted amount, even with no new paid instance — recompute right after,
+// passing the just-written amount directly rather than re-reading store
+// state, since the collection listener that backs it may not have caught up
+// with this write yet.
+export async function updateRecurringExpense(id: string, patch: Partial<EditableRecurringExpenseFields>) {
+  await store.update(id, patch);
+  if (patch.amount !== undefined) {
+    await recomputeBudgetRecommendation(id, patch.amount);
+  }
 }
 
 // FR-4a/4b/4e (data-model.md §7) — archiving/trashing a definition only
@@ -91,4 +102,87 @@ export function restoreRecurringExpense(id: string) {
 
 export function purgeRecurringExpense(id: string) {
   return store.remove(id);
+}
+
+// FR-6a/data-model.md §9: recomputes the 6-month rolling average + drift
+// status from the definition's last 6 paid instances. `budgetedAmountOverride`
+// lets a caller that just wrote a new `amount` (updateRecurringExpense above)
+// pass that value straight through instead of racing the collection
+// listener's eventual-consistency window.
+export async function recomputeBudgetRecommendation(id: string, budgetedAmountOverride?: number): Promise<void> {
+  const uid = useSessionStore.getState().uid;
+  if (!uid) return;
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition) return;
+
+  const paidInstances = await firestoreClient.getDocs<ExpenseRecord>(`users/${uid}/expenses`, {
+    where: [
+      ['recurringExpenseId', '==', id],
+      ['paid', '==', true],
+    ],
+    orderBy: [['date', 'desc']],
+    limit: 6,
+  });
+
+  const budgetRecommendation = computeBudgetRecommendation({
+    paidInstanceAmounts: paidInstances.map((instance) => instance.amountInDefaultCurrency),
+    budgetedAmount: budgetedAmountOverride ?? definition.amount,
+    now: new Date(),
+    previousStatus: definition.budgetRecommendation.status,
+    dismissedAtAverageAmount: definition.budgetRecommendation.dismissedAtAverageAmount,
+  });
+
+  await store.update(id, { budgetRecommendation });
+}
+
+// data-model.md §9: "re-evaluated at read time... to catch drift missed by
+// a stale cache" — resolves every recurringExpenses/{id}.budgetRecommendation
+// that a bulk `status: 'stale'` write (e.g. defaultCurrency change, see
+// markBudgetRecommendationsStale in user-settings.ts) left needing a real
+// recompute. Call once when a screen that displays recommendations mounts.
+export async function recomputeStaleBudgetRecommendations(): Promise<void> {
+  const staleIds = store.useStore
+    .getState()
+    .items.filter((item) => item.lifecycleState === 'active' && item.budgetRecommendation.status === 'stale')
+    .map((item) => item.id);
+
+  await Promise.all(staleIds.map((id) => recomputeBudgetRecommendation(id)));
+}
+
+// FR-6d: auto-updates the budgeted amount to match the suggested figure and
+// marks the recommendation accepted. A later recompute (next paid instance,
+// or the next markBudgetRecommendationsStale-triggered pass) naturally
+// re-evaluates drift against the new amount — no special "un-accept" path.
+export function acceptBudgetRecommendation(id: string) {
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition) {
+    throw new Error(`recurringExpenses store: acceptBudgetRecommendation(${id}) — not found`);
+  }
+  const suggested = definition.budgetRecommendation.suggestedBudgetedAmount;
+  if (suggested === null) return Promise.resolve();
+
+  return store.update(id, {
+    amount: suggested,
+    budgetRecommendation: { ...definition.budgetRecommendation, status: 'accepted' },
+  });
+}
+
+// FR-6d: keeps the current budgeted amount. dismissedAtAverageAmount records
+// the average at the moment of dismissal so a later recompute only
+// re-surfaces the recommendation once the average has drifted even further
+// (see computeBudgetRecommendation's staysDismissed logic).
+export function dismissBudgetRecommendation(id: string) {
+  const definition = store.useStore.getState().items.find((item) => item.id === id);
+  if (!definition) {
+    throw new Error(`recurringExpenses store: dismissBudgetRecommendation(${id}) — not found`);
+  }
+
+  return store.update(id, {
+    budgetRecommendation: {
+      ...definition.budgetRecommendation,
+      status: 'dismissed',
+      dismissedAt: toTimestamp(new Date()),
+      dismissedAtAverageAmount: definition.budgetRecommendation.rollingAverageAmount,
+    },
+  });
 }

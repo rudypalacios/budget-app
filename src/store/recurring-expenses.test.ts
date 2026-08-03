@@ -22,6 +22,13 @@ jest.mock('@/store/user-settings', () => ({
   useUserSettingsStore: { getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }) },
 }));
 
+// Avoids pulling in the real session.ts -> @/lib/firebase/auth -> the native
+// @react-native-firebase/app module (not available under Jest) — this file
+// now imports recomputeBudgetRecommendation, which reads useSessionStore.
+jest.mock('@/store/session', () => ({
+  useSessionStore: { getState: () => ({ uid: 'test-uid' }) },
+}));
+
 import {
   archiveRecurringExpense,
   purgeRecurringExpense,

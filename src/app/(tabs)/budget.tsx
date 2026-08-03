@@ -1,29 +1,39 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { CategoryBudgetCard } from '@/components/category-budget-card';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Chip } from '@/components/ui/chip';
-import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
-import { sampleBudgets } from '@/constants/sample-data';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
+import { recomputeStaleBudgetRecommendations, useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function BudgetScreen() {
   const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
+  const recurringExpenses = useRecurringExpensesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
+
+  // Same reason as the Expenses tab's identical effect: catches drift missed
+  // by a stale cache (data-model.md §9) whenever this screen — which also
+  // surfaces recommendations, via each category's breakdown — is viewed.
+  useEffect(() => {
+    recomputeStaleBudgetRecommendations();
+  }, []);
 
   // Sums each record's amountInDefaultCurrency (not the raw, possibly
   // foreign-currency amount) — records in the same category can carry
   // different currencies (FR-15/FR-18), so summing raw `amount` would mix
-  // currencies together.
+  // currencies together. Includes one-time expenses alongside recurring
+  // instances (FR-6) — a category's real spend isn't just what its recurring
+  // bills say it should be.
   function actualForCategory(categoryId: string) {
     return expenses
       .filter(
@@ -33,11 +43,28 @@ export default function BudgetScreen() {
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
   }
 
-  const totalBudgeted = sampleBudgets.reduce((sum, line) => sum + line.budgeted, 0);
-  const totalActual = sampleBudgets.reduce(
-    (sum, line) => sum + actualForCategory(line.categoryId),
-    0,
+  const activeExpenseCategories = categories.filter(
+    (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
   );
+  const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
+
+  // Skips categories with no activity and no budget set, to avoid clutter
+  // from unused categories — a category only needs to appear once it's
+  // either being spent in or has an explicit target.
+  // != null (not !== null) deliberately catches both null and undefined —
+  // a category document created before Stage 13 has no monthlyBudget field
+  // at all, which reads back as undefined rather than null.
+  const categoriesWithActivity = activeExpenseCategories.filter(
+    (category) => category.monthlyBudget != null || actualForCategory(category.id) > 0,
+  );
+
+  const totalBudgeted = categoriesWithActivity.reduce((sum, category) => sum + (category.monthlyBudget ?? 0), 0);
+  // Total realistic spend across every active category, not just ones with a
+  // budget set — the point is seeing total actual spend versus what's
+  // expected, not silently excluding categories the user hasn't budgeted yet.
+  const totalActual = expenses
+    .filter((expense) => expense.paid && expense.lifecycleState === 'active')
+    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
   const remaining = totalBudgeted - totalActual;
 
   return (
@@ -54,29 +81,17 @@ export default function BudgetScreen() {
       </Card>
 
       <View style={styles.list}>
-        {sampleBudgets.map((line) => {
-          const category = categories.find((c) => c.id === line.categoryId);
-          const actual = actualForCategory(line.categoryId);
-          const isOverBudget = actual > line.budgeted;
-
-          return (
-            <Card key={line.categoryId} style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <ThemedText type="smallBold">{category?.name}</ThemedText>
-                {isOverBudget && <Chip label={t('budget.overBudgetChip')} tone="danger" />}
-              </View>
-              <ProgressBar budgeted={line.budgeted} actual={actual} />
-              <View style={styles.categoryFooter}>
-                <ThemedText type="caption">
-                  {t('budget.spent', { amount: formatCurrency(actual, defaultCurrency) })}
-                </ThemedText>
-                <ThemedText type="caption">
-                  {t('budget.ofBudgeted', { amount: formatCurrency(line.budgeted, defaultCurrency) })}
-                </ThemedText>
-              </View>
-            </Card>
-          );
-        })}
+        {categoriesWithActivity.map((category) => (
+          <CategoryBudgetCard
+            key={category.id}
+            category={category}
+            actual={actualForCategory(category.id)}
+            defaultCurrency={defaultCurrency}
+            recurringExpensesInCategory={activeRecurringExpenses.filter(
+              (definition) => definition.categoryId === category.id,
+            )}
+          />
+        ))}
       </View>
     </ScreenScroll>
   );
@@ -85,17 +100,5 @@ export default function BudgetScreen() {
 const styles = StyleSheet.create({
   list: {
     gap: Spacing.three,
-  },
-  categoryCard: {
-    gap: Spacing.two,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  categoryFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
   },
 });

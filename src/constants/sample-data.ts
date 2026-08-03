@@ -1,22 +1,8 @@
-// Sample per-category budget lines + monthly rolling-average totals used by
-// the Budget and History screens (Stage 5 UI). Not read from Firestore —
-// real per-category budgets come from recurringExpenses definitions and the
-// rolling-average engine, both Stage 12; these stay as placeholders until
-// then. Categories/expenses/incomes themselves are real Firestore data as of
-// Stage 6 (see src/store/), so their old sample fixtures were removed here.
-
-export type SampleBudgetLine = {
-  categoryId: string;
-  budgeted: number;
-};
-
-export const sampleBudgets: SampleBudgetLine[] = [
-  { categoryId: 'cat-rent', budgeted: 3500 },
-  { categoryId: 'cat-groceries', budgeted: 1500 },
-  { categoryId: 'cat-transport', budgeted: 600 },
-  { categoryId: 'cat-utilities', budgeted: 450 },
-  { categoryId: 'cat-entertainment', budgeted: 300 },
-];
+// Sample monthly rolling-average totals used by the History screen (Stage 5
+// UI, FR-7's whole-budget chart — a different aggregate from the Budget
+// screen's per-category monthlyBudget, see Category.monthlyBudget/Stage 13).
+// Not read from Firestore — stays a placeholder until a future stage wires
+// the History chart to real data.
 
 export type SampleMonthlyTotal = {
   label: string;

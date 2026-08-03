@@ -78,6 +78,7 @@ Rationale for moving rate entry here instead of inline on every transaction form
 | `order` | `number` | manual sort in dropdowns |
 | `isSystemDefault` | `boolean` | seeded on account creation vs. user-created |
 | `lifecycleState` | `'active' \| 'archived'` | Active/Archived only — **no Trash**. Categories are referenced by id from historical expense/income records; a purge path risks orphaning history. Archiving (hide from pickers, stay referenceable) is sufficient. |
+| `monthlyBudget` | `number \| null` | in `defaultCurrency`, manually set (Stage 13, FR-6). Compared against actual spend — recurring instances **and** one-time expenses combined — on the Budget tab. The category-edit form pre-fills it with a suggestion (sum of that category's active `recurringExpenses` amounts, converted to `defaultCurrency`) when unset, but the value itself stays a plain editable number, not a live derivation — deliberately, since one-time spending isn't captured by that sum. |
 | `createdAt` / `updatedAt` | `Timestamp` | |
 
 **Indexed on:** `(type, lifecycleState, order)` — populating dropdowns.

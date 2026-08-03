@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import type { CurrencyCode } from '@/types/firestore';
 
 const TYPES = ['expense', 'income', 'both'] as const;
 const TYPE_LABEL_KEY: Record<(typeof TYPES)[number], string> = {
@@ -18,6 +19,9 @@ const TYPE_LABEL_KEY: Record<(typeof TYPES)[number], string> = {
 export type CategoryFormValues = {
   name: string;
   type: (typeof TYPES)[number];
+  // Plain string like the rest of this codebase's amount inputs (see
+  // recurring-expense-form.tsx's `amount`) — parsed by the caller on submit.
+  monthlyBudget: string;
 };
 
 export type CategoryFormProps = {
@@ -25,16 +29,36 @@ export type CategoryFormProps = {
   submitLabel: string;
   onSubmit: (values: CategoryFormValues) => void | Promise<void>;
   onCancel: () => void;
+  defaultCurrency: CurrencyCode;
+  // Stage 13: sum of this category's active recurring-expense amounts, in
+  // defaultCurrency — pre-fills monthlyBudget when it's unset (a starting
+  // suggestion, not a live derivation; the field stays freely editable).
+  // null when there's no suggestion to offer (e.g. a brand-new category).
+  suggestedMonthlyBudget?: number | null;
 };
 
 const DEFAULT_VALUES: CategoryFormValues = {
   name: '',
   type: 'expense',
+  monthlyBudget: '',
 };
 
-export function CategoryForm({ initialValues, submitLabel, onSubmit, onCancel }: CategoryFormProps) {
+export function CategoryForm({
+  initialValues,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  defaultCurrency,
+  suggestedMonthlyBudget,
+}: CategoryFormProps) {
   const { t } = useTranslation();
-  const [values, setValues] = useState<CategoryFormValues>(initialValues ?? DEFAULT_VALUES);
+  const [values, setValues] = useState<CategoryFormValues>(() => {
+    const base = initialValues ?? DEFAULT_VALUES;
+    if (base.monthlyBudget === '' && suggestedMonthlyBudget != null) {
+      return { ...base, monthlyBudget: String(suggestedMonthlyBudget) };
+    }
+    return base;
+  });
 
   const isValid = !!values.name;
 
@@ -68,6 +92,14 @@ export function CategoryForm({ initialValues, submitLabel, onSubmit, onCancel }:
           </Pressable>
         ))}
       </View>
+
+      <TextField
+        label={t('categories.form.monthlyBudget', { currency: defaultCurrency })}
+        value={values.monthlyBudget}
+        onChangeText={(monthlyBudget) => setValues((current) => ({ ...current, monthlyBudget }))}
+        placeholder={t('categories.form.monthlyBudgetPlaceholder')}
+        keyboardType="decimal-pad"
+      />
 
       <View style={styles.actionRow}>
         <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />

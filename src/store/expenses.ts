@@ -2,6 +2,7 @@ import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
+import { recomputeBudgetRecommendation } from './recurring-expenses';
 import { useUserSettingsStore } from './user-settings';
 import type {
   ArchivableState,
@@ -20,6 +21,19 @@ export const subscribeExpenses = store.subscribe;
 // Re-exported for callers that build an update patch outside this module
 // (e.g. expenses/[id]/edit.tsx setting a picked due date).
 export { toTimestamp };
+
+// data-model.md §9: a recurring expense's budgetRecommendation recomputes
+// whenever a linked instance is marked paid/edited/restored. `kind`/
+// `recurringExpenseId` are immutable on an already-existing record, so
+// reading them from store state right after our own write is safe
+// regardless of the collection listener's timing (see recomputeBudgetRecommendation's
+// own budgetedAmountOverride comment for the field that *isn't* safe that way).
+async function recomputeIfRecurringInstance(id: string) {
+  const record = store.useStore.getState().items.find((item) => item.id === id);
+  if (record?.kind === 'recurringInstance') {
+    await recomputeBudgetRecommendation(record.recurringExpenseId);
+  }
+}
 
 export type NewExpenseInput = {
   name: string;
@@ -74,24 +88,29 @@ type EditableExpenseFields = Pick<
 
 // exchangeRateToDefault/budgetedAmount/budgetedCurrency/kind/recurringExpenseId
 // are deliberately excluded — firestore.rules locks them after creation (FR-16).
-export function updateExpense(id: string, patch: Partial<EditableExpenseFields>) {
+export async function updateExpense(id: string, patch: Partial<EditableExpenseFields>) {
   if (patch.amount === undefined) {
-    return store.update(id, patch);
+    await store.update(id, patch);
+  } else {
+    // amountInDefaultCurrency is denormalized from amount * the record's own
+    // immutable exchangeRateToDefault — recompute it here whenever amount
+    // changes so it doesn't go stale (previously a Known Issue: edits never
+    // touched this field at all).
+    const expense = store.useStore.getState().items.find((item) => item.id === id);
+    const exchangeRateToDefault = expense?.exchangeRateToDefault ?? 1;
+    await store.update(id, {
+      ...patch,
+      amountInDefaultCurrency: patch.amount * exchangeRateToDefault,
+    });
   }
-  // amountInDefaultCurrency is denormalized from amount * the record's own
-  // immutable exchangeRateToDefault — recompute it here whenever amount
-  // changes so it doesn't go stale (previously a Known Issue: edits never
-  // touched this field at all).
-  const expense = store.useStore.getState().items.find((item) => item.id === id);
-  const exchangeRateToDefault = expense?.exchangeRateToDefault ?? 1;
-  return store.update(id, {
-    ...patch,
-    amountInDefaultCurrency: patch.amount * exchangeRateToDefault,
-  });
+  if (patch.amount !== undefined || patch.paid !== undefined) {
+    await recomputeIfRecurringInstance(id);
+  }
 }
 
-export function setExpensePaid(id: string, paid: boolean) {
-  return store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
+export async function setExpensePaid(id: string, paid: boolean) {
+  await store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
+  await recomputeIfRecurringInstance(id);
 }
 
 // Recurring-instance only (Stage 8, Payments Dashboard) — see
@@ -181,12 +200,19 @@ export function trashExpense(id: string) {
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
 // real screen in Stage 17. Exercised by unit tests in the meantime.
+//
+// Deliberately not `async` — the not-currently-trashed guard below needs to
+// throw synchronously (matching trashExpense/trashRecurringExpense's same
+// guard idiom), which an `async function` can't do: it converts every throw,
+// even one before the first `await`, into a rejected Promise instead.
 export function restoreExpense(id: string) {
   const expense = store.useStore.getState().items.find((item) => item.id === id);
   if (!expense?.trashedFromState) {
     throw new Error(`expenses store: restoreExpense(${id}) — not currently trashed`);
   }
-  return store.update(id, restoreTransition(expense.trashedFromState, expense.archivedAt));
+  return store
+    .update(id, restoreTransition(expense.trashedFromState, expense.archivedAt))
+    .then(() => recomputeIfRecurringInstance(id));
 }
 
 export function purgeExpense(id: string) {

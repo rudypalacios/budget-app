@@ -193,6 +193,13 @@
       "namePlaceholder": "p. ej. Alquiler",
       "amountPlaceholder": "0.00",
       "dueDayOfMonth": "Día de vencimiento del mes"
+    },
+    "recommendation": {
+      "message": "Promedio 6 meses {{average}} vs presupuestado {{budgeted}}",
+      "accept": "Actualizar presupuesto",
+      "dismiss": "Mantener actual",
+      "accepted": "Presupuesto de {{name}} actualizado",
+      "dismissed": "Descartado para {{name}}"
     }
   },
   "recurringIncome": {
@@ -234,7 +241,9 @@
         "expense": "Gasto",
         "income": "Ingreso",
         "both": "Ambos"
-      }
+      },
+      "monthlyBudget": "Presupuesto mensual ({{currency}})",
+      "monthlyBudgetPlaceholder": "0.00"
     }
   },
   "budget": {
@@ -244,7 +253,13 @@
     "overBudget": "sobre el presupuesto",
     "overBudgetChip": "Sobre presupuesto",
     "spent": "{{amount}} gastado",
-    "ofBudgeted": "de {{amount}}"
+    "ofBudgeted": "de {{amount}}",
+    "noBudgetSet": "Sin presupuesto",
+    "details": "Detalles",
+    "hideDetails": "Ocultar detalles",
+    "noHistoryYet": "Aún sin historial de pagos",
+    "recurringBudgeted": "Presupuestado {{amount}}",
+    "recurringAverage": "Promedio 6 meses {{amount}}"
   },
   "history": {
     "title": "Historial",
