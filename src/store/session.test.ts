@@ -40,6 +40,9 @@ jest.mock('@react-native-firebase/auth', () => ({
 jest.mock('@react-native-google-signin/google-signin', () => ({
   GoogleSignin: {
     configure: jest.fn(),
+    // Called at the top of signInWithGoogle to clear the native module's
+    // cached account so the picker reappears every time — see auth.ts.
+    signOut: jest.fn(() => Promise.resolve(null)),
     hasPlayServices: jest.fn(() => Promise.resolve(true)),
     signIn: (...args: unknown[]) => mockGoogleSignIn(...args),
     getTokens: (...args: unknown[]) => mockGetTokens(...args),
