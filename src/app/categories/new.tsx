@@ -17,6 +17,7 @@ export default function NewCategoryScreen() {
       name: values.name,
       type: values.type,
       monthlyBudget: values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+      icon: values.icon,
     });
     router.back();
   }

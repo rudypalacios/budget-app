@@ -9,6 +9,7 @@ import { Chip } from '@/components/ui/chip';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 import type { CurrencyCode } from '@/types/firestore';
@@ -67,7 +68,7 @@ export function RecurringIncomeForm({
   const parsedAmount = parseAmountInput(values.amount);
   const parsedDayOfMonth = Number(values.dayOfMonth);
   const isValid =
-    !!values.name &&
+    !!values.name.trim() &&
     !!values.categoryId &&
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
@@ -106,7 +107,7 @@ export function RecurringIncomeForm({
       <Select
         label={t('common.category')}
         value={values.categoryId}
-        options={incomeCategories.map((category) => ({ value: category.id, label: category.name }))}
+        options={incomeCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 

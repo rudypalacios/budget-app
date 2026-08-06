@@ -2,6 +2,7 @@ import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
+import { trimName } from '@/lib/text-input';
 import { recomputeBudgetRecommendation } from './recurring-expenses';
 import { useUserSettingsStore } from './user-settings';
 import type {
@@ -60,7 +61,7 @@ export function addExpense(input: NewExpenseInput) {
   const doc: Omit<OneTimeExpense, 'createdAt' | 'updatedAt'> = {
     kind: 'oneTime',
     recurringExpenseId: null,
-    name: input.name,
+    name: trimName(input.name),
     categoryId: input.categoryId,
     date: toTimestamp(input.date),
     currency: input.currency,
@@ -95,8 +96,9 @@ type EditableExpenseFields = Pick<
 // exchangeRateToDefault/budgetedAmount/budgetedCurrency/kind/recurringExpenseId
 // are deliberately excluded — firestore.rules locks them after creation (FR-16).
 export async function updateExpense(id: string, patch: Partial<EditableExpenseFields>) {
-  if (patch.amount === undefined) {
-    await store.update(id, patch);
+  const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
+  if (trimmedPatch.amount === undefined) {
+    await store.update(id, trimmedPatch);
   } else {
     // amountInDefaultCurrency is denormalized from amount * the record's own
     // immutable exchangeRateToDefault — recompute it here whenever amount
@@ -105,8 +107,8 @@ export async function updateExpense(id: string, patch: Partial<EditableExpenseFi
     const expense = store.useStore.getState().items.find((item) => item.id === id);
     const exchangeRateToDefault = expense?.exchangeRateToDefault ?? 1;
     await store.update(id, {
-      ...patch,
-      amountInDefaultCurrency: patch.amount * exchangeRateToDefault,
+      ...trimmedPatch,
+      amountInDefaultCurrency: trimmedPatch.amount * exchangeRateToDefault,
     });
   }
   if (patch.amount !== undefined || patch.paid !== undefined) {

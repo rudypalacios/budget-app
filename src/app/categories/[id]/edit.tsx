@@ -33,6 +33,7 @@ export default function EditCategoryScreen() {
       name: values.name,
       type: values.type,
       monthlyBudget: values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+      icon: values.icon,
     });
     router.back();
   }
@@ -44,6 +45,9 @@ export default function EditCategoryScreen() {
     // a category document created before Stage 13 has no monthlyBudget
     // field at all, which reads back as undefined rather than null.
     monthlyBudget: category.monthlyBudget == null ? '' : String(category.monthlyBudget),
+    // ?? null for the same undefined-vs-null reason — a category created
+    // before this stage has no icon field at all.
+    icon: category.icon ?? null,
   };
 
   // Income categories never show the monthlyBudget field (CategoryForm), so

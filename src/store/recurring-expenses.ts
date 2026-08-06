@@ -3,6 +3,7 @@ import { computeBudgetRecommendation } from '@/lib/budget-recommendation';
 import { firestoreClient } from '@/lib/firebase/firestore';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
+import { trimName } from '@/lib/text-input';
 import { useSessionStore } from './session';
 import { useUserSettingsStore } from './user-settings';
 import type { ArchivableState, BudgetRecommendation, CurrencyCode, ExpenseRecord, RecurringExpense } from '@/types/firestore';
@@ -34,7 +35,7 @@ export type NewRecurringExpenseInput = {
 
 export function addRecurringExpense(input: NewRecurringExpenseInput) {
   const doc: Omit<RecurringExpense, 'createdAt' | 'updatedAt'> = {
-    name: input.name,
+    name: trimName(input.name),
     categoryId: input.categoryId,
     amount: input.amount,
     currency: input.currency,
@@ -64,9 +65,10 @@ type EditableRecurringExpenseFields = Pick<
 // state, since the collection listener that backs it may not have caught up
 // with this write yet.
 export async function updateRecurringExpense(id: string, patch: Partial<EditableRecurringExpenseFields>) {
-  await store.update(id, patch);
-  if (patch.amount !== undefined) {
-    await recomputeBudgetRecommendation(id, patch.amount);
+  const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
+  await store.update(id, trimmedPatch);
+  if (trimmedPatch.amount !== undefined) {
+    await recomputeBudgetRecommendation(id, trimmedPatch.amount);
   }
 }
 

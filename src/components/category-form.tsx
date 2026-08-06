@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { EmojiPicker } from '@/components/emoji-picker';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -22,6 +23,9 @@ export type CategoryFormValues = {
   // Plain string like the rest of this codebase's amount inputs (see
   // recurring-expense-form.tsx's `amount`) — parsed by the caller on submit.
   monthlyBudget: string;
+  // Optional — a category can go without an icon (EmojiPicker's own "None"
+  // option), same nullable convention already on Category.icon.
+  icon: string | null;
 };
 
 export type CategoryFormProps = {
@@ -41,6 +45,7 @@ const DEFAULT_VALUES: CategoryFormValues = {
   name: '',
   type: 'expense',
   monthlyBudget: '',
+  icon: null,
 };
 
 export function CategoryForm({
@@ -60,7 +65,10 @@ export function CategoryForm({
     return base;
   });
 
-  const isValid = !!values.name;
+  // Trimmed here (not just at the store write boundary) so a whitespace-only
+  // name can't pass validation and reach Save, only to be silently trimmed
+  // to an empty string once written.
+  const isValid = !!values.name.trim();
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -95,6 +103,12 @@ export function CategoryForm({
           </Pressable>
         ))}
       </View>
+
+      <EmojiPicker
+        label={t('categories.form.icon')}
+        value={values.icon}
+        onChange={(icon) => setValues((current) => ({ ...current, icon }))}
+      />
 
       {values.type !== 'income' && (
         <TextField

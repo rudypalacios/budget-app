@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { addExpense } from '@/store/expenses';
 import { useCategoriesStore } from '@/store/categories';
@@ -41,7 +42,7 @@ export default function QuickExpenseScreen() {
   const [paid, setPaid] = useState(true);
 
   const parsedAmount = parseAmountInput(amount);
-  const isValid = !!name && !!categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const isValid = !!name.trim() && !!categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   async function handleSave() {
     // Always the default currency — this is deliberately the fast/minimal
@@ -80,7 +81,7 @@ export default function QuickExpenseScreen() {
         <Select
           label={t('common.category')}
           value={categoryId}
-          options={expenseCategories.map((category) => ({ value: category.id, label: category.name }))}
+          options={expenseCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
           onChange={setCategoryId}
         />
         <DatePicker label={t('quickExpense.date')} value={date} onChange={setDate} />

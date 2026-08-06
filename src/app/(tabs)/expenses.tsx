@@ -16,6 +16,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { categoryDisplayName } from '@/lib/category-display';
+import { formatShortDate } from '@/lib/format-date';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
@@ -150,7 +152,8 @@ export default function ExpensesScreen() {
                   <View style={styles.row}>
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold">{expense.name}</ThemedText>
-                      <ThemedText type="caption">{category?.name}</ThemedText>
+                      <ThemedText type="caption">{formatShortDate(expense.date.toDate())}</ThemedText>
+                      <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
                     </View>
                     <View style={styles.rowEnd}>
                       <ThemedText type="smallBold" themeColor="danger">

@@ -1,15 +1,24 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing, TopBarInset } from '@/constants/theme';
+import { BottomTabInset, Spacing, TopBarInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hideToast, useToastStore } from '@/store/toast';
 
 // Mounted once at the app root (src/app/_layout.tsx) so any screen can call
 // showToast() without rendering anything itself. Renders nothing when there's
-// no active message. Anchored below the top bar (not the bottom) — bottom
-// placement got lost against/behind the native tab bar and easy-to-miss
-// below the fold on a scrolled-down screen.
+// no active message.
+//
+// Deliberately anchored at different edges per platform (fix/ux-polish-round-3,
+// explicit user request reversing the original top-only placement): bottom
+// on native, clearing the tab bar via the same BottomTabInset constant
+// already used elsewhere for that purpose; top on web, below the floating
+// pill nav via TopBarInset, since web has no bottom tab bar to collide with.
+const positionStyle = Platform.select({
+  web: { top: TopBarInset + Spacing.two },
+  default: { bottom: BottomTabInset + Spacing.two },
+});
+
 export function Toast() {
   const theme = useTheme();
   const message = useToastStore((state) => state.message);
@@ -20,7 +29,7 @@ export function Toast() {
     <Pressable
       onPress={hideToast}
       accessibilityRole="alert"
-      style={[styles.container, { top: TopBarInset + Spacing.two, backgroundColor: theme.text }]}
+      style={[styles.container, positionStyle, { backgroundColor: theme.text }]}
     >
       <ThemedText type="smallBold" style={{ color: theme.background }}>
         {message}

@@ -1,6 +1,7 @@
 import { createCollectionStore } from './create-collection-store';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
+import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
 import type { ArchivableState, CurrencyCode, RecurringIncome, RecurringIncomeFrequency } from '@/types/firestore';
 
@@ -23,7 +24,7 @@ export type NewRecurringIncomeInput = {
 
 export function addRecurringIncome(input: NewRecurringIncomeInput) {
   const doc: Omit<RecurringIncome, 'createdAt' | 'updatedAt'> = {
-    name: input.name,
+    name: trimName(input.name),
     categoryId: input.categoryId,
     amount: input.amount,
     currency: input.currency,
@@ -55,7 +56,7 @@ type EditableRecurringIncomeFields = Pick<
 >;
 
 export function updateRecurringIncome(id: string, patch: Partial<EditableRecurringIncomeFields>) {
-  return store.update(id, patch);
+  return store.update(id, patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch);
 }
 
 // FR-4a/4b/4e (data-model.md §7) — see the matching comment on
