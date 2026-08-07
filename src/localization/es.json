@@ -40,11 +40,26 @@
     "purgesToday": "Se elimina permanentemente hoy",
     "confirmPurgeTitle": "¿Eliminar permanentemente?",
     "confirmPurgeMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
+    "confirmPurgeMessageBulk_one": "{{count}} elemento se eliminará permanentemente. Esta acción no se puede deshacer.",
+    "confirmPurgeMessageBulk_other": "{{count}} elementos se eliminarán permanentemente. Esta acción no se puede deshacer.",
     "confirmPurgeButton": "Eliminar permanentemente",
-    "permanentlyDeleted": "\"{{name}}\" eliminado permanentemente"
+    "permanentlyDeleted": "\"{{name}}\" eliminado permanentemente",
+    "bulkPermanentlyDeleted_one": "{{count}} elemento eliminado permanentemente",
+    "bulkPermanentlyDeleted_other": "{{count}} elementos eliminados permanentemente",
+    "deleteSelectedPermanently": "Eliminar seleccionados permanentemente"
   },
   "lifecycle": {
     "restored": "\"{{name}}\" restaurado",
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar {{name}}",
+    "selectedCount_one": "{{count}} seleccionado",
+    "selectedCount_other": "{{count}} seleccionados",
+    "restoreSelected": "Restaurar seleccionados",
+    "trashSelected": "Mover seleccionados a la papelera",
+    "bulkRestored_one": "{{count}} elemento restaurado",
+    "bulkRestored_other": "{{count}} elementos restaurados",
+    "bulkTrashed_one": "{{count}} elemento movido a la papelera",
+    "bulkTrashed_other": "{{count}} elementos movidos a la papelera",
     "type": {
       "expense": "Gasto",
       "income": "Ingreso",

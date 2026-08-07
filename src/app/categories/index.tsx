@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -14,7 +14,7 @@ import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
-import { Spacing } from '@/constants/theme';
+import { FormRowBreakpoint, Spacing } from '@/constants/theme';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { categoryDisplayName } from '@/lib/category-display';
 import { countCategoryItems } from '@/lib/category-stats';
@@ -37,6 +37,8 @@ const TYPE_LABEL_KEY: Record<Category['type'], string> = {
 
 export default function CategoriesScreen() {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const isNarrow = width < FormRowBreakpoint;
   const categories = useCategoriesStore((state) => state.items);
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
@@ -150,18 +152,18 @@ export default function CategoriesScreen() {
         ) : (
           <>
             <ThemedText>{t('categories.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}</ThemedText>
-            <View style={styles.dialogActions}>
+            <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
               <Button
                 label={t('categories.confirmDeleteButton')}
                 variant="danger"
                 onPress={handleConfirmDelete}
-                style={styles.dialogButton}
+                style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
               />
               <Button
                 label={t('common.cancel')}
                 variant="secondary"
                 onPress={closeDeleteDialog}
-                style={styles.dialogButton}
+                style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
               />
             </View>
           </>
@@ -179,8 +181,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
   },
+  // Below FormRowBreakpoint, "Delete permanently" alongside "Cancel" no
+  // longer fits two-up without wrapping — stack full-width instead, same
+  // breakpoint/pattern as AmountCurrencyField and trash/index.tsx.
+  dialogActionsNarrow: {
+    flexDirection: 'column',
+  },
   dialogButton: {
     flex: 1,
+  },
+  dialogButtonNarrow: {
+    width: '100%',
   },
   // Two-column/two-row grid, same strategy as the Payments Dashboard row
   // (src/app/(tabs)/index.tsx) — rowMain can wrap onto extra lines (a long

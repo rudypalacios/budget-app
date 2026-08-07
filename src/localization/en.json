@@ -40,11 +40,26 @@
     "purgesToday": "Deletes permanently today",
     "confirmPurgeTitle": "Delete permanently?",
     "confirmPurgeMessage": "\"{{name}}\" will be permanently deleted. This can't be undone.",
+    "confirmPurgeMessageBulk_one": "{{count}} item will be permanently deleted. This can't be undone.",
+    "confirmPurgeMessageBulk_other": "{{count}} items will be permanently deleted. This can't be undone.",
     "confirmPurgeButton": "Delete permanently",
-    "permanentlyDeleted": "\"{{name}}\" permanently deleted"
+    "permanentlyDeleted": "\"{{name}}\" permanently deleted",
+    "bulkPermanentlyDeleted_one": "{{count}} item permanently deleted",
+    "bulkPermanentlyDeleted_other": "{{count}} items permanently deleted",
+    "deleteSelectedPermanently": "Delete selected permanently"
   },
   "lifecycle": {
     "restored": "\"{{name}}\" restored",
+    "selectAll": "Select all",
+    "selectRow": "Select {{name}}",
+    "selectedCount_one": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "restoreSelected": "Restore selected",
+    "trashSelected": "Move selected to Trash",
+    "bulkRestored_one": "{{count}} item restored",
+    "bulkRestored_other": "{{count}} items restored",
+    "bulkTrashed_one": "{{count}} item moved to Trash",
+    "bulkTrashed_other": "{{count}} items moved to Trash",
     "type": {
       "expense": "Expense",
       "income": "Income",
