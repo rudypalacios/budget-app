@@ -403,6 +403,27 @@ actually resolved.)_
   the user. Until enabled, trashed docs accumulate indefinitely instead of
   auto-expiring after `trashRetentionDays`; manual purge (once Stage 17
   builds it) is unaffected either way, since that's a direct `deleteDoc()`.
+- **Swipe-to-navigate between tabs — raised in round-4 feedback, deliberately
+  not built, follow up as its own stage/spike** — native tab navigation
+  (`app-tabs.tsx`) uses `expo-router/unstable-native-tabs` (`NativeTabs`),
+  which renders the actual OS tab bar controller (UITabBarController on iOS,
+  native `BottomNavigationView` on Android), not a JS view. That has two
+  consequences worth remembering before picking this up: (1) bottom tab bars
+  are tap-only by platform convention on both iOS and Android — swipe-between-
+  screens is the top-tabs/carousel pattern, not bottom nav, so this is a
+  deliberate UX departure, not just a missing feature; (2) each tab's content
+  lives in a separate native-controller-managed view hierarchy, not a shared
+  pageable surface, so there's no existing "slide the content with your
+  finger" surface to attach to. Two ways forward, neither trivial: (a) attach
+  a swipe gesture to each screen's content (`react-native-gesture-handler`/
+  `react-native-reanimated` are already dependencies, no new one needed) that
+  calls `router.navigate` to the adjacent tab on release — cheap, but reads as
+  a jump-cut tab switch, not a finger-follows-content slide; (b) replace
+  `NativeTabs` on native with a pager-backed layout (e.g.
+  `react-native-pager-view`) driving a custom bottom tab bar UI — gives a real
+  sliding feel but is a new dependency (ask first, per the tech-stack table)
+  and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
+  doesn't need this — the user confirmed swipe only matters on mobile.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
@@ -808,14 +829,13 @@ same keep-each-review-round-separate convention as
   collapsed, so the list doesn't grow into one long undifferentiated
   scroll as new months regenerate — each collapsed month is still one tap
   away, not hidden.
-- **Swipe-to-navigate between tabs was raised and deliberately not
-  built this round** — assessed as a future-stage item, not a quick
-  add: it needs either a new dependency (e.g. a `PagerView`/
-  `react-native-tab-view`-backed tab navigator in place of the current
-  bottom-tab bar) or hand-rolled gesture handling across both native and
-  `react-native-web`, and this project's tech stack requires asking
-  before adding a dependency. Worth a dedicated stage/spike rather than
-  folding into a polish round.
+- **Swipe-to-navigate between tabs was raised and deliberately not built
+  this round** (mobile only — web doesn't need it) — see the Known Issues
+  entry above for the full finding: native tabs render the genuine OS tab
+  bar controller, not a JS view, which rules out a cheap fix and makes
+  this a real architecture decision (fake jump-cut swipe on top of
+  `NativeTabs` vs. a pager-backed replacement that needs a new dependency).
+  Worth a dedicated stage/spike.
 - **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
   lint` clean, `npm test` 23/23 suites, 176/176 tests.
   `themed-text.test.tsx` needed a new `jest.mock('@/store/user-settings',
