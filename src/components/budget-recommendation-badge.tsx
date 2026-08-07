@@ -44,7 +44,13 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
         tone="warning"
         label={t('recurringExpense.recommendation.message', {
           average: formatCurrency(budgetRecommendation.suggestedBudgetedAmount, defaultCurrency),
-          budgeted: formatCurrency(definition.amount, defaultCurrency),
+          // definition.amount is in this definition's own currency, not
+          // necessarily defaultCurrency — convert before formatting with
+          // defaultCurrency's convention, or a foreign-currency amount reads
+          // as a defaultCurrency figure it never was (the bug this comment
+          // now guards against — found live comparing a $20 bill against its
+          // correctly-converted Q155 average, which rendered as "Q 20.00").
+          budgeted: formatCurrency(definition.amount * definition.exchangeRateToDefault, defaultCurrency),
         })}
       />
       <View style={styles.actions}>

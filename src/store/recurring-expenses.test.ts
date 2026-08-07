@@ -2,6 +2,7 @@
 /* eslint-disable import/first */
 const mockUpdateDoc = jest.fn();
 const mockDeleteDoc = jest.fn();
+const mockGetDocs = jest.fn();
 
 jest.mock('@/lib/firebase/firestore', () => ({
   firestoreClient: {
@@ -10,7 +11,7 @@ jest.mock('@/lib/firebase/firestore', () => ({
     setDoc: jest.fn(),
     addDoc: jest.fn(),
     getDoc: jest.fn(),
-    getDocs: jest.fn(),
+    getDocs: (...args: unknown[]) => mockGetDocs(...args),
     batchUpdate: jest.fn(),
     subscribeDoc: jest.fn(),
     subscribeCollection: jest.fn().mockReturnValue(() => {}),
@@ -30,14 +31,26 @@ jest.mock('@/store/session', () => ({
 }));
 
 import {
+  acceptBudgetRecommendation,
   archiveRecurringExpense,
   purgeRecurringExpense,
+  recomputeBudgetRecommendation,
   restoreRecurringExpense,
   subscribeRecurringExpenses,
   trashRecurringExpense,
   useRecurringExpensesStore,
 } from './recurring-expenses';
 /* eslint-enable import/first */
+
+const EMPTY_BUDGET_RECOMMENDATION = {
+  rollingAverageAmount: null,
+  sampleSize: 0,
+  computedAt: null,
+  suggestedBudgetedAmount: null,
+  status: 'none' as const,
+  dismissedAt: null,
+  dismissedAtAverageAmount: null,
+};
 
 beforeAll(() => {
   subscribeRecurringExpenses('test-uid');
@@ -46,6 +59,7 @@ beforeAll(() => {
 beforeEach(() => {
   mockUpdateDoc.mockClear();
   mockDeleteDoc.mockClear();
+  mockGetDocs.mockReset();
   mockTrashRetentionDays = 30;
   useRecurringExpensesStore.setState({
     items: [],
@@ -112,5 +126,81 @@ describe('purgeRecurringExpense', () => {
     await purgeRecurringExpense('r1');
 
     expect(mockDeleteDoc).toHaveBeenCalledWith('users/test-uid/recurringExpenses/r1');
+  });
+});
+
+describe('recomputeBudgetRecommendation', () => {
+  // Regression test for a live bug report: a $20 USD recurring bill
+  // (exchangeRateToDefault 7.7, so ~Q154) was compared directly against its
+  // rolling average in GTQ without converting first — diff ~Q135, wildly
+  // over both drift thresholds, so it always flagged "pending" even though
+  // Q154 vs a Q155.40 average is not real drift at all.
+  it("converts a foreign-currency definition's amount before comparing against the rolling average", async () => {
+    useRecurringExpensesStore.setState({
+      items: [
+        {
+          id: 'r1',
+          amount: 20,
+          currency: 'USD',
+          exchangeRateToDefault: 7.7, // amount in defaultCurrency: 154
+          budgetRecommendation: EMPTY_BUDGET_RECOMMENDATION,
+        } as never,
+      ],
+    });
+    mockGetDocs.mockResolvedValue([{ amountInDefaultCurrency: 155.4 }, { amountInDefaultCurrency: 155.4 }]);
+
+    await recomputeBudgetRecommendation('r1');
+
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      'users/test-uid/recurringExpenses/r1',
+      expect.objectContaining({ budgetRecommendation: expect.objectContaining({ status: 'none' }) }),
+    );
+  });
+
+  it('still flags real drift for a foreign-currency definition once converted', async () => {
+    useRecurringExpensesStore.setState({
+      items: [
+        {
+          id: 'r1',
+          amount: 20,
+          currency: 'USD',
+          exchangeRateToDefault: 7.7, // amount in defaultCurrency: 154
+          budgetRecommendation: EMPTY_BUDGET_RECOMMENDATION,
+        } as never,
+      ],
+    });
+    mockGetDocs.mockResolvedValue([{ amountInDefaultCurrency: 400 }, { amountInDefaultCurrency: 400 }]);
+
+    await recomputeBudgetRecommendation('r1');
+
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      'users/test-uid/recurringExpenses/r1',
+      expect.objectContaining({
+        budgetRecommendation: expect.objectContaining({ status: 'pending', suggestedBudgetedAmount: 400 }),
+      }),
+    );
+  });
+});
+
+describe('acceptBudgetRecommendation', () => {
+  it("converts the accepted (defaultCurrency) figure back into the definition's own currency", async () => {
+    useRecurringExpensesStore.setState({
+      items: [
+        {
+          id: 'r1',
+          amount: 20,
+          currency: 'USD',
+          exchangeRateToDefault: 7.7,
+          budgetRecommendation: { ...EMPTY_BUDGET_RECOMMENDATION, status: 'pending', suggestedBudgetedAmount: 154 },
+        } as never,
+      ],
+    });
+
+    await acceptBudgetRecommendation('r1');
+
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      'users/test-uid/recurringExpenses/r1',
+      expect.objectContaining({ amount: 20 }),
+    );
   });
 });

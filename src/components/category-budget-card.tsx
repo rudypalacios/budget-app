@@ -99,7 +99,12 @@ export function CategoryBudgetCard({
                 <ThemedText type="caption">{definition.name}</ThemedText>
                 <View style={styles.breakdownAmounts}>
                   <ThemedText type="caption">
-                    {t('budget.recurringBudgeted', { amount: formatCurrency(definition.amount, defaultCurrency) })}
+                    {t('budget.recurringBudgeted', {
+                      // definition.amount is in the definition's own currency
+                      // — convert before formatting with defaultCurrency's
+                      // convention, same fix as budget-recommendation-badge.tsx.
+                      amount: formatCurrency(definition.amount * definition.exchangeRateToDefault, defaultCurrency),
+                    })}
                   </ThemedText>
                   <ThemedText type="caption" themeColor="textSecondary">
                     {definition.budgetRecommendation.rollingAverageAmount === null
