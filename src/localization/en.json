@@ -20,11 +20,38 @@
     "amount": "Amount",
     "remove": "Remove",
     "archive": "Archive",
-    "delete": "Delete"
+    "delete": "Delete",
+    "restore": "Restore",
+    "deletePermanently": "Delete permanently"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" moved to Archive",
-    "movedToTrash": "\"{{name}}\" moved to Trash"
+    "movedToTrash": "\"{{name}}\" moved to Trash",
+    "title": "Archive",
+    "empty": "Nothing archived.",
+    "archivedOn": "Archived on {{date}}"
+  },
+  "trash": {
+    "title": "Trash",
+    "empty": "Trash is empty.",
+    "trashedOn": "Trashed on {{date}}",
+    "daysUntilPurge_one": "{{count}} day until permanent deletion",
+    "daysUntilPurge_other": "{{count}} days until permanent deletion",
+    "purgesToday": "Deletes permanently today",
+    "confirmPurgeTitle": "Delete permanently?",
+    "confirmPurgeMessage": "\"{{name}}\" will be permanently deleted. This can't be undone.",
+    "confirmPurgeButton": "Delete permanently",
+    "permanentlyDeleted": "\"{{name}}\" permanently deleted"
+  },
+  "lifecycle": {
+    "restored": "\"{{name}}\" restored",
+    "type": {
+      "expense": "Expense",
+      "income": "Income",
+      "recurringExpense": "Recurring expense",
+      "recurringIncome": "Recurring income",
+      "category": "Category"
+    }
   },
   "nav": {
     "payments": "Dashboard",
@@ -127,7 +154,13 @@
     },
     "data": {
       "title": "Data",
-      "trashRetention": "Trash retention (days)"
+      "trashRetention": "Trash retention (days)",
+      "archive": "Archive",
+      "archiveCount_one": "{{count}} archived item",
+      "archiveCount_other": "{{count}} archived items",
+      "trash": "Trash",
+      "trashCount_one": "{{count}} item in Trash",
+      "trashCount_other": "{{count}} items in Trash"
     }
   },
   "expenses": {
@@ -236,6 +269,12 @@
       "active": "active",
       "archived": "archived"
     },
+    "confirmDeleteTitle": "Delete category permanently?",
+    "confirmDeleteMessage": "\"{{name}}\" will be permanently deleted. This can't be undone.",
+    "confirmDeleteButton": "Delete permanently",
+    "deleted": "\"{{name}}\" permanently deleted",
+    "deleteBlocked_one": "Can't delete — {{count}} record still uses this category.",
+    "deleteBlocked_other": "Can't delete — {{count}} records still use this category.",
     "form": {
       "namePlaceholder": "e.g. Subscriptions",
       "appearsIn": "Appears in",

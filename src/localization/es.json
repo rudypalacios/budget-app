@@ -20,11 +20,38 @@
     "amount": "Monto",
     "remove": "Eliminar",
     "archive": "Archivar",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "restore": "Restaurar",
+    "deletePermanently": "Eliminar permanentemente"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" se movió al archivo",
-    "movedToTrash": "\"{{name}}\" se movió a la papelera"
+    "movedToTrash": "\"{{name}}\" se movió a la papelera",
+    "title": "Archivo",
+    "empty": "No hay nada archivado.",
+    "archivedOn": "Archivado el {{date}}"
+  },
+  "trash": {
+    "title": "Papelera",
+    "empty": "La papelera está vacía.",
+    "trashedOn": "Enviado a la papelera el {{date}}",
+    "daysUntilPurge_one": "{{count}} día para la eliminación permanente",
+    "daysUntilPurge_other": "{{count}} días para la eliminación permanente",
+    "purgesToday": "Se elimina permanentemente hoy",
+    "confirmPurgeTitle": "¿Eliminar permanentemente?",
+    "confirmPurgeMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
+    "confirmPurgeButton": "Eliminar permanentemente",
+    "permanentlyDeleted": "\"{{name}}\" eliminado permanentemente"
+  },
+  "lifecycle": {
+    "restored": "\"{{name}}\" restaurado",
+    "type": {
+      "expense": "Gasto",
+      "income": "Ingreso",
+      "recurringExpense": "Gasto recurrente",
+      "recurringIncome": "Ingreso recurrente",
+      "category": "Categoría"
+    }
   },
   "nav": {
     "payments": "Panel",
@@ -127,7 +154,13 @@
     },
     "data": {
       "title": "Datos",
-      "trashRetention": "Retención de la papelera (días)"
+      "trashRetention": "Retención de la papelera (días)",
+      "archive": "Archivo",
+      "archiveCount_one": "{{count}} elemento archivado",
+      "archiveCount_other": "{{count}} elementos archivados",
+      "trash": "Papelera",
+      "trashCount_one": "{{count}} elemento en la papelera",
+      "trashCount_other": "{{count}} elementos en la papelera"
     }
   },
   "expenses": {
@@ -236,6 +269,12 @@
       "active": "activa",
       "archived": "archivada"
     },
+    "confirmDeleteTitle": "¿Eliminar categoría permanentemente?",
+    "confirmDeleteMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
+    "confirmDeleteButton": "Eliminar permanentemente",
+    "deleted": "\"{{name}}\" eliminada permanentemente",
+    "deleteBlocked_one": "No se puede eliminar — {{count}} registro todavía usa esta categoría.",
+    "deleteBlocked_other": "No se puede eliminar — {{count}} registros todavía usan esta categoría.",
     "form": {
       "namePlaceholder": "p. ej. Suscripciones",
       "appearsIn": "Aparece en",
