@@ -21,12 +21,14 @@ import { formatShortDate } from '@/lib/format-date';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
+import { runRecurringGeneration } from '@/store/recurring-generation';
 import {
   archiveRecurringExpense,
   recomputeStaleBudgetRecommendations,
   trashRecurringExpense,
   useRecurringExpensesStore,
 } from '@/store/recurring-expenses';
+import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
 
 // Primarily for planning/config (creating/editing one-time expenses and
@@ -41,7 +43,8 @@ export default function ExpensesScreen() {
   const recurringDefinitions = useRecurringExpensesStore((state) => state.items);
 
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
-  const { refreshing, onRefresh } = usePullToRefresh();
+  const uid = useSessionStore((state) => state.uid);
+  const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
 
   // data-model.md §9: catches drift missed by a stale cache — e.g. a bulk
   // 'stale' write from another device's defaultCurrency change (Stage 11)

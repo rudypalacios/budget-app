@@ -19,7 +19,9 @@ import { formatShortDate } from '@/lib/format-date';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveIncome, setIncomeReceived, trashIncome, useIncomesStore } from '@/store/incomes';
+import { runRecurringGeneration } from '@/store/recurring-generation';
 import { archiveRecurringIncome, trashRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
+import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
 
 // Primarily for planning/config (creating/editing one-time income and
@@ -35,7 +37,8 @@ export default function IncomeScreen() {
   const recurringDefinitions = useRecurringIncomesStore((state) => state.items);
 
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
-  const { refreshing, onRefresh } = usePullToRefresh();
+  const uid = useSessionStore((state) => state.uid);
+  const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
 
   // Once a one-time income is received it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and

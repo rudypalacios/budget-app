@@ -25,6 +25,8 @@ import type { PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, setExpensePaid, setExpenseSkipped, trashExpense } from '@/store/expenses';
 import { archiveIncome, setIncomeReceived, setIncomeSkipped, trashIncome } from '@/store/incomes';
+import { runRecurringGeneration } from '@/store/recurring-generation';
+import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
 import { useUserSettingsStore } from '@/store/user-settings';
 
@@ -93,7 +95,8 @@ export default function PaymentsScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const theme = useTheme();
-  const { refreshing, onRefresh } = usePullToRefresh();
+  const uid = useSessionStore((state) => state.uid);
+  const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
   // Only recurring instances go through the confirm-amount modal — a
   // one-time row's amount is already exact and not in question, so it keeps
   // the instant one-tap toggle (see togglePaid).
