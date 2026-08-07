@@ -383,26 +383,17 @@ actually resolved.)_
   **Stage 9b (Google) is built on its stage branch**, pending merge to
   `develop`. Facebook remains Stage 9c, blocked on Facebook Developer
   console setup.
-- **Restore/Purge (FR-4b/4c) are engine-only — no UI until Stage 17** (Stage
-  12) — `restoreExpense`/`purgeExpense` and their `incomes`/
-  `recurringExpenses`/`recurringIncomes` equivalents exist and are unit
-  tested, but nothing in the app calls them yet: there's no Archived/Trash
-  browse screen to restore or purge *from*. SRS Stage 17 ("Trash view &
-  restore screen") is explicitly where that UI lands, across all record
-  types at once, per the user's Stage 12 planning decision to keep this
-  stage to archive/trash actions + the underlying state-transition engine
-  only. Don't mistake the absence of a Trash screen for a bug — it's
-  deliberately deferred, not missed.
-- **No TTL policy enabled yet on `purgeAt`** (Stage 12) — `trashX()`
-  functions now set a real `purgeAt` on every record they trash, but the
-  Firestore TTL policy that would actually auto-delete once that timestamp
-  passes (`docs/data-model.md` §13's deployment checklist) hasn't been
-  enabled against the live `lighthouse-budget-app` project — that's a
-  manual Google Cloud/Firebase Console action (no `gcloud`/`firebase` CLI
-  available in this dev environment), held until explicitly confirmed by
-  the user. Until enabled, trashed docs accumulate indefinitely instead of
-  auto-expiring after `trashRetentionDays`; manual purge (once Stage 17
-  builds it) is unaffected either way, since that's a direct `deleteDoc()`.
+- **No TTL policy enabled yet on `purgeAt`** (Stage 12; Trash screen shipped
+  Stage 17, this gap is unchanged by it) — `trashX()` functions set a real
+  `purgeAt` on every record they trash, but the Firestore TTL policy that
+  would actually auto-delete once that timestamp passes (`docs/data-model.md`
+  §13's deployment checklist) hasn't been enabled against the live
+  `lighthouse-budget-app` project — that's a manual Google Cloud/Firebase
+  Console action (no `gcloud`/`firebase` CLI available in this dev
+  environment), held until explicitly confirmed by the user. Until enabled,
+  trashed docs accumulate indefinitely instead of auto-expiring after
+  `trashRetentionDays`; the Trash screen's manual "Delete permanently" is
+  unaffected either way, since that's a direct `deleteDoc()`.
 - **Swipe-to-navigate between tabs — raised in round-4 feedback, deliberately
   not built, follow up as its own stage/spike** — native tab navigation
   (`app-tabs.tsx`) uses `expo-router/unstable-native-tabs` (`NativeTabs`),
@@ -429,13 +420,11 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **13 — Budget recommendation engine** (9a, 9a.1, 9b, 10, 11, and 12
-are all merged to `develop` — Stage 12 via squash-merge PR #16, commit
-`2d138ac`; 9c remains blocked on Facebook Developer console setup — see
-SRS §11). The small, unrelated back-navigation-fallback bugfix is also
-merged to `develop`. Stage 12's own section below still documents what
-shipped and what's deliberately deferred to Stage 17 (Restore/Purge UI,
-no data-model changes needed).
+Stage: **17 — Trash view & restore screen** (built on branch
+`stage-17-trash-archive`, pending merge — see its own summary below).
+9a-12 are merged to `develop`; 9c remains blocked on Facebook Developer
+console setup — see SRS §11. Stage 12's own section below still documents
+what shipped there.
 
 Stage 13 is built and verified on branch `stage-13-budget-recommendations`
 (off `develop`), pending merge — see its own summary below for what
@@ -453,6 +442,21 @@ trimming, category emoji icons, categories-admin list counts, and
 cross-screen display consistency; see that commit's message for the full
 breakdown, not duplicated here. **round 4** (`fix/ux-polish-round-4`) —
 see its own summary below.
+
+**Note found while starting Stage 17 (2026-08-07):** `git log` on
+`develop` shows Stage 13, round 3, and round 4 above are actually already
+merged (PRs #19–#24), plus two more merged branches this section never
+got a paragraph for — `fix/dashboard-category-ux-review` (PR #22) and
+`fix/google-signin-account-picker` (PR #21). This section's prose above
+was never updated after those merges landed and is stale; left as-is here
+rather than silently rewritten, since reconstructing exactly what each
+merged PR contained isn't something to guess at — flag for the user to
+confirm/rewrite this section's history whenever convenient.
+
+Stage 17 — Trash view & restore screen — is built and verified
+(`tsc`/lint/tests, not yet live-verified in a browser/device) on branch
+`stage-17-trash-archive` (off `develop`), commit `a1ce047`, pending merge.
+See its own summary below.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -848,3 +852,80 @@ same keep-each-review-round-separate convention as
   merging, especially the offline-hang fix and the AppState
   foreground-resume trigger, which aren't practically exercisable by
   `tsc`/`jest` alone.
+
+### Stage 17 summary
+
+- **Two separate destinations, not tabs/filters in one screen** — new
+  `src/app/archive/index.tsx` and `src/app/trash/index.tsx`, per the
+  user's explicit Gmail-style-mailboxes direction during planning (a
+  single-screen-with-tabs design was proposed first and rejected). Each is
+  a flat list across every applicable record type, sorted newest-first,
+  with a small type-badge `Chip` per row for organization rather than
+  per-type sub-screens. Both are reached from Settings' existing "Data"
+  section via two new manage rows (same `Pressable`→`Card` pattern as
+  Categories/Currencies), not a new tab.
+- New `src/lib/lifecycle-records.ts` (pure, unit-tested) —
+  `collectArchivedRecords`/`collectTrashedRecords` do the cross-collection
+  filtering (no new Firestore query/index needed — every store already
+  streams all lifecycle states client-side, confirmed during planning
+  research), `daysUntilPurge` backs the Trash screen's "N days until
+  permanent deletion" line. New `src/store/lifecycle-actions.ts` dispatches
+  restore/purge by `LifecycleRecordType` to the correct per-collection
+  store function — kept in `store/`, not `lib/`, since it orchestrates
+  other stores rather than being pure logic.
+- Restoring a trashed record can land it back in **either** `active` or
+  `archived` (whatever `trashedFromState` was) — UI/toast copy says
+  "Restored", never assumes "restored to active". Restoring a recurring
+  definition also immediately calls `runRecurringGeneration(uid)` (a real,
+  previously-unhandled gap found during planning: `restoreRecurringExpense`/
+  `restoreRecurringIncome` only flipped Firestore fields and would
+  otherwise wait for the next app-foreground/launch/reconnect scan to
+  backfill a missed period).
+- Trash rows carry a confirm `Dialog` before permanent delete (composed
+  the same way `confirm-amount-modal.tsx` already does) — the one
+  genuinely destructive action in this stage, unlike the existing
+  no-confirm Archive/Delete-to-trash actions elsewhere. Added a real
+  `danger` variant to `src/components/ui/button.tsx` for this (reused by
+  both the Trash screen and the new category-delete dialog below) rather
+  than duplicating an inline style override in two places.
+- **Categories gain a real permanent-delete action** — raised by the user
+  during plan review, not part of the SRS line as originally read. Added
+  to the Categories screen itself (not the new Archive/Trash screens,
+  since Categories already owns Edit and the active/archived toggle), new
+  `deleteCategory` in `src/store/categories.ts`, gated on
+  `canDeleteCategory` (`lifecycle-records.ts`) finding **zero** references
+  to the category across all four record collections and **every**
+  lifecycle state — active, archived, and trashed-but-not-yet-purged all
+  count as blockers, since a trashed-but-not-purged record is still
+  historical data that needs a valid `categoryId` to point to. Categories
+  themselves still have no trashed state at all (unchanged) — this is a
+  real hard delete, gated entirely on the dependency check rather than
+  going through any archive/trash lifecycle.
+- Archive screen includes categories (restore-only, no purge button —
+  none exists for that type); Trash screen deliberately excludes them
+  entirely (`Category.lifecycleState` can't express 'trashed'). Categories
+  have no `archivedAt` field at all, so the Archive screen falls back to
+  `updatedAt` for "Archived on" — documented inline in
+  `lifecycle-records.ts` since it's a real, if minor, precision gap (any
+  future edit to an already-archived category would also bump this date).
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run lint`
+  clean, `npm test` 24/24 suites, 187/187 tests (11 new, all in the new
+  `lifecycle-records.test.ts`).
+- Deviation from the approved plan: none beyond the category-delete
+  feature itself, which was added *during* plan review (not after) at the
+  user's request — the plan the user approved already included it.
+- **Not yet manually verified end-to-end on a device/browser** — this
+  stage is UI-heavy (two new screens, a new confirm-dialog flow, a new
+  category-delete path) and none of that is exercised by `tsc`/`jest`
+  alone. Do that before merging: archive/restore one of each type
+  (including a recurring definition, to confirm generation actually
+  resumes); trash/restore/purge an expense/income/recurring definition;
+  attempt to delete a category that's still referenced (including only by
+  an archived or trashed-but-not-purged record) and confirm it's blocked
+  with the right count, then delete one with zero references.
+- Firestore TTL policy on `purgeAt` is still not enabled in production —
+  unchanged by this stage (see Known Issues); this screen's manual
+  "Delete permanently" works regardless.
+- Committed to branch `stage-17-trash-archive` (off `develop`), commit
+  `a1ce047`, clean tree. Not merged — per the standing convention, that's
+  the user's call.
