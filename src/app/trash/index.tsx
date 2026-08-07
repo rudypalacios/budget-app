@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Chip } from '@/components/ui/chip';
-import { Dialog } from '@/components/ui/dialog';
+import { ConfirmRecordsDialog } from '@/components/ui/confirm-records-dialog';
 import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
-import { FormRowBreakpoint, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { formatShortDate } from '@/lib/format-date';
 import {
   collectTrashedRecords,
@@ -46,19 +46,20 @@ function recordKey(record: Pick<LifecycleRecord, 'recordType' | 'id'>): string {
 // A separate destination from the Archive screen (src/app/archive/index.tsx),
 // not a tab/filter within it. Categories never appear here — they have no
 // trashed state at all (see lifecycle-records.ts). Bulk-select checkboxes +
-// select-all (feedback round after the initial build) mirror the same
-// pattern on both this screen and Archive; the purge confirm dialog handles
-// both a single row and a bulk selection through one `purgeTargets` list.
+// select-all mirror the same pattern on both this screen and Archive.
+// Restore and permanent-delete both go through ConfirmRecordsDialog
+// (src/components/ui/confirm-records-dialog.tsx), listing every affected
+// record — found live that an unconfirmed Restore was too easy to trigger
+// by mistake, and bulk selection made that worse (one click, many records).
 export default function TrashScreen() {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
-  const isNarrow = width < FormRowBreakpoint;
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
   const recurringExpenses = useRecurringExpensesStore((state) => state.items);
   const recurringIncomes = useRecurringIncomesStore((state) => state.items);
   const uid = useSessionStore((state) => state.uid);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [restoreTargets, setRestoreTargets] = useState<LifecycleRecord[] | null>(null);
   const [purgeTargets, setPurgeTargets] = useState<LifecycleRecord[] | null>(null);
 
   const records = collectTrashedRecords(expenses, incomes, recurringExpenses, recurringIncomes);
@@ -81,21 +82,16 @@ export default function TrashScreen() {
     setSelectedKeys(allSelected ? new Set() : new Set(records.map(recordKey)));
   }
 
-  async function handleRestore(recordType: LifecycleRecordType, id: string, name: string) {
-    if (!uid) return;
-    await restoreLifecycleRecord(recordType, id, uid);
-    showToast(t('lifecycle.restored', { name }));
-  }
-
-  async function handleBulkRestore() {
-    if (!uid || selectedRecords.length === 0) return;
-    await Promise.all(selectedRecords.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)));
-    showToast(t('lifecycle.bulkRestored', { count: selectedRecords.length }));
+  async function handleConfirmRestore() {
+    if (!uid || !restoreTargets || restoreTargets.length === 0) return;
+    await Promise.all(restoreTargets.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)));
+    showToast(
+      restoreTargets.length === 1
+        ? t('lifecycle.restored', { name: restoreTargets[0].name })
+        : t('lifecycle.bulkRestored', { count: restoreTargets.length }),
+    );
+    setRestoreTargets(null);
     setSelectedKeys(new Set());
-  }
-
-  function closePurgeDialog() {
-    setPurgeTargets(null);
   }
 
   async function handleConfirmPurge() {
@@ -125,7 +121,11 @@ export default function TrashScreen() {
             </ThemedText>
             {selectedKeys.size > 0 && (
               <View style={styles.bulkActions}>
-                <Button label={t('lifecycle.restoreSelected')} variant="secondary" onPress={handleBulkRestore} />
+                <Button
+                  label={t('lifecycle.restoreSelected')}
+                  variant="secondary"
+                  onPress={() => setRestoreTargets(selectedRecords)}
+                />
                 <Button
                   label={t('trash.deleteSelectedPermanently')}
                   variant="danger"
@@ -170,7 +170,7 @@ export default function TrashScreen() {
                       items={[
                         {
                           label: t('common.restore'),
-                          onPress: () => handleRestore(record.recordType, record.id, record.name),
+                          onPress: () => setRestoreTargets([record]),
                         },
                         {
                           label: t('common.deletePermanently'),
@@ -187,31 +187,26 @@ export default function TrashScreen() {
         </>
       )}
 
-      <Dialog
+      <ConfirmRecordsDialog
+        isOpen={restoreTargets !== null}
+        onClose={() => setRestoreTargets(null)}
+        title={t('lifecycle.confirmRestoreTitle')}
+        message={t('lifecycle.confirmRestoreIntro', { count: restoreTargets?.length ?? 0 })}
+        records={restoreTargets ?? []}
+        confirmLabel={t('common.restore')}
+        onConfirm={handleConfirmRestore}
+      />
+
+      <ConfirmRecordsDialog
         isOpen={purgeTargets !== null}
-        onClose={closePurgeDialog}
+        onClose={() => setPurgeTargets(null)}
         title={t('trash.confirmPurgeTitle')}
-      >
-        <ThemedText>
-          {purgeTargets && purgeTargets.length === 1
-            ? t('trash.confirmPurgeMessage', { name: purgeTargets[0].name })
-            : t('trash.confirmPurgeMessageBulk', { count: purgeTargets?.length ?? 0 })}
-        </ThemedText>
-        <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
-          <Button
-            label={t('trash.confirmPurgeButton')}
-            variant="danger"
-            onPress={handleConfirmPurge}
-            style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
-          />
-          <Button
-            label={t('common.cancel')}
-            variant="secondary"
-            onPress={closePurgeDialog}
-            style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
-          />
-        </View>
-      </Dialog>
+        message={t('trash.confirmPurgeIntro', { count: purgeTargets?.length ?? 0 })}
+        records={purgeTargets ?? []}
+        confirmLabel={t('trash.confirmPurgeButton')}
+        confirmVariant="danger"
+        onConfirm={handleConfirmPurge}
+      />
     </ScreenScroll>
   );
 }
@@ -249,21 +244,5 @@ const styles = StyleSheet.create({
   },
   divider: {
     marginVertical: Spacing.one,
-  },
-  dialogActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  // Below FormRowBreakpoint, "Delete permanently" alongside "Cancel" no
-  // longer fits two-up without wrapping — stack full-width instead, same
-  // breakpoint/pattern as AmountCurrencyField.
-  dialogActionsNarrow: {
-    flexDirection: 'column',
-  },
-  dialogButton: {
-    flex: 1,
-  },
-  dialogButtonNarrow: {
-    width: '100%',
   },
 });

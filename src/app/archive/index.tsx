@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Chip } from '@/components/ui/chip';
+import { ConfirmRecordsDialog } from '@/components/ui/confirm-records-dialog';
 import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { Spacing } from '@/constants/theme';
@@ -40,10 +41,15 @@ function recordKey(record: Pick<LifecycleRecord, 'recordType' | 'id'>): string {
 // One flat list across every archivable type (expenses, income, recurring
 // definitions, categories), sorted newest-archived-first, with a type chip
 // per row for organization — a separate destination from the Trash screen
-// (src/app/trash/index.tsx), not a tab/filter within it, per the user's
-// explicit Gmail-style-mailboxes direction during planning. Bulk-select
-// checkboxes + select-all (feedback round after the initial build) mirror
-// the same pattern on both this screen and Trash.
+// (src/app/trash/index.tsx), not a tab/filter within it. Bulk-select
+// checkboxes + select-all mirror the same pattern on both screens. Restore
+// goes through ConfirmRecordsDialog (src/components/ui/confirm-records-dialog.tsx),
+// listing every affected record — found live that an unconfirmed Restore
+// was too easy to trigger by mistake, and bulk selection made that worse
+// (one click, many records). Move-to-Trash stays immediate/unconfirmed,
+// matching this app's existing Archive/Delete-to-trash convention
+// elsewhere (Expenses/Income tabs) — only Restore and permanent delete
+// (Trash screen) got a confirm step.
 export default function ArchiveScreen() {
   const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
@@ -53,9 +59,11 @@ export default function ArchiveScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const uid = useSessionStore((state) => state.uid);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [restoreTargets, setRestoreTargets] = useState<LifecycleRecord[] | null>(null);
 
   const records = collectArchivedRecords(expenses, incomes, recurringExpenses, recurringIncomes, categories);
   const allSelected = records.length > 0 && selectedKeys.size === records.length;
+  const selectedRecords = records.filter((record) => selectedKeys.has(recordKey(record)));
 
   function toggleSelected(key: string) {
     setSelectedKeys((current) => {
@@ -73,24 +81,21 @@ export default function ArchiveScreen() {
     setSelectedKeys(allSelected ? new Set() : new Set(records.map(recordKey)));
   }
 
-  async function handleRestore(recordType: LifecycleRecordType, id: string, name: string) {
-    if (!uid) return;
-    await restoreLifecycleRecord(recordType, id, uid);
-    showToast(t('lifecycle.restored', { name }));
+  async function handleConfirmRestore() {
+    if (!uid || !restoreTargets || restoreTargets.length === 0) return;
+    await Promise.all(restoreTargets.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)));
+    showToast(
+      restoreTargets.length === 1
+        ? t('lifecycle.restored', { name: restoreTargets[0].name })
+        : t('lifecycle.bulkRestored', { count: restoreTargets.length }),
+    );
+    setRestoreTargets(null);
+    setSelectedKeys(new Set());
   }
 
   async function handleMoveToTrash(recordType: Exclude<LifecycleRecordType, 'category'>, id: string, name: string) {
     await trashLifecycleRecord(recordType, id);
     showToast(t('archive.movedToTrash', { name }));
-  }
-
-  const selectedRecords = records.filter((record) => selectedKeys.has(recordKey(record)));
-
-  async function handleBulkRestore() {
-    if (!uid || selectedRecords.length === 0) return;
-    await Promise.all(selectedRecords.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)));
-    showToast(t('lifecycle.bulkRestored', { count: selectedRecords.length }));
-    setSelectedKeys(new Set());
   }
 
   // Categories can't be trashed (see lifecycle-actions.ts) — silently
@@ -121,7 +126,11 @@ export default function ArchiveScreen() {
             </ThemedText>
             {selectedKeys.size > 0 && (
               <View style={styles.bulkActions}>
-                <Button label={t('lifecycle.restoreSelected')} variant="secondary" onPress={handleBulkRestore} />
+                <Button
+                  label={t('lifecycle.restoreSelected')}
+                  variant="secondary"
+                  onPress={() => setRestoreTargets(selectedRecords)}
+                />
                 <Button label={t('lifecycle.trashSelected')} variant="secondary" onPress={handleBulkMoveToTrash} />
               </View>
             )}
@@ -132,7 +141,7 @@ export default function ArchiveScreen() {
               const key = recordKey(record);
               const isSelected = selectedKeys.has(key);
               const menuItems = [
-                { label: t('common.restore'), onPress: () => handleRestore(record.recordType, record.id, record.name) },
+                { label: t('common.restore'), onPress: () => setRestoreTargets([record]) },
                 ...(record.recordType === 'category'
                   ? []
                   : [
@@ -170,6 +179,16 @@ export default function ArchiveScreen() {
           </Card>
         </>
       )}
+
+      <ConfirmRecordsDialog
+        isOpen={restoreTargets !== null}
+        onClose={() => setRestoreTargets(null)}
+        title={t('lifecycle.confirmRestoreTitle')}
+        message={t('lifecycle.confirmRestoreIntro', { count: restoreTargets?.length ?? 0 })}
+        records={restoreTargets ?? []}
+        confirmLabel={t('common.restore')}
+        onConfirm={handleConfirmRestore}
+      />
     </ScreenScroll>
   );
 }

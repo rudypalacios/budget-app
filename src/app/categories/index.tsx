@@ -85,14 +85,17 @@ export default function CategoriesScreen() {
       <Card style={styles.card}>
         {categories.map((category, index) => {
           const itemCount = countCategoryItems(category.id, expenses, incomes, recurringExpenses, recurringIncomes);
-          // Parens hold the item count, plus the budgeted amount when one's
-          // set — e.g. "(12 · Q 500.00)" or just "(12)" for a budgetless
-          // category (per the categories admin page request, CLAUDE.md
-          // fix/ux-polish-round-3).
+          // Item count, plus the budgeted amount when one's set — e.g.
+          // "12 items · Budget: Q 500.00" or just "12 items" for a
+          // budgetless category. Previously a bare "(12 · Q 500.00)" with
+          // no label on either number — found live to be unclear which
+          // figure was which (per the categories admin page request,
+          // CLAUDE.md fix/ux-polish-round-3, and a later review round).
+          const itemCountLabel = t('categories.itemCount', { count: itemCount });
           const countLabel =
             category.monthlyBudget != null
-              ? `(${itemCount} · ${formatCurrency(category.monthlyBudget, defaultCurrency)})`
-              : `(${itemCount})`;
+              ? `${itemCountLabel} · ${t('categories.budgetLabel', { amount: formatCurrency(category.monthlyBudget, defaultCurrency) })}`
+              : itemCountLabel;
 
           return (
             <View key={category.id}>
