@@ -245,7 +245,9 @@
         "both": "Both"
       },
       "monthlyBudget": "Monthly budget ({{currency}})",
-      "monthlyBudgetPlaceholder": "0.00"
+      "monthlyBudgetPlaceholder": "0.00",
+      "icon": "Icon (optional)",
+      "iconNone": "None"
     }
   },
   "budget": {

@@ -12,6 +12,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
 import { sampleMonthlyTotals } from '@/constants/sample-data';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { categoryDisplayName } from '@/lib/category-display';
 import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { buildPaymentRows, type PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
@@ -71,7 +72,7 @@ export default function HistoryScreen() {
                   <View style={styles.row}>
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold">{row.name}</ThemedText>
-                      <ThemedText type="caption">{category?.name}</ThemedText>
+                      <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
                       {row.skipped && <Chip label={t('history.skippedChip')} tone="warning" />}
                     </View>
                     <ThemedText

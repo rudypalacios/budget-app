@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 import type { CurrencyCode } from '@/types/firestore';
@@ -94,7 +95,7 @@ export function IncomeForm({
 
   const parsedAmount = parseAmountInput(values.amount);
   const isValid =
-    !!values.name &&
+    !!values.name.trim() &&
     !!values.categoryId &&
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
@@ -142,7 +143,7 @@ export function IncomeForm({
       <Select
         label={t('common.category')}
         value={values.categoryId}
-        options={incomeCategories.map((category) => ({ value: category.id, label: category.name }))}
+        options={incomeCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 

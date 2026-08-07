@@ -11,6 +11,7 @@ import { Divider } from '@/components/ui/divider';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { categoryDisplayName } from '@/lib/category-display';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { formatCurrency } from '@/lib/format-currency';
 import type { Category, CurrencyCode, RecurringExpense } from '@/types/firestore';
@@ -55,7 +56,7 @@ export function CategoryBudgetCard({
         style={styles.categoryHeader}
       >
         <View style={styles.categoryHeaderMain}>
-          <ThemedText type="smallBold">{category.name}</ThemedText>
+          <ThemedText type="smallBold">{categoryDisplayName(category)}</ThemedText>
           {isOverBudget && <Chip label={t('budget.overBudgetChip')} tone="danger" />}
         </View>
         {hasBreakdown && (

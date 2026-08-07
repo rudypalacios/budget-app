@@ -2,6 +2,7 @@ import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
+import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
 import type {
   ArchivableState,
@@ -47,7 +48,7 @@ export function addIncome(input: NewIncomeInput) {
   const doc: Omit<OneTimeIncome, 'createdAt' | 'updatedAt'> = {
     kind: 'oneTime',
     recurringIncomeId: null,
-    name: input.name,
+    name: trimName(input.name),
     categoryId: input.categoryId,
     date: toTimestamp(input.date),
     currency: input.currency,
@@ -78,8 +79,9 @@ type EditableIncomeFields = Pick<
 // exchangeRateToDefault/kind/recurringIncomeId are deliberately excluded —
 // firestore.rules locks them after creation (FR-16).
 export function updateIncome(id: string, patch: Partial<EditableIncomeFields>) {
-  if (patch.amount === undefined) {
-    return store.update(id, patch);
+  const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
+  if (trimmedPatch.amount === undefined) {
+    return store.update(id, trimmedPatch);
   }
   // amountInDefaultCurrency is denormalized from amount * the record's own
   // immutable exchangeRateToDefault — recompute it here whenever amount
@@ -88,8 +90,8 @@ export function updateIncome(id: string, patch: Partial<EditableIncomeFields>) {
   const income = store.useStore.getState().items.find((item) => item.id === id);
   const exchangeRateToDefault = income?.exchangeRateToDefault ?? 1;
   return store.update(id, {
-    ...patch,
-    amountInDefaultCurrency: patch.amount * exchangeRateToDefault,
+    ...trimmedPatch,
+    amountInDefaultCurrency: trimmedPatch.amount * exchangeRateToDefault,
   });
 }
 

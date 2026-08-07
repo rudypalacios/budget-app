@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
+import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput } from '@/lib/currency-input';
 import { useCategoriesStore } from '@/store/categories';
 import type { CurrencyCode } from '@/types/firestore';
@@ -56,7 +57,7 @@ export function RecurringExpenseForm({
   const parsedAmount = parseAmountInput(values.amount);
   const parsedDueDay = Number(values.dueDay);
   const isValid =
-    !!values.name &&
+    !!values.name.trim() &&
     !!values.categoryId &&
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
@@ -96,7 +97,7 @@ export function RecurringExpenseForm({
       <Select
         label={t('common.category')}
         value={values.categoryId}
-        options={expenseCategories.map((category) => ({ value: category.id, label: category.name }))}
+        options={expenseCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 

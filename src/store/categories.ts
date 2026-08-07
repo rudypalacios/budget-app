@@ -1,4 +1,5 @@
 import { createCollectionStore } from './create-collection-store';
+import { trimName } from '@/lib/text-input';
 import type { Category } from '@/types/firestore';
 
 const store = createCollectionStore<Category>('categories');
@@ -55,12 +56,17 @@ export async function seedDefaultCategories() {
   }
 }
 
-export function addCategory(input: { name: string; type: Category['type']; monthlyBudget?: number | null }) {
+export function addCategory(input: {
+  name: string;
+  type: Category['type'];
+  monthlyBudget?: number | null;
+  icon?: string | null;
+}) {
   return store.add({
-    name: input.name,
+    name: trimName(input.name),
     type: input.type,
     color: null,
-    icon: null,
+    icon: input.icon ?? null,
     order: Date.now(),
     isSystemDefault: false,
     lifecycleState: 'active',
@@ -75,5 +81,5 @@ export function updateCategory(
   id: string,
   patch: Partial<Pick<Category, 'name' | 'type' | 'color' | 'icon' | 'order' | 'lifecycleState' | 'monthlyBudget'>>,
 ) {
-  return store.update(id, patch);
+  return store.update(id, patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch);
 }

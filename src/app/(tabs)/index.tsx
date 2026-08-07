@@ -18,6 +18,7 @@ import { Spacing } from '@/constants/theme';
 import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
+import { categoryDisplayName } from '@/lib/category-display';
 import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
 import type { PaymentRow } from '@/lib/payments-dashboard';
@@ -181,7 +182,7 @@ export default function PaymentsScreen() {
                         </ThemedText>
                       </ThemedText>
                       <View style={styles.rowMeta}>
-                        <ThemedText type="caption">{category?.name}</ThemedText>
+                        <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
                         {/* Recurring/Skipped are grouped in their own
                             non-wrapping row so they wrap as a single unit —
                             category can drop to its own line under a narrow
