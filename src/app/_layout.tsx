@@ -1,9 +1,11 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 
 import { Toast } from '@/components/ui/toast';
+import { useNetworkStatus } from '@/hooks/use-network-status';
+import { useResolvedColorScheme } from '@/hooks/use-theme';
 import i18n from '@/localization/i18n';
 import { seedDefaultCategories, subscribeCategories, useCategoriesStore } from '@/store/categories';
 import { subscribeCurrencies } from '@/store/currencies';
@@ -18,7 +20,8 @@ import { seedDefaultUserSettings, subscribeUserSettings, useUserSettingsStore } 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useResolvedColorScheme();
+  const isOnline = useNetworkStatus();
   const uid = useSessionStore((state) => state.uid);
   const isAnonymous = useSessionStore((state) => state.isAnonymous);
   const categoriesLoading = useCategoriesStore((state) => state.isLoading);
@@ -100,6 +103,34 @@ export default function RootLayout() {
     recurringExpensesLoading,
     recurringIncomesLoading,
   ]);
+
+  // Re-runs the same catch-up scan on foreground-resume, not just launch
+  // (previously a Known Issue: a recurring instance for a new cycle only
+  // appeared after fully closing and reopening the app — backgrounding/
+  // foregrounding, switching tabs, or pulling to refresh did nothing).
+  // runRecurringGeneration is idempotent (setAt on deterministic IDs) and
+  // self-guards against overlapping calls, so re-running it here is safe.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && uid) {
+        runRecurringGeneration(uid);
+      }
+    });
+    return () => subscription.remove();
+  }, [uid]);
+
+  // Separately covers reconnecting without backgrounding the app at all —
+  // this is what actually resolves a definition whose immediate
+  // generation call was skipped while offline (see expenses/new.tsx and
+  // income/new.tsx, which no longer await that call offline to avoid
+  // hanging the Save button indefinitely).
+  const wasOnline = useRef(isOnline);
+  useEffect(() => {
+    if (isOnline && !wasOnline.current && uid) {
+      runRecurringGeneration(uid);
+    }
+    wasOnline.current = isOnline;
+  }, [isOnline, uid]);
 
   useEffect(() => {
     SplashScreen.hideAsync();

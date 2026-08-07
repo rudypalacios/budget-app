@@ -276,6 +276,8 @@
     "title": "History",
     "last6Months": "Last 6 months",
     "skippedChip": "Skipped",
+    "collapseMonth": "Collapse {{month}}",
+    "expandMonth": "Expand {{month}}",
     "legend": {
       "actual": "Actual",
       "budgeted": "Budgeted",

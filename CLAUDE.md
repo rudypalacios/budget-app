@@ -319,42 +319,17 @@ actually resolved.)_
   currency's grouping convention isn't a property of the viewer's language.
   `i18n.language` is now only a fallback for a currency outside
   `SUPPORTED_CURRENCIES`, which has no known convention to anchor to.
-- **`theme`/`reminders`/`trashRetentionDays` now persist for real but stay
-  functionally inert** (Stage 10) — the `users/{uid}` settings-doc store
-  built this stage persists the entire Settings form on Save, including
-  these three fields (see CLAUDE.md's Settings Save scope decision), but
-  nothing in the app actually reads them yet: `_layout.tsx`'s
-  `ThemeProvider` still derives light/dark purely from OS `useColorScheme()`
-  (deliberately out of scope this stage), and no reminder-scheduling or
-  trash-purge engine exists yet to consume `reminders`/`trashRetentionDays`
-  (Stage 14 and the new Stage 17 respectively). Not a regression — before
-  this stage these three were `useState` placeholders that didn't persist
-  at all — but worth flagging since a user editing them in Settings now sees
-  a value that *saves* successfully with no visible effect.
-- **Creating a new recurring expense/income while offline hangs the Save
-  button indefinitely** (found in Stage 7 sync validation) — `expenses/new.tsx`
-  and `income/new.tsx`'s recurring branch calls
-  `generateExpenseInstancesForDefinition`/`generateIncomeInstancesForDefinition`
-  immediately after creating the definition, so that period's instance
-  appears without waiting for the next launch's catch-up scan. That
-  generation call's first step, `getLastExpenseInstanceDate`/
-  `getLastIncomeInstanceDate` (`src/store/expenses.ts`,
-  `src/store/incomes.ts`), is a one-shot `getDocs()` query — reproduced live
-  (Playwright, web build): while offline, this query never resolves (not
-  even a fast rejection), so the async `handleSubmit` never finishes, and
-  the Save button (with its Stage 6b-colleague-feedback pending/spinner
-  state) spins forever with no error shown to the user. The underlying
-  `addRecurringExpense`/`addRecurringIncome` write itself isn't lost — it's
-  sitting in Firestore's offline queue like any other write and does flush
-  once reconnected (confirmed: the definition appears correctly after
-  reconnecting) — but the user gets no feedback and can't back out cleanly
-  while offline. Contrast with **editing** an existing recurring
-  expense/income while offline, which works correctly (no `getDocs()` in
-  that path) — this is specifically the immediate-generation-on-create step.
-  Not fixed as part of Stage 7 (a validation stage, not meant to carry new
-  behavior changes) — needs its own small fix (e.g. skip/timeout the
-  immediate-generation attempt when offline and let the next launch's
-  catch-up scan pick it up instead) in a later stage.
+- **`reminders`/`trashRetentionDays` now persist for real but stay
+  functionally inert** (Stage 10; `theme` resolved — see
+  fix/ux-polish-round-4 below) — the `users/{uid}` settings-doc store built
+  this stage persists the entire Settings form on Save, including these
+  fields (see CLAUDE.md's Settings Save scope decision), but nothing in the
+  app actually reads them yet: no reminder-scheduling or trash-purge engine
+  exists yet to consume `reminders`/`trashRetentionDays` (Stage 14 and the
+  new Stage 17 respectively). Not a regression — before Stage 10 these were
+  `useState` placeholders that didn't persist at all — but worth flagging
+  since a user editing them in Settings now sees a value that *saves*
+  successfully with no visible effect.
 - **Web add/edit modal renders as full-page navigation, not a dialog overlay**
   — `presentation: 'modal'` (Stage 5) gives native a real slide-up/swipe-to-dismiss
   modal, but on web, `expo-router`'s Stack navigation replaces the page outright
@@ -408,13 +383,6 @@ actually resolved.)_
   **Stage 9b (Google) is built on its stage branch**, pending merge to
   `develop`. Facebook remains Stage 9c, blocked on Facebook Developer
   console setup.
-- **Recurring-instance generation only runs on app launch, not on
-  foreground-resume** (Stage 6b) — matches data-model.md §9's literal "On
-  app launch, the generator scans..." wording, but `AppState`-based
-  foreground-resume triggering isn't wired. If a user leaves the app running
-  in the background across a month boundary without a fresh launch, that
-  period's instance won't appear until the next cold start. Cheap follow-up
-  if this turns out to matter in practice — not implemented preemptively.
 - **Restore/Purge (FR-4b/4c) are engine-only — no UI until Stage 17** (Stage
   12) — `restoreExpense`/`purgeExpense` and their `incomes`/
   `recurringExpenses`/`recurringIncomes` equivalents exist and are unit
@@ -435,6 +403,27 @@ actually resolved.)_
   the user. Until enabled, trashed docs accumulate indefinitely instead of
   auto-expiring after `trashRetentionDays`; manual purge (once Stage 17
   builds it) is unaffected either way, since that's a direct `deleteDoc()`.
+- **Swipe-to-navigate between tabs — raised in round-4 feedback, deliberately
+  not built, follow up as its own stage/spike** — native tab navigation
+  (`app-tabs.tsx`) uses `expo-router/unstable-native-tabs` (`NativeTabs`),
+  which renders the actual OS tab bar controller (UITabBarController on iOS,
+  native `BottomNavigationView` on Android), not a JS view. That has two
+  consequences worth remembering before picking this up: (1) bottom tab bars
+  are tap-only by platform convention on both iOS and Android — swipe-between-
+  screens is the top-tabs/carousel pattern, not bottom nav, so this is a
+  deliberate UX departure, not just a missing feature; (2) each tab's content
+  lives in a separate native-controller-managed view hierarchy, not a shared
+  pageable surface, so there's no existing "slide the content with your
+  finger" surface to attach to. Two ways forward, neither trivial: (a) attach
+  a swipe gesture to each screen's content (`react-native-gesture-handler`/
+  `react-native-reanimated` are already dependencies, no new one needed) that
+  calls `router.navigate` to the adjacent tab on release — cheap, but reads as
+  a jump-cut tab switch, not a finger-follows-content slide; (b) replace
+  `NativeTabs` on native with a pager-backed layout (e.g.
+  `react-native-pager-view`) driving a custom bottom tab bar UI — gives a real
+  sliding feel but is a new dependency (ask first, per the tech-stack table)
+  and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
+  doesn't need this — the user confirmed swipe only matters on mobile.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
@@ -457,6 +446,13 @@ placement, income-aware budgeting) — fixed on branch
 `fix/post-stage-13-review`, stacked on top of `stage-13-budget-recommendations`
 per the user's explicit direction to keep this work separate. See its own
 summary below.
+
+Two further rounds of live-review UX polish followed, both still pending
+merge: **round 3** (`fix/ux-polish-round-3`, commit `3ce04b2`) — input
+trimming, category emoji icons, categories-admin list counts, and
+cross-screen display consistency; see that commit's message for the full
+breakdown, not duplicated here. **round 4** (`fix/ux-polish-round-4`) —
+see its own summary below.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -784,3 +780,71 @@ live review of Stage 13, spanning several already-shipped stages:
   already paid" correctly shows paidDate = yesterday on the Dashboard,
   not today) and the income-vs-expenses math (Q100 received − Q15 spent
   → "Q85.00 left to spend", correctly green).
+
+### fix/ux-polish-round-4 summary
+
+Branch stacked on `fix/ux-polish-round-3` (also still unmerged), per the
+same keep-each-review-round-separate convention as
+`fix/post-stage-13-review`. Five items from a live-review feedback round:
+
+- **Real theme switching, finally wired** — resolves the "`theme` ...
+  stays functionally inert" Known Issue. New `useResolvedColorScheme()`
+  (`src/hooks/use-theme.ts`) is now the one place that combines
+  `UserSettings.theme` with the OS scheme (`'light'`/`'dark'` pass
+  through directly; `'system'` falls back to the existing
+  `use-color-scheme.ts`/`.web.ts` OS hooks) — both `useTheme()` (drives
+  `ThemedText`/`ThemedView` and every themed component) and
+  `_layout.tsx`'s `expo-router` `ThemeProvider` (drives native
+  navigation chrome) now read from it, where previously each read the raw
+  OS scheme independently and neither ever looked at the saved setting.
+- **Recurring-instance generation now re-runs without a full app
+  relaunch** — resolves the "generation only runs on app launch" Known
+  Issue (reported as: new-cycle recurring items only appeared after
+  fully closing and reopening the app; pulling to refresh or switching
+  tabs did nothing). `_layout.tsx` now also re-runs the same catch-up
+  scan (`runRecurringGeneration`) on `AppState` foreground-resume and on
+  network reconnect (via `useNetworkStatus`), and `usePullToRefresh`
+  (`src/hooks/use-pull-to-refresh.ts`) gained an optional `onPull`
+  callback, wired to `runRecurringGeneration` on the Dashboard, Expenses,
+  Income, and History tabs — so pulling to refresh is now a real action
+  on those screens, not the purely cosmetic affordance it was before.
+  `runRecurringGeneration`'s existing idempotency (deterministic-ID
+  `setAt` writes) and in-flight guard made this safe to re-trigger
+  liberally without extra de-duplication logic.
+- **Fixed the underlying offline-hang bug this same generation gap was
+  compounding** — resolves the "Creating a new recurring expense/income
+  while offline hangs the Save button indefinitely" Known Issue.
+  `expenses/new.tsx`/`income/new.tsx`'s immediate-generation-on-create
+  call (`generateExpenseInstancesForDefinition`/
+  `generateIncomeInstancesForDefinition`) now only runs when
+  `useNetworkStatus()` reports online, since its `getDocs()` call never
+  resolves offline; skipping it while offline is safe now that the
+  reconnect trigger above exists to pick up the missed instance as soon
+  as the device is back online, instead of requiring a full relaunch.
+- **History screen now groups by month with a collapsible accordion per
+  month** (`(tabs)/history.tsx`'s new `HistoryMonthGroup`) — same
+  chevron-rotate accordion idiom as `category-budget-card.tsx`'s
+  per-category breakdown (Stage 13), applied here per-month instead. The
+  most recent month starts expanded and every older month starts
+  collapsed, so the list doesn't grow into one long undifferentiated
+  scroll as new months regenerate — each collapsed month is still one tap
+  away, not hidden.
+- **Swipe-to-navigate between tabs was raised and deliberately not built
+  this round** (mobile only — web doesn't need it) — see the Known Issues
+  entry above for the full finding: native tabs render the genuine OS tab
+  bar controller, not a JS view, which rules out a cheap fix and makes
+  this a real architecture decision (fake jump-cut swipe on top of
+  `NativeTabs` vs. a pager-backed replacement that needs a new dependency).
+  Worth a dedicated stage/spike.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 23/23 suites, 176/176 tests.
+  `themed-text.test.tsx` needed a new `jest.mock('@/store/user-settings',
+  ...)` (same transitive-native-module idiom as the Stage 13
+  `@/store/session` mocks in `expenses.test.ts`/
+  `recurring-expenses.test.ts`), since `ThemedText` → `useTheme()` now
+  reads `useUserSettingsStore` as a hook.
+- Not yet manually verified end-to-end on a device/browser against the
+  live project (unlike Stage 13/round 2/round 3) — do that before
+  merging, especially the offline-hang fix and the AppState
+  foreground-resume trigger, which aren't practically exercisable by
+  `tsc`/`jest` alone.

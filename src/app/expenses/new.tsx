@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ExpenseForm, type ExpenseFormValues } from '@/components/expense-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
+import { useNetworkStatus } from '@/hooks/use-network-status';
 import { parseAmountInput } from '@/lib/currency-input';
 import { getConfiguredRate } from '@/store/currencies';
 import { addExpense } from '@/store/expenses';
@@ -16,6 +17,7 @@ export default function NewExpenseScreen() {
   const { t } = useTranslation();
   const uid = useSessionStore((state) => state.uid);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
+  const isOnline = useNetworkStatus();
 
   async function handleSubmit(values: ExpenseFormValues) {
     const currency = values.currency;
@@ -38,12 +40,21 @@ export default function NewExpenseScreen() {
         startDate,
       });
       // Generate this period's instance immediately rather than waiting for
-      // the next app launch's catch-up scan (src/app/_layout.tsx).
-      await generateExpenseInstancesForDefinition(
-        uid,
-        { id, categoryId, name: values.name, currency, exchangeRateToDefault, amount, dueDay, startDate },
-        new Date(),
-      );
+      // the next catch-up scan (src/app/_layout.tsx runs one on launch,
+      // foreground-resume, and reconnect) — but only while online: this call
+      // reads via getDocs(), which never resolves offline (no cached
+      // fallback for a one-shot query), so awaiting it here would hang the
+      // Save button indefinitely. Skipping it offline is safe — the
+      // definition write above is already queued locally either way, and
+      // the next resume/reconnect catch-up scan generates the missing
+      // instance once back online.
+      if (isOnline) {
+        await generateExpenseInstancesForDefinition(
+          uid,
+          { id, categoryId, name: values.name, currency, exchangeRateToDefault, amount, dueDay, startDate },
+          new Date(),
+        );
+      }
     } else {
       addExpense({
         name: values.name,
