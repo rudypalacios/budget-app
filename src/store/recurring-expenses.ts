@@ -63,12 +63,19 @@ type EditableRecurringExpenseFields = Pick<
 // budgeted amount, even with no new paid instance — recompute right after,
 // passing the just-written amount directly rather than re-reading store
 // state, since the collection listener that backs it may not have caught up
-// with this write yet.
+// with this write yet. Converted to defaultCurrency before handing off to
+// recomputeBudgetRecommendation (see that function's own comment) — the
+// exchange rate itself isn't subject to the same race: if this same patch
+// changed it, trimmedPatch.exchangeRateToDefault is the just-submitted value
+// directly (no read needed); otherwise it's an unrelated, previously-settled
+// field, so a store read for it carries no staleness risk here.
 export async function updateRecurringExpense(id: string, patch: Partial<EditableRecurringExpenseFields>) {
   const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
   await store.update(id, trimmedPatch);
   if (trimmedPatch.amount !== undefined) {
-    await recomputeBudgetRecommendation(id, trimmedPatch.amount);
+    const definition = store.useStore.getState().items.find((item) => item.id === id);
+    const exchangeRateToDefault = trimmedPatch.exchangeRateToDefault ?? definition?.exchangeRateToDefault ?? 1;
+    await recomputeBudgetRecommendation(id, trimmedPatch.amount * exchangeRateToDefault);
   }
 }
 
@@ -107,11 +114,22 @@ export function purgeRecurringExpense(id: string) {
 }
 
 // FR-6a/data-model.md §9: recomputes the 6-month rolling average + drift
-// status from the definition's last 6 paid instances. `budgetedAmountOverride`
-// lets a caller that just wrote a new `amount` (updateRecurringExpense above)
-// pass that value straight through instead of racing the collection
-// listener's eventual-consistency window.
-export async function recomputeBudgetRecommendation(id: string, budgetedAmountOverride?: number): Promise<void> {
+// status from the definition's last 6 paid instances.
+// `budgetedAmountInDefaultCurrencyOverride` lets a caller that just wrote a
+// new `amount` (updateRecurringExpense above) pass that value straight
+// through instead of racing the collection listener's eventual-consistency
+// window — the name spells out that it must already be converted, since
+// `paidInstanceAmounts` below is always in defaultCurrency
+// (`amountInDefaultCurrency`) and computeBudgetRecommendation's drift math
+// assumes both sides of the comparison share a currency. Previously this
+// took a raw override straight in the record's own currency and fell back to
+// bare `definition.amount` the same way — comparing a possibly-foreign-currency
+// number against a defaultCurrency average, which could both misfire a
+// recommendation that wasn't real drift and suppress one that was.
+export async function recomputeBudgetRecommendation(
+  id: string,
+  budgetedAmountInDefaultCurrencyOverride?: number,
+): Promise<void> {
   const uid = useSessionStore.getState().uid;
   if (!uid) return;
   const definition = store.useStore.getState().items.find((item) => item.id === id);
@@ -128,7 +146,7 @@ export async function recomputeBudgetRecommendation(id: string, budgetedAmountOv
 
   const budgetRecommendation = computeBudgetRecommendation({
     paidInstanceAmounts: paidInstances.map((instance) => instance.amountInDefaultCurrency),
-    budgetedAmount: budgetedAmountOverride ?? definition.amount,
+    budgetedAmount: budgetedAmountInDefaultCurrencyOverride ?? definition.amount * definition.exchangeRateToDefault,
     now: new Date(),
     previousStatus: definition.budgetRecommendation.status,
     dismissedAtAverageAmount: definition.budgetRecommendation.dismissedAtAverageAmount,
@@ -160,11 +178,17 @@ export function acceptBudgetRecommendation(id: string) {
   if (!definition) {
     throw new Error(`recurringExpenses store: acceptBudgetRecommendation(${id}) — not found`);
   }
+  // suggestedBudgetedAmount is always in defaultCurrency (derived from paid
+  // instances' amountInDefaultCurrency, see recomputeBudgetRecommendation),
+  // but `amount` is denominated in this definition's own `currency` — divide
+  // back through exchangeRateToDefault so amount * exchangeRateToDefault
+  // still equals the accepted figure, instead of silently reinterpreting a
+  // foreign-currency amount as if it were already in defaultCurrency.
   const suggested = definition.budgetRecommendation.suggestedBudgetedAmount;
   if (suggested === null) return Promise.resolve();
 
   return store.update(id, {
-    amount: suggested,
+    amount: suggested / definition.exchangeRateToDefault,
     budgetRecommendation: { ...definition.budgetRecommendation, status: 'accepted' },
   });
 }
