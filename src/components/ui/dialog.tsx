@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type DialogProps = PropsWithChildren<{
@@ -60,7 +60,11 @@ const styles = StyleSheet.create({
   },
   panel: {
     width: '100%',
-    maxWidth: MaxContentWidth / 2,
+    // Was MaxContentWidth / 2 (400) — too narrow for a two-button action row
+    // where one label is "Delete permanently"; that wrapped to two lines at
+    // the old width even before accounting for the callers that also stack
+    // to full-width buttons below FormRowBreakpoint (see e.g. trash/index.tsx).
+    maxWidth: 440,
     borderWidth: 1,
     borderRadius: Spacing.two,
     padding: Spacing.four,

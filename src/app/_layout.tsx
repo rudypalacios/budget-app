@@ -153,6 +153,8 @@ export default function RootLayout() {
         <Stack.Screen name="currencies/index" />
         <Stack.Screen name="currencies/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="currencies/[code]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="archive/index" />
+        <Stack.Screen name="trash/index" />
         {/* Excludes the login screen from the navigator entirely (not just a
             post-mount redirect) once already signed in for real, so it can
             never render even for a single frame — reached while already

@@ -1,26 +1,31 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
+import { Dialog } from '@/components/ui/dialog';
 import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
-import { Spacing } from '@/constants/theme';
+import { FormRowBreakpoint, Spacing } from '@/constants/theme';
+import type { WithId } from '@/lib/firebase/firestore.types';
 import { categoryDisplayName } from '@/lib/category-display';
 import { countCategoryItems } from '@/lib/category-stats';
 import { formatCurrency } from '@/lib/format-currency';
 import { goBack } from '@/lib/navigation';
-import { updateCategory, useCategoriesStore } from '@/store/categories';
+import { deleteCategory, updateCategory, useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
 import { useIncomesStore } from '@/store/incomes';
 import { useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { useRecurringIncomesStore } from '@/store/recurring-incomes';
+import { showToast } from '@/store/toast';
 import { useUserSettingsStore } from '@/store/user-settings';
 import type { Category } from '@/types/firestore';
 
@@ -32,6 +37,8 @@ const TYPE_LABEL_KEY: Record<Category['type'], string> = {
 
 export default function CategoriesScreen() {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const isNarrow = width < FormRowBreakpoint;
   const categories = useCategoriesStore((state) => state.items);
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
@@ -39,8 +46,30 @@ export default function CategoriesScreen() {
   const recurringIncomes = useRecurringIncomesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
+  const [deleteTarget, setDeleteTarget] = useState<WithId<Category> | null>(null);
+  // Set once a delete attempt comes back blocked — swaps the dialog's body
+  // from the confirm question to an explanation, rather than opening a
+  // second dialog on top of the first.
+  const [blockedCount, setBlockedCount] = useState<number | null>(null);
+
   function toggleActive(id: string, lifecycleState: 'active' | 'archived') {
     updateCategory(id, { lifecycleState: lifecycleState === 'active' ? 'archived' : 'active' });
+  }
+
+  function closeDeleteDialog() {
+    setDeleteTarget(null);
+    setBlockedCount(null);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    const result = await deleteCategory(deleteTarget.id);
+    if (result.ok) {
+      showToast(t('categories.deleted', { name: deleteTarget.name }));
+      closeDeleteDialog();
+    } else {
+      setBlockedCount(result.blockingCount);
+    }
   }
 
   return (
@@ -56,14 +85,17 @@ export default function CategoriesScreen() {
       <Card style={styles.card}>
         {categories.map((category, index) => {
           const itemCount = countCategoryItems(category.id, expenses, incomes, recurringExpenses, recurringIncomes);
-          // Parens hold the item count, plus the budgeted amount when one's
-          // set — e.g. "(12 · Q 500.00)" or just "(12)" for a budgetless
-          // category (per the categories admin page request, CLAUDE.md
-          // fix/ux-polish-round-3).
+          // Item count, plus the budgeted amount when one's set — e.g.
+          // "12 items · Budget: Q 500.00" or just "12 items" for a
+          // budgetless category. Previously a bare "(12 · Q 500.00)" with
+          // no label on either number — found live to be unclear which
+          // figure was which (per the categories admin page request,
+          // CLAUDE.md fix/ux-polish-round-3, and a later review round).
+          const itemCountLabel = t('categories.itemCount', { count: itemCount });
           const countLabel =
             category.monthlyBudget != null
-              ? `(${itemCount} · ${formatCurrency(category.monthlyBudget, defaultCurrency)})`
-              : `(${itemCount})`;
+              ? `${itemCountLabel} · ${t('categories.budgetLabel', { amount: formatCurrency(category.monthlyBudget, defaultCurrency) })}`
+              : itemCountLabel;
 
           return (
             <View key={category.id}>
@@ -83,6 +115,10 @@ export default function CategoriesScreen() {
                         label: t('common.edit'),
                         onPress: () =>
                           router.push({ pathname: '/categories/[id]/edit', params: { id: category.id } }),
+                      },
+                      {
+                        label: t('common.deletePermanently'),
+                        onPress: () => setDeleteTarget(category),
                       },
                     ]}
                   />
@@ -109,6 +145,33 @@ export default function CategoriesScreen() {
           );
         })}
       </Card>
+
+      <Dialog isOpen={deleteTarget !== null} onClose={closeDeleteDialog} title={t('categories.confirmDeleteTitle')}>
+        {blockedCount !== null ? (
+          <>
+            <ThemedText>{t('categories.deleteBlocked', { count: blockedCount })}</ThemedText>
+            <Button label={t('common.done')} onPress={closeDeleteDialog} />
+          </>
+        ) : (
+          <>
+            <ThemedText>{t('categories.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}</ThemedText>
+            <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
+              <Button
+                label={t('categories.confirmDeleteButton')}
+                variant="danger"
+                onPress={handleConfirmDelete}
+                style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
+              />
+              <Button
+                label={t('common.cancel')}
+                variant="secondary"
+                onPress={closeDeleteDialog}
+                style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
+              />
+            </View>
+          </>
+        )}
+      </Dialog>
     </ScreenScroll>
   );
 }
@@ -116,6 +179,22 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   card: {
     gap: Spacing.two,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  // Below FormRowBreakpoint, "Delete permanently" alongside "Cancel" no
+  // longer fits two-up without wrapping — stack full-width instead, same
+  // breakpoint/pattern as AmountCurrencyField and trash/index.tsx.
+  dialogActionsNarrow: {
+    flexDirection: 'column',
+  },
+  dialogButton: {
+    flex: 1,
+  },
+  dialogButtonNarrow: {
+    width: '100%',
   },
   // Two-column/two-row grid, same strategy as the Payments Dashboard row
   // (src/app/(tabs)/index.tsx) — rowMain can wrap onto extra lines (a long

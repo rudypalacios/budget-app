@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { MinTouchTarget, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 export type ButtonProps = {
   label: string;
@@ -19,9 +19,20 @@ export function Button({ label, onPress, variant = 'primary', disabled, style }:
   const theme = useTheme();
   const [isPending, setIsPending] = useState(false);
 
+  // 'danger' reuses tintText for its on-color label, same as 'primary' — each
+  // theme calibrates tintText's contrast against tint's lightness, and danger
+  // is paired at a matching lightness in both themes (see theme.ts), so the
+  // same text color reads correctly on either fill.
   const background =
-    variant === 'primary' ? theme.tint : variant === 'secondary' ? theme.backgroundElement : 'transparent';
-  const textColor = variant === 'primary' ? theme.tintText : variant === 'secondary' ? theme.text : theme.tint;
+    variant === 'primary'
+      ? theme.tint
+      : variant === 'secondary'
+        ? theme.backgroundElement
+        : variant === 'danger'
+          ? theme.danger
+          : 'transparent';
+  const textColor =
+    variant === 'primary' || variant === 'danger' ? theme.tintText : variant === 'secondary' ? theme.text : theme.tint;
   const borderColor = variant === 'secondary' ? theme.border : 'transparent';
   const isDisabled = disabled || isPending;
 

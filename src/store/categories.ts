@@ -1,4 +1,9 @@
 import { createCollectionStore } from './create-collection-store';
+import { useExpensesStore } from './expenses';
+import { useIncomesStore } from './incomes';
+import { useRecurringExpensesStore } from './recurring-expenses';
+import { useRecurringIncomesStore } from './recurring-incomes';
+import { canDeleteCategory } from '@/lib/lifecycle-records';
 import { trimName } from '@/lib/text-input';
 import type { Category } from '@/types/firestore';
 
@@ -82,4 +87,25 @@ export function updateCategory(
   patch: Partial<Pick<Category, 'name' | 'type' | 'color' | 'icon' | 'order' | 'lifecycleState' | 'monthlyBudget'>>,
 ) {
   return store.update(id, patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch);
+}
+
+export type DeleteCategoryResult = { ok: true } | { ok: false; blockingCount: number };
+
+// Stage 17: categories have no archive/trash lifecycle (see
+// src/types/firestore.ts's ArchivableState comment) — this is a real hard
+// delete, so it's gated on canDeleteCategory finding zero references across
+// every collection and every lifecycle state (active/archived/trashed-but-
+// not-purged), not just active ones — a trashed-but-not-purged record is
+// still historical data that needs a valid categoryId to point to.
+export async function deleteCategory(id: string): Promise<DeleteCategoryResult> {
+  const { allowed, blockingCount } = canDeleteCategory(
+    id,
+    useExpensesStore.getState().items,
+    useIncomesStore.getState().items,
+    useRecurringExpensesStore.getState().items,
+    useRecurringIncomesStore.getState().items,
+  );
+  if (!allowed) return { ok: false, blockingCount };
+  await store.remove(id);
+  return { ok: true };
 }

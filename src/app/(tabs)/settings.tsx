@@ -15,8 +15,13 @@ import { Switch } from '@/components/ui/switch';
 import { TextField } from '@/components/ui/text-field';
 import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
+import { collectArchivedRecords, collectTrashedRecords } from '@/lib/lifecycle-records';
 import { useCategoriesStore } from '@/store/categories';
 import { useCurrenciesStore } from '@/store/currencies';
+import { useExpensesStore } from '@/store/expenses';
+import { useIncomesStore } from '@/store/incomes';
+import { useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { signOutAndRestartAnonymous, useSessionStore } from '@/store/session';
 import { updateUserSettings, useUserSettingsStore } from '@/store/user-settings';
 import type { UserSettings } from '@/types/firestore';
@@ -63,8 +68,16 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
 
   const categories = useCategoriesStore((state) => state.items);
   const addedCurrencies = useCurrenciesStore((state) => state.items);
+  const expenses = useExpensesStore((state) => state.items);
+  const incomes = useIncomesStore((state) => state.items);
+  const recurringExpenses = useRecurringExpensesStore((state) => state.items);
+  const recurringIncomes = useRecurringIncomesStore((state) => state.items);
   const email = useSessionStore((state) => state.email);
   const isAnonymous = useSessionStore((state) => state.isAnonymous);
+
+  const archivedCount = collectArchivedRecords(expenses, incomes, recurringExpenses, recurringIncomes, categories)
+    .length;
+  const trashedCount = collectTrashedRecords(expenses, incomes, recurringExpenses, recurringIncomes).length;
 
   async function handleSave() {
     await updateUserSettings({
@@ -209,6 +222,36 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
             keyboardType="number-pad"
           />
         </Card>
+
+        <Pressable
+          // Same expo-router typed-routes workaround as the Categories/
+          // Currencies manage rows above.
+          onPress={() => router.push('/archive' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.data.archive')}
+        >
+          <Card style={styles.manageRow}>
+            <View>
+              <ThemedText type="smallBold">{t('settings.data.archive')}</ThemedText>
+              <ThemedText type="caption">{t('settings.data.archiveCount', { count: archivedCount })}</ThemedText>
+            </View>
+            <ThemedText themeColor="textSecondary">›</ThemedText>
+          </Card>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/trash' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.data.trash')}
+        >
+          <Card style={styles.manageRow}>
+            <View>
+              <ThemedText type="smallBold">{t('settings.data.trash')}</ThemedText>
+              <ThemedText type="caption">{t('settings.data.trashCount', { count: trashedCount })}</ThemedText>
+            </View>
+            <ThemedText themeColor="textSecondary">›</ThemedText>
+          </Card>
+        </Pressable>
       </View>
 
       <View style={styles.section}>
