@@ -235,6 +235,23 @@ active/upcoming split in what a "current" expense/reminder means):
   that needs a "not yet active" state and a view to surface it before that
   state flips, which the current active/archived/trashed lifecycle model
   doesn't have a slot for yet.
+- **Starting balance field.** Raised while building the Budget tab's
+  "all-time balance" summary card (all paid income ever minus all paid
+  expenses ever, since the app has no starting-balance concept today) — that
+  card is only correct for a user who has logged every transaction since
+  before they ever had any money, which won't hold for anyone adopting the
+  app mid-life. Needs its own design pass before it can be scheduled, since
+  it isn't just "add a number field": open questions include (1) where it
+  lives — a single `UserSettings` value, or something with an as-of date so
+  a user can (re)anchor the balance later without it silently drifting from
+  reality (e.g. after a period of not logging everything); (2) whether it's
+  single-currency (tied to `defaultCurrency`, simplest) or needs its own
+  per-currency breakdown, given the app already supports multi-currency
+  records (FR-14-18); (3) whether setting/editing it should be a one-time
+  onboarding step, a Settings field editable anytime, or both; (4) how it
+  interacts with the existing all-time-balance calculation — likely just an
+  added constant term, but worth confirming there's no double-counting with
+  any already-logged pre-app transactions a user might re-enter historically.
 
 ---
 
