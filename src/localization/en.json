@@ -327,8 +327,8 @@
       "title": "This month",
       "received": "{{amount}} received",
       "spent": "{{amount}} spent",
-      "leftToSpend": "{{amount}} left to spend",
-      "overspent": "{{amount}} over — spending more than you're receiving"
+      "leftLabel": "left to spend",
+      "overLabel": "overspent"
     },
     "stillToPay": {
       "title": "Still to pay this month",

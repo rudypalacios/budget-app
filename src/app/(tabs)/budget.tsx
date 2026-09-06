@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { CategoryBudgetCard } from '@/components/category-budget-card';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { FormRowBreakpoint, Spacing } from '@/constants/theme';
+import { Divider } from '@/components/ui/divider';
+import { Spacing } from '@/constants/theme';
 import { getCurrentCycleRange, isWithinCycle } from '@/lib/cycle';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
@@ -23,8 +24,6 @@ export default function BudgetScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const recurringExpenses = useRecurringExpensesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
-  const { width } = useWindowDimensions();
-  const isNarrow = width < FormRowBreakpoint;
 
   // Same reason as the Expenses tab's identical effect: catches drift missed
   // by a stale cache (data-model.md §9) whenever this screen — which also
@@ -118,45 +117,48 @@ export default function BudgetScreen() {
     <ScreenScroll>
       <ScreenHeader title={t('budget.title')} />
 
-      <View style={[styles.summaryRow, isNarrow && styles.summaryRowNarrow]}>
-        <Card style={styles.summaryCard}>
+      <Card style={styles.summaryCard}>
+        <View style={styles.cell}>
           <ThemedText type="caption">{t('budget.balance.title')}</ThemedText>
-          <ThemedText type="title" themeColor={allTimeBalance >= 0 ? 'success' : 'danger'}>
+          <ThemedText type="smallBold" themeColor={allTimeBalance >= 0 ? 'success' : 'danger'}>
             {formatCurrency(allTimeBalance, defaultCurrency)}
           </ThemedText>
-        </Card>
+        </View>
 
-        <Card style={styles.summaryCard}>
+        <Divider style={styles.verticalDivider} />
+
+        <View style={styles.cell}>
           <ThemedText type="caption">{t('budget.thisMonth.title')}</ThemedText>
-          <View style={styles.incomeRow}>
-            <ThemedText type="smallBold" themeColor="success">
-              {t('budget.thisMonth.received', { amount: formatCurrency(totalIncomeReceived, defaultCurrency) })}
-            </ThemedText>
-            <ThemedText type="smallBold" themeColor="danger">
-              {t('budget.thisMonth.spent', { amount: formatCurrency(totalActual, defaultCurrency) })}
-            </ThemedText>
-          </View>
-          <ThemedText type="title" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
-            {netCashPosition >= 0
-              ? t('budget.thisMonth.leftToSpend', { amount: formatCurrency(netCashPosition, defaultCurrency) })
-              : t('budget.thisMonth.overspent', { amount: formatCurrency(Math.abs(netCashPosition), defaultCurrency) })}
+          <ThemedText type="smallBold" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
+            {formatCurrency(netCashPosition, defaultCurrency)}
           </ThemedText>
-        </Card>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {netCashPosition >= 0 ? t('budget.thisMonth.leftLabel') : t('budget.thisMonth.overLabel')}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="success">
+            {t('budget.thisMonth.received', { amount: formatCurrency(totalIncomeReceived, defaultCurrency) })}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="danger">
+            {t('budget.thisMonth.spent', { amount: formatCurrency(totalActual, defaultCurrency) })}
+          </ThemedText>
+        </View>
 
-        <Card style={styles.summaryCard}>
+        <Divider style={styles.verticalDivider} />
+
+        <View style={styles.cell}>
           <ThemedText type="caption">{t('budget.stillToPay.title')}</ThemedText>
-          <ThemedText type="title" themeColor={stillToPayThisMonth > 0 ? 'danger' : 'success'}>
+          <ThemedText type="smallBold" themeColor={stillToPayThisMonth > 0 ? 'danger' : 'success'}>
             {formatCurrency(stillToPayThisMonth, defaultCurrency)}
           </ThemedText>
-          <ThemedText type="smallBold" themeColor={projectedLeftAfterBills >= 0 ? 'success' : 'danger'}>
+          <ThemedText type="caption" themeColor={projectedLeftAfterBills >= 0 ? 'success' : 'danger'}>
             {projectedLeftAfterBills >= 0
               ? t('budget.stillToPay.leftAfter', { amount: formatCurrency(projectedLeftAfterBills, defaultCurrency) })
               : t('budget.stillToPay.shortAfter', {
                   amount: formatCurrency(Math.abs(projectedLeftAfterBills), defaultCurrency),
                 })}
           </ThemedText>
-        </Card>
-      </View>
+        </View>
+      </Card>
 
       <View style={styles.list}>
         {categoriesWithActivity.map((category) => (
@@ -179,19 +181,17 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.three,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-  },
-  summaryRowNarrow: {
-    flexDirection: 'column',
-  },
   summaryCard: {
-    flex: 1,
+    flexDirection: 'row',
+    padding: Spacing.two,
     gap: Spacing.two,
   },
-  incomeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  cell: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  verticalDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: '100%',
   },
 });

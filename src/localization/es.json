@@ -327,8 +327,8 @@
       "title": "Este mes",
       "received": "{{amount}} recibido",
       "spent": "{{amount}} gastado",
-      "leftToSpend": "{{amount}} disponible para gastar",
-      "overspent": "{{amount}} de más — estás gastando más de lo que recibes"
+      "leftLabel": "disponible",
+      "overLabel": "sobregastado"
     },
     "stillToPay": {
       "title": "Aún por pagar este mes",
