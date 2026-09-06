@@ -111,51 +111,93 @@ export default function BudgetScreen() {
         isWithinCycle(expense.date.toDate(), cycleRange),
     )
     .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
-  const projectedLeftAfterBills = netCashPosition - stillToPayThisMonth;
+
+  // Mirrors stillToPayThisMonth's filter but on the income side — unpaid,
+  // non-skipped income due within the current calendar month.
+  const pendingIncomeThisMonth = incomes
+    .filter(
+      (income) =>
+        !income.paid &&
+        !(income.kind === 'recurringInstance' && income.skipped) &&
+        income.lifecycleState === 'active' &&
+        isWithinCycle(income.date.toDate(), cycleRange),
+    )
+    .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
+
+  // Carries this month's already-settled net (netCashPosition) forward,
+  // rather than only netting row 2's own pending amounts — otherwise a
+  // month that's already deep in the red from bills already paid could
+  // show a misleadingly green projection just because nothing more is
+  // currently pending.
+  const projectedEndOfMonthBalance = netCashPosition + pendingIncomeThisMonth - stillToPayThisMonth;
 
   return (
     <ScreenScroll>
       <ScreenHeader title={t('budget.title')} />
 
       <Card style={styles.summaryCard}>
-        <View style={styles.cell}>
-          <ThemedText type="caption">{t('budget.balance.title')}</ThemedText>
-          <ThemedText type="smallBold" themeColor={allTimeBalance >= 0 ? 'success' : 'danger'}>
+        <View style={styles.gridRow}>
+          <View style={styles.cell}>
+            <ThemedText type="caption">{t('budget.summary.received')}</ThemedText>
+            <ThemedText type="smallBold" themeColor="success">
+              {formatCurrency(totalIncomeReceived, defaultCurrency)}
+            </ThemedText>
+          </View>
+
+          <Divider style={styles.verticalDivider} />
+
+          <View style={styles.cell}>
+            <ThemedText type="caption">{t('budget.summary.paid')}</ThemedText>
+            <ThemedText type="smallBold" themeColor="danger">
+              {formatCurrency(totalActual, defaultCurrency)}
+            </ThemedText>
+          </View>
+
+          <Divider style={styles.verticalDivider} />
+
+          <View style={styles.cell}>
+            <ThemedText type="caption">{t('budget.summary.settledBalance')}</ThemedText>
+            <ThemedText type="smallBold" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
+              {formatCurrency(netCashPosition, defaultCurrency)}
+            </ThemedText>
+          </View>
+        </View>
+
+        <Divider style={styles.rowDivider} />
+
+        <View style={styles.gridRow}>
+          <View style={styles.cell}>
+            <ThemedText type="caption">{t('budget.summary.pending')}</ThemedText>
+            <ThemedText type="smallBold" themeColor={stillToPayThisMonth > 0 ? 'danger' : 'success'}>
+              {formatCurrency(stillToPayThisMonth, defaultCurrency)}
+            </ThemedText>
+          </View>
+
+          <Divider style={styles.verticalDivider} />
+
+          <View style={styles.cell}>
+            <ThemedText type="caption">{t('budget.summary.incomePending')}</ThemedText>
+            <ThemedText type="smallBold" themeColor="success">
+              {formatCurrency(pendingIncomeThisMonth, defaultCurrency)}
+            </ThemedText>
+          </View>
+
+          <Divider style={styles.verticalDivider} />
+
+          <View style={styles.cell}>
+            <ThemedText type="caption">{t('budget.summary.projectedBalance')}</ThemedText>
+            <ThemedText type="smallBold" themeColor={projectedEndOfMonthBalance >= 0 ? 'success' : 'danger'}>
+              {formatCurrency(projectedEndOfMonthBalance, defaultCurrency)}
+            </ThemedText>
+          </View>
+        </View>
+
+        <Divider style={styles.rowDivider} />
+
+        <View style={styles.footerRow}>
+          <ThemedText type="caption">{t('budget.summary.overallBalance')}</ThemedText>
+          <ThemedText type="subtitle" themeColor={allTimeBalance >= 0 ? 'success' : 'danger'}>
             {formatCurrency(allTimeBalance, defaultCurrency)}
-          </ThemedText>
-        </View>
-
-        <Divider style={styles.verticalDivider} />
-
-        <View style={styles.cell}>
-          <ThemedText type="caption">{t('budget.thisMonth.title')}</ThemedText>
-          <ThemedText type="smallBold" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
-            {formatCurrency(netCashPosition, defaultCurrency)}
-          </ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
-            {netCashPosition >= 0 ? t('budget.thisMonth.leftLabel') : t('budget.thisMonth.overLabel')}
-          </ThemedText>
-          <ThemedText type="caption" themeColor="success">
-            {t('budget.thisMonth.received', { amount: formatCurrency(totalIncomeReceived, defaultCurrency) })}
-          </ThemedText>
-          <ThemedText type="caption" themeColor="danger">
-            {t('budget.thisMonth.spent', { amount: formatCurrency(totalActual, defaultCurrency) })}
-          </ThemedText>
-        </View>
-
-        <Divider style={styles.verticalDivider} />
-
-        <View style={styles.cell}>
-          <ThemedText type="caption">{t('budget.stillToPay.title')}</ThemedText>
-          <ThemedText type="smallBold" themeColor={stillToPayThisMonth > 0 ? 'danger' : 'success'}>
-            {formatCurrency(stillToPayThisMonth, defaultCurrency)}
-          </ThemedText>
-          <ThemedText type="caption" themeColor={projectedLeftAfterBills >= 0 ? 'success' : 'danger'}>
-            {projectedLeftAfterBills >= 0
-              ? t('budget.stillToPay.leftAfter', { amount: formatCurrency(projectedLeftAfterBills, defaultCurrency) })
-              : t('budget.stillToPay.shortAfter', {
-                  amount: formatCurrency(Math.abs(projectedLeftAfterBills), defaultCurrency),
-                })}
           </ThemedText>
         </View>
       </Card>
@@ -182,8 +224,11 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   summaryCard: {
-    flexDirection: 'row',
+    gap: Spacing.two,
     padding: Spacing.two,
+  },
+  gridRow: {
+    flexDirection: 'row',
     gap: Spacing.two,
   },
   cell: {
@@ -193,5 +238,13 @@ const styles = StyleSheet.create({
   verticalDivider: {
     width: StyleSheet.hairlineWidth,
     height: '100%',
+  },
+  rowDivider: {
+    marginVertical: Spacing.one,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
