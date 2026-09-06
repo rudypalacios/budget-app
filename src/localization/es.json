@@ -320,20 +320,14 @@
     "noHistoryYet": "Aún sin historial de pagos",
     "recurringBudgeted": "Presupuestado {{amount}}",
     "recurringAverage": "Promedio 6 meses {{amount}}",
-    "balance": {
-      "title": "Balance"
-    },
-    "thisMonth": {
-      "title": "Este mes",
-      "received": "{{amount}} recibido",
-      "spent": "{{amount}} gastado",
-      "leftLabel": "disponible",
-      "overLabel": "sobregastado"
-    },
-    "stillToPay": {
-      "title": "Aún por pagar este mes",
-      "leftAfter": "{{amount}} restante tras pagar",
-      "shortAfter": "{{amount}} en déficit tras pagar"
+    "summary": {
+      "received": "Ingresos recibidos",
+      "paid": "Pagos realizados",
+      "settledBalance": "Saldo actual",
+      "pending": "Pendiente de pago",
+      "incomePending": "Ingresos pendientes",
+      "projectedBalance": "Saldo proyectado",
+      "overallBalance": "Balance general"
     }
   },
   "history": {
