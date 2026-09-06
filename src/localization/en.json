@@ -311,9 +311,6 @@
   },
   "budget": {
     "title": "Budget",
-    "budgetedThisMonth": "Budgeted this month",
-    "remaining": "remaining",
-    "overBudget": "over budget",
     "overBudgetChip": "Over budget",
     "spent": "{{amount}} spent",
     "ofBudgeted": "of {{amount}}",
@@ -323,12 +320,20 @@
     "noHistoryYet": "No paid history yet",
     "recurringBudgeted": "Budgeted {{amount}}",
     "recurringAverage": "6-month avg {{amount}}",
-    "income": {
-      "title": "Income vs. Expenses",
+    "balance": {
+      "title": "Balance"
+    },
+    "thisMonth": {
+      "title": "This month",
       "received": "{{amount}} received",
       "spent": "{{amount}} spent",
-      "leftToSpend": "{{amount}} left to spend",
-      "overspent": "{{amount}} over — spending more than you're receiving"
+      "leftLabel": "left to spend",
+      "overLabel": "overspent"
+    },
+    "stillToPay": {
+      "title": "Still to pay this month",
+      "leftAfter": "{{amount}} left after paying",
+      "shortAfter": "{{amount}} short after paying"
     }
   },
   "history": {

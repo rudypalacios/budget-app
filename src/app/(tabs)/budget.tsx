@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
+import { Divider } from '@/components/ui/divider';
 import { Spacing } from '@/constants/theme';
 import { getCurrentCycleRange, isWithinCycle } from '@/lib/cycle';
 import { formatCurrency } from '@/lib/format-currency';
@@ -72,14 +73,12 @@ export default function BudgetScreen() {
     (category) => category.monthlyBudget != null || actualForCategory(category.id) > 0,
   );
 
-  const totalBudgeted = categoriesWithActivity.reduce((sum, category) => sum + (category.monthlyBudget ?? 0), 0);
   // Total realistic spend across every active category, not just ones with a
   // budget set — the point is seeing total actual spend versus what's
   // expected, not silently excluding categories the user hasn't budgeted yet.
   const totalActual = expenses
     .filter((expense) => expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange))
     .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
-  const remaining = totalBudgeted - totalActual;
 
   // FR-6/income relation: money actually received this month, not expected/
   // upcoming income — answers "do I literally have this much right now,"
@@ -89,34 +88,76 @@ export default function BudgetScreen() {
     .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
   const netCashPosition = totalIncomeReceived - totalActual;
 
+  // All-time, no cycle filter — the closest thing to a real balance the app
+  // can derive without a dedicated starting-balance field.
+  const allTimeIncomeReceived = incomes
+    .filter((income) => income.paid && income.lifecycleState === 'active')
+    .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
+  const allTimeExpensesPaid = expenses
+    .filter((expense) => expense.paid && expense.lifecycleState === 'active')
+    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
+  const allTimeBalance = allTimeIncomeReceived - allTimeExpensesPaid;
+
+  // Unpaid, non-skipped expenses due within the current calendar month —
+  // scoped by due date (`date`), not `paidDate` (unpaid records have none
+  // yet) — matches this screen's existing this-month-only convention rather
+  // than the Payments Dashboard's all-time "pending" definition.
+  const stillToPayThisMonth = expenses
+    .filter(
+      (expense) =>
+        !expense.paid &&
+        !(expense.kind === 'recurringInstance' && expense.skipped) &&
+        expense.lifecycleState === 'active' &&
+        isWithinCycle(expense.date.toDate(), cycleRange),
+    )
+    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
+  const projectedLeftAfterBills = netCashPosition - stillToPayThisMonth;
+
   return (
     <ScreenScroll>
       <ScreenHeader title={t('budget.title')} />
 
-      <Card>
-        <ThemedText type="caption">{t('budget.budgetedThisMonth')}</ThemedText>
-        <ThemedText type="title">{formatCurrency(totalBudgeted, defaultCurrency)}</ThemedText>
-        <ThemedText type="smallBold" themeColor={remaining >= 0 ? 'success' : 'danger'}>
-          {formatCurrency(Math.abs(remaining), defaultCurrency)}{' '}
-          {remaining >= 0 ? t('budget.remaining') : t('budget.overBudget')}
-        </ThemedText>
-      </Card>
-
-      <Card style={styles.incomeCard}>
-        <ThemedText type="caption">{t('budget.income.title')}</ThemedText>
-        <View style={styles.incomeRow}>
-          <ThemedText type="smallBold" themeColor="success">
-            {t('budget.income.received', { amount: formatCurrency(totalIncomeReceived, defaultCurrency) })}
-          </ThemedText>
-          <ThemedText type="smallBold" themeColor="danger">
-            {t('budget.income.spent', { amount: formatCurrency(totalActual, defaultCurrency) })}
+      <Card style={styles.summaryCard}>
+        <View style={styles.cell}>
+          <ThemedText type="caption">{t('budget.balance.title')}</ThemedText>
+          <ThemedText type="smallBold" themeColor={allTimeBalance >= 0 ? 'success' : 'danger'}>
+            {formatCurrency(allTimeBalance, defaultCurrency)}
           </ThemedText>
         </View>
-        <ThemedText type="title" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
-          {netCashPosition >= 0
-            ? t('budget.income.leftToSpend', { amount: formatCurrency(netCashPosition, defaultCurrency) })
-            : t('budget.income.overspent', { amount: formatCurrency(Math.abs(netCashPosition), defaultCurrency) })}
-        </ThemedText>
+
+        <Divider style={styles.verticalDivider} />
+
+        <View style={styles.cell}>
+          <ThemedText type="caption">{t('budget.thisMonth.title')}</ThemedText>
+          <ThemedText type="smallBold" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
+            {formatCurrency(netCashPosition, defaultCurrency)}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {netCashPosition >= 0 ? t('budget.thisMonth.leftLabel') : t('budget.thisMonth.overLabel')}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="success">
+            {t('budget.thisMonth.received', { amount: formatCurrency(totalIncomeReceived, defaultCurrency) })}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="danger">
+            {t('budget.thisMonth.spent', { amount: formatCurrency(totalActual, defaultCurrency) })}
+          </ThemedText>
+        </View>
+
+        <Divider style={styles.verticalDivider} />
+
+        <View style={styles.cell}>
+          <ThemedText type="caption">{t('budget.stillToPay.title')}</ThemedText>
+          <ThemedText type="smallBold" themeColor={stillToPayThisMonth > 0 ? 'danger' : 'success'}>
+            {formatCurrency(stillToPayThisMonth, defaultCurrency)}
+          </ThemedText>
+          <ThemedText type="caption" themeColor={projectedLeftAfterBills >= 0 ? 'success' : 'danger'}>
+            {projectedLeftAfterBills >= 0
+              ? t('budget.stillToPay.leftAfter', { amount: formatCurrency(projectedLeftAfterBills, defaultCurrency) })
+              : t('budget.stillToPay.shortAfter', {
+                  amount: formatCurrency(Math.abs(projectedLeftAfterBills), defaultCurrency),
+                })}
+          </ThemedText>
+        </View>
       </Card>
 
       <View style={styles.list}>
@@ -140,11 +181,17 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.three,
   },
-  incomeCard: {
+  summaryCard: {
+    flexDirection: 'row',
+    padding: Spacing.two,
     gap: Spacing.two,
   },
-  incomeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  cell: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  verticalDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: '100%',
   },
 });
