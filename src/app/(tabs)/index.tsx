@@ -15,7 +15,7 @@ import { GroupCascadeDialog } from '@/components/ui/group-cascade-dialog';
 import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import { OverflowMenu, type OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Spacing } from '@/constants/theme';
 import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -370,8 +370,8 @@ export default function PaymentsScreen() {
                         ) : (
                           <Chip label={paidLabel} tone="warning" />
                         )}
-                        <Switch
-                          value={row.paid}
+                        <Checkbox
+                          checked={row.paid}
                           onValueChange={() => handleTogglePaid(row)}
                           accessibilityLabel={t('payments.markAs', {
                             name: row.name,
