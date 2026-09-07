@@ -1060,17 +1060,22 @@ non-active children.
   `eligibleGroupParents`); an archive/trash cascade-or-detach confirmation
   whenever the target has active children (new `GroupCascadeDialog`,
   composed on the existing `Dialog` primitive, same shell as
-  `ConfirmRecordsDialog`); and an informational annotation per row — a
-  child shows "Part of {{parent}}", a parent shows "{{count}} grouped:
-  {{subtotal}}" — computed at render time, never stored. **Deviation from
-  the original ASCII-tree mockup discussed in planning**: `PaymentRow`s are
-  sorted into three status buckets (overdue/upcoming/completed, see
-  `docs/data-model.md` §13) rather than one flat list, so a parent and its
-  children can land in different buckets entirely — a literal nested tree
-  layout doesn't fit that model without a larger rework of the grouping/
-  sort logic itself. The caption-annotation approach was substituted
-  instead, disclosed to the user as a scope simplification rather than
-  built silently.
+  `ConfirmRecordsDialog`); and per-row grouping cues — a child renders
+  indented with a `"└─▸ "` prefix on its own name line plus a "Part of
+  {{parent}}" caption, a parent shows "{{count}} grouped: {{subtotal}}" —
+  computed at render time, never stored. (First pass shipped only the
+  captions and missed the indent/marker entirely — caught by the user's
+  own manual QA pass, fixed in commit `9c5135d`.) **Real, still-standing
+  deviation from the original ASCII-tree mockup discussed in planning**:
+  every child uses the same `"└─▸"` connector rather than distinguishing
+  middle/last siblings (`├─▸` vs `└─▸`) — `PaymentRow`s are sorted into
+  three status buckets (overdue/upcoming/completed, see
+  `docs/data-model.md` §13) rather than one flat list, so a parent's
+  children are rarely contiguous in the rendered list; a "last sibling"
+  glyph would imply an adjacency that isn't real. A literal nested tree
+  (reordering rows so children sit directly under their parent) doesn't
+  fit that bucket model without a larger rework of the grouping/sort logic
+  itself, so it wasn't attempted.
 - `RecurringExpenseForm` gained an "Agrupar con" `Select` (edit-only, see
   Known Issues) wired through `recurring-expenses/[id]/edit.tsx` — a
   `NO_GROUP_PARENT` sentinel (`''`) stands in for `null` since `Select`'s
@@ -1084,11 +1089,12 @@ non-active children.
   tests (33 new: `expense-grouping.test.ts` in full, plus new cascade/
   restore-fix cases in `expenses.test.ts` and the extended
   `lifecycle-transitions.test.ts`).
-- Deviations from the approved plan: (1) the ASCII-tree nested display
-  became a caption annotation instead, for the reason above; (2) the UI
-  was wired onto the Dashboard only, not also Expenses/Income/History, to
-  keep this stage's verification manageable — both disclosed above and in
-  Known Issues, not silently dropped.
+- Deviations from the approved plan: (1) the ASCII-tree connector doesn't
+  distinguish middle/last siblings (single `"└─▸"` for every child), for
+  the bucket-adjacency reason above; (2) the UI was wired onto the
+  Dashboard only, not also Expenses/Income/History, to keep this stage's
+  verification manageable — both disclosed above and in Known Issues, not
+  silently dropped.
 - **Not yet manually verified end-to-end on a device/browser** — see the
   QA test-case list handed to the user alongside this summary. Do that
   before merging.
