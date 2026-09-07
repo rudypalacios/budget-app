@@ -415,6 +415,34 @@ actually resolved.)_
   sliding feel but is a new dependency (ask first, per the tech-stack table)
   and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
   doesn't need this — the user confirmed swipe only matters on mobile.
+- **Expense grouping (Stage 18) UI is Payments Dashboard-only** — the store
+  layer (`setExpenseGroupParent`, the paid cascade, `archiveOrTrashExpenseGroup`,
+  restore cascade — all in `src/store/expenses.ts`) works for every expense
+  regardless of where it's touched, but the actual UI to use it ("Add to
+  group.../Remove from group" in the row's overflow menu, the grouped-subtotal/
+  "Part of X" caption, and the archive/trash cascade-or-detach dialog) was
+  only wired into `src/app/(tabs)/index.tsx` (the Dashboard) this stage —
+  deliberately, given the time this stage already took, rather than spread
+  thin across every screen with less verification on each. The Expenses tab's
+  "One-time" section, the Income tab, and History still only have the plain
+  (non-cascade-aware) archive/trash actions and no group-picker entry point.
+  A grouped expense created/edited on the Dashboard is still fully correct
+  and visible everywhere else (it's the same document), it just can't be
+  *grouped or ungrouped* from those other screens yet. Extending the same
+  wiring (already generic — `findActiveChildren`/`eligibleGroupParents`/
+  `computeGroupedSubtotal` in `src/lib/expense-grouping.ts`, plus the two new
+  `GroupPickerDialog`/`GroupCascadeDialog` components) to Expenses/Income/
+  History is straightforward follow-up, not a redesign.
+- **"Agrupar con" (`defaultParentRecurringExpenseId`) is edit-only, not on
+  the recurring-expense creation form** — `RecurringExpenseForm` (used by
+  `src/app/recurring-expenses/[id]/edit.tsx`) has the picker, but
+  `src/app/expenses/new.tsx`'s `ExpenseForm` (used to create a brand-new
+  recurring expense, via its `isRecurring` toggle) does not — a new
+  recurring expense is always created ungrouped, and grouping it is a
+  second step (Edit it right after, or use the Dashboard's ad hoc "Add to
+  group" once its first instance exists). Scoped out to keep this stage's
+  UI surface manageable; straightforward to add to `ExpenseForm` later
+  following the same pattern.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
@@ -468,16 +496,11 @@ pending grid + balance footer"). Same situation as the Stage 17 note
 above: left as-is rather than reconstructed from memory — flag for the
 user to confirm/rewrite this whole section's history whenever convenient.
 
-**Stage 18 — Expense grouping** is now planned: SRS §6.10/FR-21–FR-21f
-and `docs/data-model.md` §11 (schema, cascade rules, archive/trash
-interaction) were written this session after a back-and-forth with the
-user to pin down the amount/cascade semantics — see that section for the
-full design. No code written yet. Building on branch
-`claude/expense-grouping-categories-bxu05n`, created off the current tip
-of `develop` (verified — Stage 17 and everything after it is included).
-One open question flagged in `docs/data-model.md` §12 item 4 (restore
-cascade for a grouped parent) still needs the user's answer before that
-part is built.
+**Stage 18 — Expense grouping** is built and verified (`tsc`/lint/tests,
+not yet manually verified in a browser) on branch
+`claude/expense-grouping-categories-bxu05n` (off `develop` — Stage 17 and
+everything through PR #28 is included), commit `123fcf3`, pending merge.
+See its own summary below.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -950,3 +973,125 @@ same keep-each-review-round-separate convention as
 - Committed to branch `stage-17-trash-archive` (off `develop`), commit
   `a1ce047`, clean tree. Not merged — per the standing convention, that's
   the user's call.
+
+### Stage 18 summary
+
+Scope confirmed with the user across several rounds of back-and-forth
+before any code: a group parent's own `amount` stays fully manual/
+independent (never derived from or locked by its children — the parent's
+real total, e.g. an actual credit-card statement, is typically larger
+than what's individually tracked); the paid cascade is a two-way
+"select-all checkbox" (parent action cascades down to active children,
+any child's own paid change recomputes the parent as AND-of-children);
+archiving/trashing a parent with children needs an explicit cascade-or-
+detach choice; and — confirmed last, closing the one item left open in
+`docs/data-model.md` §12 — restoring a parent also restores its still-
+non-active children.
+
+- **Schema**: `Expense.parentExpenseId: string | null` (self-referencing
+  FK within `expenses`, expenses-only — not on `incomes`) and
+  `RecurringExpense.defaultParentRecurringExpenseId: string | null` (the
+  persistent "Agrupar con" default), both in `src/types/firestore.ts` per
+  `docs/data-model.md` §5/§6/§11. No new collection, no new Firestore
+  index (§11's "compute at read time from the already-live listener"
+  rationale — same pattern as §7/§13), no `firestore.rules` changes
+  (neither field is locked, and rules don't enumerate an allowed-field
+  whitelist).
+- New `src/lib/expense-grouping.ts` (pure, unit-tested) —
+  `findActiveChildren`/`computeGroupedSubtotal`/`canGroupUnder`/
+  `eligibleGroupParents`/`computeParentPaidFromChildren`, same lib/-vs-
+  store/ split as `lifecycle-transitions.ts`. `canGroupUnder`/
+  `eligibleGroupParents` enforce FR-21a's single-level rule (a child can't
+  be chosen as a parent; something that already has children can't become
+  a child) — reused as-is for the recurring-definition "Agrupar con"
+  picker too (`RecurringExpenseForm`), by mapping
+  `defaultParentRecurringExpenseId` into the same generic shape.
+- `src/store/expenses.ts` gained `setExpenseGroupParent` (assign/clear,
+  throws on a single-level violation as a defensive backstop — the UI's
+  picker is expected to only ever offer valid choices),
+  `archiveOrTrashExpenseGroup` (cascade vs. detach-then-apply, one
+  function backing both the Archive and Delete-to-trash actions), and a
+  cascade layer inside `setExpensePaid`
+  (`applyExpenseGroupPaidCascade`) and `setExpenseGroupParent` itself
+  (group membership changing also recomputes whichever parent(s) it
+  affects). All of these read one upfront store snapshot and never re-read
+  store state after their own writes — the collection listener that backs
+  `items` isn't guaranteed to have caught up yet (same race
+  `updateRecurringExpense` already documented for
+  `recomputeBudgetRecommendation`), so every cascade computes from what it
+  already knows plus the value it's about to write, not a re-read.
+- `src/store/recurring-generation.ts`'s `generateExpenseInstancesForDefinition`
+  sets a new instance's `parentExpenseId` by *synthesizing* the parent
+  definition's own deterministic instance ID for the same cycle
+  (`{parentId}_{yyyy-MM}`) — no lookup/query needed, and it's correct even
+  if generation processes the child before the parent within the same
+  scan, since both defs converge on the same eventual IDs either way.
+  Forward-only by construction: this only ever runs for a newly generated
+  instance (the existing `setAt` idempotency already guarantees
+  already-generated periods are never revisited), matching FR-21c's
+  "changing the default doesn't retroactively relink past instances."
+- **Found and fixed a real pre-existing bug while building the restore
+  cascade**: `restoreTransition` (`src/lib/lifecycle-transitions.ts`) only
+  ever handled trashed→X (it required `trashedFromState`, which is `null`
+  on a merely-archived record) — every `restoreX` store function
+  (`restoreExpense`/`restoreIncome`/`restoreRecurringExpense`/
+  `restoreRecurringIncome`) inherited this, so clicking **Restore** on the
+  Archive screen (Stage 17) for *any* record type has been throwing at
+  runtime since that screen shipped; only Trash-screen restores (which are
+  always genuinely trashed) worked. Not something this stage set out to
+  touch — found because `restoreExpense` needed to correctly restore an
+  archived parent's archived children. Fixed `restoreTransition` to branch
+  on the record's actual current `lifecycleState` (trashed→X as before,
+  archived→active directly), and updated all four `restoreX` call sites'
+  guards accordingly (`lifecycleState === 'active'` instead of
+  `!trashedFromState`).
+- `restoreExpense` (no longer just engine-only — this is its first real
+  caller, via the Archive/Trash screens' existing `restoreLifecycleRecord`)
+  also restores every child still sitting in a non-`'active'`
+  `lifecycleState` under the record being restored, each through its own
+  `restoreTransition` (own `trashedFromState`) — kept the existing
+  deliberately-not-`async`/synchronous-throw shape (`.then()` chaining)
+  so the pre-existing `expect(() => restoreExpense(...)).toThrow()` guard
+  test stays valid.
+- **UI, scoped to the Payments Dashboard this stage** (see Known Issues
+  for the explicit scope limitation) — `(tabs)/index.tsx` gained: an "Add
+  to group…"/"Remove from group" `OverflowMenu` action on every expense
+  row (new `GroupPickerDialog`, a plain pressable list of
+  `eligibleGroupParents`); an archive/trash cascade-or-detach confirmation
+  whenever the target has active children (new `GroupCascadeDialog`,
+  composed on the existing `Dialog` primitive, same shell as
+  `ConfirmRecordsDialog`); and an informational annotation per row — a
+  child shows "Part of {{parent}}", a parent shows "{{count}} grouped:
+  {{subtotal}}" — computed at render time, never stored. **Deviation from
+  the original ASCII-tree mockup discussed in planning**: `PaymentRow`s are
+  sorted into three status buckets (overdue/upcoming/completed, see
+  `docs/data-model.md` §13) rather than one flat list, so a parent and its
+  children can land in different buckets entirely — a literal nested tree
+  layout doesn't fit that model without a larger rework of the grouping/
+  sort logic itself. The caption-annotation approach was substituted
+  instead, disclosed to the user as a scope simplification rather than
+  built silently.
+- `RecurringExpenseForm` gained an "Agrupar con" `Select` (edit-only, see
+  Known Issues) wired through `recurring-expenses/[id]/edit.tsx` — a
+  `NO_GROUP_PARENT` sentinel (`''`) stands in for `null` since `Select`'s
+  value type can't be nullable.
+- New `grouping` i18n namespace (`en.json`/`es.json`) plus three new
+  `recurringExpense.form.*` keys for the picker.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (one
+  pre-existing, unrelated `@/global.css` module-resolution error,
+  confirmed present on `develop` before this stage's changes via
+  `git stash`), `npm run lint` clean, `npm test` 25/25 suites, 220/220
+  tests (33 new: `expense-grouping.test.ts` in full, plus new cascade/
+  restore-fix cases in `expenses.test.ts` and the extended
+  `lifecycle-transitions.test.ts`).
+- Deviations from the approved plan: (1) the ASCII-tree nested display
+  became a caption annotation instead, for the reason above; (2) the UI
+  was wired onto the Dashboard only, not also Expenses/Income/History, to
+  keep this stage's verification manageable — both disclosed above and in
+  Known Issues, not silently dropped.
+- **Not yet manually verified end-to-end on a device/browser** — see the
+  QA test-case list handed to the user alongside this summary. Do that
+  before merging.
+- Committed to branch `claude/expense-grouping-categories-bxu05n` (off
+  `develop`), commit `123fcf3`, clean tree. Not merged — per the standing
+  convention, that's the user's call.
