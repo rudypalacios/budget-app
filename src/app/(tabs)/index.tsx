@@ -213,12 +213,25 @@ export default function PaymentsScreen() {
                 row.direction === 'expense' && row.parentExpenseId
                   ? expenses.find((item) => item.id === row.parentExpenseId)?.name
                   : undefined;
+              // Stage 18 (FR-21f) — a child renders indented with an ASCII
+              // tree-connector prefix on its own name line, same idea as the
+              // original mockup discussed with the user. Every child uses
+              // the same "└─▸" connector rather than distinguishing
+              // middle/last siblings (├─▸ vs └─▸): rows within a bucket are
+              // sorted by date/action-timestamp, not grouped together, so a
+              // parent's children are rarely contiguous in the rendered
+              // list — a "last sibling" glyph would imply an adjacency that
+              // isn't real. See data-model.md §11 for why a literal nested
+              // tree (reordering rows so children sit right under their
+              // parent) isn't feasible given the three-bucket layout.
+              const isGroupChild = !!groupParentName;
 
               return (
                 <View key={row.id}>
                   <View
                     style={[
                       styles.row,
+                      isGroupChild && styles.rowChild,
                       // Overdue rows get a full-row danger tint (same
                       // translucent-wash convention as Chip's tone colors)
                       // so an overdue bill reads as urgent at a glance, not
@@ -228,6 +241,7 @@ export default function PaymentsScreen() {
                   >
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
+                        {isGroupChild ? '└─▸ ' : ''}
                         {row.name}{' '}
                         <ThemedText type="caption" themeColor="textSecondary">
                           {row.paid && row.paidDate
@@ -239,12 +253,10 @@ export default function PaymentsScreen() {
                         </ThemedText>
                       </ThemedText>
                       {/* Stage 18 (FR-21f) — informational only: a child
-                          shows which group it belongs to, a parent shows
-                          how much of its own amount is accounted for by its
-                          active children. Neither reorders/nests the row —
-                          see data-model.md §11 for why the Dashboard's
-                          overdue/upcoming/completed grouping makes a real
-                          tree layout impractical here. */}
+                          shows which group it belongs to (via the "└─▸"
+                          prefix above plus this caption naming the parent),
+                          a parent shows how much of its own amount is
+                          accounted for by its active children. */}
                       {groupParentName && (
                         <ThemedText type="caption" themeColor="textSecondary">
                           {t('grouping.partOf', { name: groupParentName })}
@@ -412,6 +424,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.two,
     gap: Spacing.two,
+  },
+  // Stage 18 (FR-21f) — indents a grouped child's row so its "└─▸" name
+  // prefix reads as a visual sub-item, not just another top-level row.
+  rowChild: {
+    paddingLeft: Spacing.two + Spacing.four,
   },
   rowMain: {
     flex: 1,
