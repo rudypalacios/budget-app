@@ -34,17 +34,41 @@ export function trashTransition(from: ArchivableState, now: Date, trashRetention
   };
 }
 
-// Restores to trashedFromState and clears the trash fields. archivedAt is
-// preserved when restoring to 'archived' (it was set by trashTransition
-// above) and cleared when restoring to 'active'.
-export function restoreTransition(
-  trashedFromState: ArchivableState,
-  archivedAt: TrashableLifecycle['archivedAt'],
-): TrashableLifecycle {
+// Restores a currently archived-or-trashed record. Two cases:
+// - trashed -> its trashedFromState (active or archived), clearing the
+//   trash fields. archivedAt is preserved when restoring to 'archived' (it
+//   was set by trashTransition above) and cleared when restoring to
+//   'active'.
+// - archived (never trashed) -> active directly, clearing archivedAt.
+// Bug fix: previously this function only handled the trashed case (took
+// `trashedFromState`/`archivedAt` directly, so a caller had no way to ask
+// for the archived->active case), which meant every restoreX() store
+// function threw for a merely-archived record — restoring from the Archive
+// screen threw at runtime for every expense/income/recurring definition
+// (categories were unaffected, they never went through restoreX at all).
+// Caught while building Stage 18's restore cascade (FR-21g), which needed
+// this path to actually work.
+export function restoreTransition(current: {
+  lifecycleState: 'archived' | 'trashed';
+  trashedFromState: ArchivableState | null;
+  archivedAt: TrashableLifecycle['archivedAt'];
+}): TrashableLifecycle {
+  if (current.lifecycleState === 'trashed') {
+    if (!current.trashedFromState) {
+      throw new Error('restoreTransition: trashed record is missing trashedFromState');
+    }
+    return {
+      lifecycleState: current.trashedFromState,
+      trashedFromState: null,
+      archivedAt: current.trashedFromState === 'archived' ? current.archivedAt : null,
+      trashedAt: null,
+      purgeAt: null,
+    };
+  }
   return {
-    lifecycleState: trashedFromState,
+    lifecycleState: 'active',
     trashedFromState: null,
-    archivedAt: trashedFromState === 'archived' ? archivedAt : null,
+    archivedAt: null,
     trashedAt: null,
     purgeAt: null,
   };

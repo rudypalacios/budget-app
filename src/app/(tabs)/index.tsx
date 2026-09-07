@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
+import { GroupCascadeDialog } from '@/components/ui/group-cascade-dialog';
+import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import { OverflowMenu, type OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
@@ -19,11 +21,20 @@ import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { categoryDisplayName } from '@/lib/category-display';
-import { formatCurrencyWithConversion } from '@/lib/format-currency';
+import { computeGroupedSubtotal, eligibleGroupParents, findActiveChildren } from '@/lib/expense-grouping';
+import { formatCurrency, formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
 import type { PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
-import { archiveExpense, setExpensePaid, setExpenseSkipped, trashExpense } from '@/store/expenses';
+import {
+  archiveExpense,
+  archiveOrTrashExpenseGroup,
+  setExpenseGroupParent,
+  setExpensePaid,
+  setExpenseSkipped,
+  trashExpense,
+  useExpensesStore,
+} from '@/store/expenses';
 import { archiveIncome, setIncomeReceived, setIncomeSkipped, trashIncome } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import { useSessionStore } from '@/store/session';
@@ -73,7 +84,10 @@ function toggleSkipped(row: PaymentRow) {
 // FR-4a/4b (data-model.md §7) — a generated instance can be archived/
 // trashed independently of its parent recurring definition, same as a
 // one-time record. Applies to both kind values shown on this dashboard.
-function archiveRow(row: PaymentRow) {
+// Plain transitions only — a row with active children goes through the
+// cascade dialog instead (Stage 18, FR-21e — see handleArchiveOrTrash in
+// PaymentsScreen below).
+function directArchiveRow(row: PaymentRow) {
   if (row.direction === 'expense') {
     archiveExpense(row.id);
   } else {
@@ -81,7 +95,7 @@ function archiveRow(row: PaymentRow) {
   }
 }
 
-function trashRow(row: PaymentRow) {
+function directTrashRow(row: PaymentRow) {
   if (row.direction === 'expense') {
     trashExpense(row.id);
   } else {
@@ -93,6 +107,7 @@ export default function PaymentsScreen() {
   const { t } = useTranslation();
   const { overdueUnpaid, upcomingUnpaid, completedThisCycle } = usePaymentsDashboard();
   const categories = useCategoriesStore((state) => state.items);
+  const expenses = useExpensesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const theme = useTheme();
   const uid = useSessionStore((state) => state.uid);
@@ -101,6 +116,13 @@ export default function PaymentsScreen() {
   // one-time row's amount is already exact and not in question, so it keeps
   // the instant one-tap toggle (see togglePaid).
   const [confirmRow, setConfirmRow] = useState<PaymentRow | null>(null);
+  // Stage 18 (FR-21, data-model.md §11) — "Add to group..." picker and the
+  // archive/trash cascade-or-detach confirmation. Both only ever apply to
+  // expense rows (income isn't groupable).
+  const [groupPickerRow, setGroupPickerRow] = useState<PaymentRow | null>(null);
+  const [cascadeTarget, setCascadeTarget] = useState<{ row: PaymentRow; transition: 'archive' | 'trash' } | null>(
+    null,
+  );
 
   function handleTogglePaid(row: PaymentRow) {
     const nextPaid = !row.paid;
@@ -108,6 +130,24 @@ export default function PaymentsScreen() {
       setConfirmRow(row);
     } else {
       togglePaid(row);
+    }
+  }
+
+  // FR-21e: a row with active children needs the cascade dialog instead of
+  // a plain transition — checked against the raw expenses store (which,
+  // unlike the dashboard's own rows, includes every lifecycleState, letting
+  // findActiveChildren filter it itself).
+  function handleArchiveOrTrash(row: PaymentRow, transition: 'archive' | 'trash') {
+    if (row.direction === 'expense' && findActiveChildren(expenses, row.id).length > 0) {
+      setCascadeTarget({ row, transition });
+      return;
+    }
+    if (transition === 'archive') {
+      directArchiveRow(row);
+      showToast(t('archive.movedToArchive', { name: row.name }));
+    } else {
+      directTrashRow(row);
+      showToast(t('archive.movedToTrash', { name: row.name }));
     }
   }
 
@@ -143,22 +183,36 @@ export default function PaymentsScreen() {
                   onPress: () => toggleSkipped(row),
                 });
               }
+              // Stage 18 (FR-21) — grouping is expense-only.
+              if (row.direction === 'expense') {
+                if (row.parentExpenseId) {
+                  overflowItems.push({
+                    label: t('grouping.removeFromGroup'),
+                    onPress: () => setExpenseGroupParent(row.id, null),
+                  });
+                } else {
+                  overflowItems.push({
+                    label: t('grouping.addToGroup'),
+                    onPress: () => setGroupPickerRow(row),
+                  });
+                }
+              }
               overflowItems.push(
                 {
                   label: t('common.archive'),
-                  onPress: () => {
-                    archiveRow(row);
-                    showToast(t('archive.movedToArchive', { name: row.name }));
-                  },
+                  onPress: () => handleArchiveOrTrash(row, 'archive'),
                 },
                 {
                   label: t('common.delete'),
-                  onPress: () => {
-                    trashRow(row);
-                    showToast(t('archive.movedToTrash', { name: row.name }));
-                  },
+                  onPress: () => handleArchiveOrTrash(row, 'trash'),
                 },
               );
+
+              const groupChildren = row.direction === 'expense' ? findActiveChildren(expenses, row.id) : [];
+              const groupParentName =
+                row.direction === 'expense' && row.parentExpenseId
+                  ? expenses.find((item) => item.id === row.parentExpenseId)?.name
+                  : undefined;
 
               return (
                 <View key={row.id}>
@@ -184,6 +238,26 @@ export default function PaymentsScreen() {
                             : t('payments.dueOnly', { dueDate: formatShortDate(row.date) })}
                         </ThemedText>
                       </ThemedText>
+                      {/* Stage 18 (FR-21f) — informational only: a child
+                          shows which group it belongs to, a parent shows
+                          how much of its own amount is accounted for by its
+                          active children. Neither reorders/nests the row —
+                          see data-model.md §11 for why the Dashboard's
+                          overdue/upcoming/completed grouping makes a real
+                          tree layout impractical here. */}
+                      {groupParentName && (
+                        <ThemedText type="caption" themeColor="textSecondary">
+                          {t('grouping.partOf', { name: groupParentName })}
+                        </ThemedText>
+                      )}
+                      {groupChildren.length > 0 && (
+                        <ThemedText type="caption" themeColor="textSecondary">
+                          {t('grouping.groupedSubtotal', {
+                            count: groupChildren.length,
+                            amount: formatCurrency(computeGroupedSubtotal(groupChildren), defaultCurrency),
+                          })}
+                        </ThemedText>
+                      )}
                       <View style={styles.rowMeta}>
                         <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
                         {/* Recurring/Skipped are grouped in their own
@@ -281,6 +355,39 @@ export default function PaymentsScreen() {
             setConfirmRow(null);
           }}
           onDiscard={() => setConfirmRow(null)}
+        />
+      )}
+      {groupPickerRow && (
+        <GroupPickerDialog
+          isOpen
+          onClose={() => setGroupPickerRow(null)}
+          options={eligibleGroupParents(expenses, groupPickerRow.id)}
+          onSelect={(parentId) => setExpenseGroupParent(groupPickerRow.id, parentId)}
+        />
+      )}
+      {cascadeTarget && (
+        <GroupCascadeDialog
+          isOpen
+          onClose={() => setCascadeTarget(null)}
+          transition={cascadeTarget.transition}
+          parentName={cascadeTarget.row.name}
+          childNames={findActiveChildren(expenses, cascadeTarget.row.id).map((child) => child.name)}
+          onCascade={() => {
+            archiveOrTrashExpenseGroup(cascadeTarget.row.id, cascadeTarget.transition, 'cascade');
+            showToast(
+              cascadeTarget.transition === 'archive'
+                ? t('archive.movedToArchive', { name: cascadeTarget.row.name })
+                : t('archive.movedToTrash', { name: cascadeTarget.row.name }),
+            );
+          }}
+          onDetach={() => {
+            archiveOrTrashExpenseGroup(cascadeTarget.row.id, cascadeTarget.transition, 'detach');
+            showToast(
+              cascadeTarget.transition === 'archive'
+                ? t('archive.movedToArchive', { name: cascadeTarget.row.name })
+                : t('archive.movedToTrash', { name: cascadeTarget.row.name }),
+            );
+          }}
         />
       )}
     </>

@@ -101,6 +101,11 @@ export interface RecurringExpense extends TrashableLifecycle {
   remindersEnabled: boolean | null; // null = inherit UserSettings.reminders.enabled
   reminderLeadDays: number | null; // null = inherit UserSettings.reminders.leadDays
   budgetRecommendation: BudgetRecommendation;
+  // Stage 18 (FR-21c, data-model.md §11) — persistent "group with" default.
+  // Points at another recurringExpenses/{id}; each newly generated instance
+  // inherits a link to that cycle's parent instance. Forward-only: changing
+  // this does not retroactively relink already-generated instances.
+  defaultParentRecurringExpenseId: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -133,6 +138,13 @@ interface ExpenseRecordShared extends TrashableLifecycle {
   rateSource: RateSource;
   paid: boolean;
   paidDate: Timestamp | null;
+  // Stage 18 (FR-21, data-model.md §11) — self-referencing FK to another
+  // expenses/{id}, the group parent (e.g. Netflix pointing at a shared
+  // credit card expense). null = ungrouped. Single-level only: a document
+  // that is itself a child is never a valid parent (enforced in
+  // src/store/expenses.ts, not by firestore.rules). Expenses only, not
+  // incomes.
+  parentExpenseId: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

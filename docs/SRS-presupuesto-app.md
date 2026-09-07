@@ -150,6 +150,9 @@ shape if needed.
 - FR-21f: Grouped children display visually nested under their parent
   wherever expenses are listed (Payments Dashboard, Expenses tab,
   History).
+- FR-21g: Restoring a parent from Archive/Trash also restores any of its
+  children still sitting in that non-active state, so a group that was
+  archived or trashed together comes back together.
 
 ## 7. Non-Functional Requirements
 
@@ -260,8 +263,9 @@ These were discussed and deliberately deferred rather than overlooked — worth 
     shared credit card expense — with cascading paid/unpaid between parent
     and children, an ad hoc "add to group" picker plus a persistent default
     parent settable on recurring definitions, an informational
-    grouped-subtotal display, and an archive/trash cascade-or-detach
-    confirmation for parents with children (FR-21–FR-21f).
+    grouped-subtotal display, an archive/trash cascade-or-detach
+    confirmation for parents with children, and a matching restore cascade
+    (FR-21–FR-21g).
 
 ### Backlog — not yet scoped into a numbered stage
 

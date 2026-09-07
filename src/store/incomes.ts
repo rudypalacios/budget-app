@@ -11,9 +11,19 @@ import type {
   OneTimeIncome,
   RateSource,
   RecurringIncomeInstance,
+  Timestamp,
 } from '@/types/firestore';
 
 const store = createCollectionStore<IncomeRecord>('incomes');
+
+// Narrowed shape restoreTransition (lifecycle-transitions.ts) needs — see
+// restoreIncome below, same cast rationale as expenses.ts's
+// ArchivedOrTrashedRecord.
+type ArchivedOrTrashedRecord = {
+  lifecycleState: 'archived' | 'trashed';
+  trashedFromState: ArchivableState | null;
+  archivedAt: Timestamp | null;
+};
 
 export const useIncomesStore = store.useStore;
 export const subscribeIncomes = store.subscribe;
@@ -192,12 +202,17 @@ export function trashIncome(id: string) {
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
 // real screen in Stage 17. Exercised by unit tests in the meantime.
+//
+// Restores either a trashed or a merely-archived record — see
+// lifecycle-transitions.ts's restoreTransition comment for the bug this
+// fixed (previously only the trashed case worked; restoring straight from
+// Archive threw for every income).
 export function restoreIncome(id: string) {
   const income = store.useStore.getState().items.find((item) => item.id === id);
-  if (!income?.trashedFromState) {
-    throw new Error(`incomes store: restoreIncome(${id}) — not currently trashed`);
+  if (!income || income.lifecycleState === 'active') {
+    throw new Error(`incomes store: restoreIncome(${id}) — not currently archived or trashed`);
   }
-  return store.update(id, restoreTransition(income.trashedFromState, income.archivedAt));
+  return store.update(id, restoreTransition(income as ArchivedOrTrashedRecord));
 }
 
 export function purgeIncome(id: string) {

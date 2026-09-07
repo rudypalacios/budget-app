@@ -6,9 +6,25 @@ import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useSessionStore } from './session';
 import { useUserSettingsStore } from './user-settings';
-import type { ArchivableState, BudgetRecommendation, CurrencyCode, ExpenseRecord, RecurringExpense } from '@/types/firestore';
+import type {
+  ArchivableState,
+  BudgetRecommendation,
+  CurrencyCode,
+  ExpenseRecord,
+  RecurringExpense,
+  Timestamp,
+} from '@/types/firestore';
 
 const store = createCollectionStore<RecurringExpense>('recurringExpenses');
+
+// Narrowed shape restoreTransition (lifecycle-transitions.ts) needs — see
+// restoreRecurringExpense below, same cast rationale as expenses.ts's
+// ArchivedOrTrashedRecord.
+type ArchivedOrTrashedRecord = {
+  lifecycleState: 'archived' | 'trashed';
+  trashedFromState: ArchivableState | null;
+  archivedAt: Timestamp | null;
+};
 
 export const useRecurringExpensesStore = store.useStore;
 export const subscribeRecurringExpenses = store.subscribe;
@@ -31,6 +47,8 @@ export type NewRecurringExpenseInput = {
   exchangeRateToDefault: number;
   dueDay: number;
   startDate: Date;
+  // Stage 18 (FR-21c) — "Agrupar con" default; null/omitted = ungrouped.
+  defaultParentRecurringExpenseId?: string | null;
 };
 
 export function addRecurringExpense(input: NewRecurringExpenseInput) {
@@ -45,6 +63,7 @@ export function addRecurringExpense(input: NewRecurringExpenseInput) {
     remindersEnabled: null,
     reminderLeadDays: null,
     budgetRecommendation: EMPTY_BUDGET_RECOMMENDATION,
+    defaultParentRecurringExpenseId: input.defaultParentRecurringExpenseId ?? null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
@@ -56,7 +75,14 @@ export function addRecurringExpense(input: NewRecurringExpenseInput) {
 
 type EditableRecurringExpenseFields = Pick<
   RecurringExpense,
-  'name' | 'categoryId' | 'amount' | 'currency' | 'exchangeRateToDefault' | 'dueDay' | 'startDate'
+  | 'name'
+  | 'categoryId'
+  | 'amount'
+  | 'currency'
+  | 'exchangeRateToDefault'
+  | 'dueDay'
+  | 'startDate'
+  | 'defaultParentRecurringExpenseId'
 >;
 
 // Editing amount changes whether drift holds against the (now-current)
@@ -101,12 +127,17 @@ export function trashRecurringExpense(id: string) {
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
 // real screen in Stage 17. Exercised by unit tests in the meantime.
+//
+// Restores either a trashed or a merely-archived record — see
+// lifecycle-transitions.ts's restoreTransition comment for the bug this
+// fixed (previously only the trashed case worked; restoring straight from
+// Archive threw for every recurring expense definition).
 export function restoreRecurringExpense(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
-  if (!definition?.trashedFromState) {
-    throw new Error(`recurringExpenses store: restoreRecurringExpense(${id}) — not currently trashed`);
+  if (!definition || definition.lifecycleState === 'active') {
+    throw new Error(`recurringExpenses store: restoreRecurringExpense(${id}) — not currently archived or trashed`);
   }
-  return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
+  return store.update(id, restoreTransition(definition as ArchivedOrTrashedRecord));
 }
 
 export function purgeRecurringExpense(id: string) {

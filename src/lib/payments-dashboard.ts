@@ -32,6 +32,9 @@ export type PaymentRow = {
   paidDate: Date | null;
   skipped: boolean;
   skippedAt: Date | null;
+  // Stage 18 (FR-21, data-model.md §11) — grouping is expenses-only, so
+  // this is always null on an income row.
+  parentExpenseId: string | null;
 };
 
 export function buildPaymentRows(
@@ -60,6 +63,7 @@ export function buildPaymentRows(
     skipped: expense.kind === 'recurringInstance' ? expense.skipped : false,
     skippedAt:
       expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
+    parentExpenseId: expense.parentExpenseId,
   }));
 
   const incomeRows: PaymentRow[] = activeIncomes.map((income) => ({
@@ -76,6 +80,7 @@ export function buildPaymentRows(
     paidDate: income.paidDate ? income.paidDate.toDate() : null,
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,
     skippedAt: income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
+    parentExpenseId: null,
   }));
 
   return [...expenseRows, ...incomeRows];

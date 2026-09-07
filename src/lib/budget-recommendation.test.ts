@@ -133,6 +133,7 @@ describe('suggestCategoryMonthlyBudget', () => {
       dismissedAt: null,
       dismissedAtAverageAmount: null,
     },
+    defaultParentRecurringExpenseId: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,

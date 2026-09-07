@@ -326,11 +326,16 @@ a confirmation naming the affected children, with two choices:
   child first (they remain independent, active expenses), then
   archive/trash the parent alone.
 
-**Open decision, not yet resolved:** whether *restoring* a
-cascade-archived/trashed parent should symmetrically restore its children
-too, or whether restore stays per-record (today's model, §7) even for
-expenses that were cascade-archived/trashed together. Revisit before
-building the restore path — see §12.
+**Restore cascades too (confirmed with the user):** restoring a parent
+also restores every child with `parentExpenseId == thisId` whose
+`lifecycleState` is still `'archived'` or `'trashed'` (i.e. not already
+independently restored or never grouped-and-archived in the first
+place). Each child restores through its own existing per-record restore
+logic (§7 — its own `trashedFromState`), just triggered together with the
+parent rather than requiring a separate tap per child. No new field is
+needed to track "which children belong to which cascade" — a child still
+sitting in a non-`'active'` state under this parent is, by definition,
+still part of the group that needs restoring.
 
 ---
 
@@ -339,7 +344,6 @@ building the restore path — see §12.
 1. **Actual-paid currency diverging from budgeted currency**: modeled as allowed (an instance's `amount`/`currency` are independent from `budgetedAmount`/`budgetedCurrency`), since a user might budget in one currency but actually pay in another that period. The SRS doesn't address this scenario explicitly.
 2. **Budget change history/versioning**: no dedicated "budget changed from X to Y on date Z" log exists — each generated instance implicitly preserves the budgeted amount at that time via its own `budgetedAmount` snapshot, but there's no explicit version list if a future chart needs to show *when within a month gap* a budget changed.
 3. **Schema versioning**: per SRS §10, explicitly deferred/out of scope — no `schemaVersion` field exists on any document; future breaking changes will need an ad hoc migration.
-4. **Expense grouping restore cascade** (§11): does restoring a parent that was cascade-archived/trashed with its children also restore the children, or does restore stay per-record? Not yet confirmed with the user.
 
 ---
 
@@ -415,3 +419,4 @@ Steps that don't happen automatically from `firestore.rules` or app code deploys
 - **1.4 (2026-07-07):** Doc cleanup — fixed section numbering (skipped straight from §11 to old §13, no §12; renumbered to §12/§13). Added the `(recurringIncomeId, paid, date)` index note alongside the existing `(recurringExpenseId, paid, date)` one in §6 and §12, for consistency now that `incomes` carries `paid` too (v1.3) — not queried by anything yet.
 - **1.5 (2026-07-11):** SRS §11 roadmap change inserted a new Stage 8 (Payments Dashboard) ahead of the former Stage 8 (Auth), pushing everything after it back by one. Added `skipped`/`skippedAt` fields to §6, scoped to `kind === 'recurringInstance'` only on `expenses`/`incomes` (not one-time records, not the recurring definitions themselves) — orthogonal to `paid`/`paidDate` the same way those are orthogonal to `lifecycleState`. Added new §12 documenting the Payments Dashboard's three-group, cycle-based grouping/sort rule (renumbering old §12/§13 Deployment checklist/Change log to §13/§14) — no new collections, no new Firestore indexes; the dashboard is a client-side merge of the already-fully-synced `expenses`/`incomes` listeners.
 - **1.6 (2026-09-07):** Added SRS §6.10 (FR-21–FR-21f) and new §11 documenting Stage 18 (expense grouping) — `parentExpenseId` on `expenses` (§6) and `defaultParentRecurringExpenseId` on `recurringExpenses` (§5), single-level, expenses-only. No new collection or Firestore index; cascade/subtotal logic runs client-side against already-synced listener state, same pattern as §7/§13. Cross-referenced from §7 (Archive/Trash — cascade-or-detach confirmation for a parent with active children) and flagged one open question in §12 (whether restoring a cascade-archived parent should also restore its children) to confirm with the user before that part is built. Renumbered old §11–§14 to §12–§15 to make room.
+- **1.7 (2026-09-07):** Resolved 1.6's open question — confirmed with the user that restoring a parent also restores any child still sitting in a non-`'active'` `lifecycleState` under it, each through its own existing per-record restore logic (§7). Added SRS FR-21g. Removed the now-resolved item from §12's open-decisions list.

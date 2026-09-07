@@ -3,9 +3,24 @@ import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lif
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
-import type { ArchivableState, CurrencyCode, RecurringIncome, RecurringIncomeFrequency } from '@/types/firestore';
+import type {
+  ArchivableState,
+  CurrencyCode,
+  RecurringIncome,
+  RecurringIncomeFrequency,
+  Timestamp,
+} from '@/types/firestore';
 
 const store = createCollectionStore<RecurringIncome>('recurringIncomes');
+
+// Narrowed shape restoreTransition (lifecycle-transitions.ts) needs — see
+// restoreRecurringIncome below, same cast rationale as expenses.ts's
+// ArchivedOrTrashedRecord.
+type ArchivedOrTrashedRecord = {
+  lifecycleState: 'archived' | 'trashed';
+  trashedFromState: ArchivableState | null;
+  archivedAt: Timestamp | null;
+};
 
 export const useRecurringIncomesStore = store.useStore;
 export const subscribeRecurringIncomes = store.subscribe;
@@ -77,12 +92,17 @@ export function trashRecurringIncome(id: string) {
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
 // real screen in Stage 17. Exercised by unit tests in the meantime.
+//
+// Restores either a trashed or a merely-archived record — see
+// lifecycle-transitions.ts's restoreTransition comment for the bug this
+// fixed (previously only the trashed case worked; restoring straight from
+// Archive threw for every recurring income definition).
 export function restoreRecurringIncome(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
-  if (!definition?.trashedFromState) {
-    throw new Error(`recurringIncomes store: restoreRecurringIncome(${id}) — not currently trashed`);
+  if (!definition || definition.lifecycleState === 'active') {
+    throw new Error(`recurringIncomes store: restoreRecurringIncome(${id}) — not currently archived or trashed`);
   }
-  return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
+  return store.update(id, restoreTransition(definition as ArchivedOrTrashedRecord));
 }
 
 export function purgeRecurringIncome(id: string) {
