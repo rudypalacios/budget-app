@@ -1199,3 +1199,18 @@ tsc/lint/tests after these two: clean, 25/25 suites, 225/225 tests (no
 new tests — pure visual/component-swap changes, no new logic branches
 worth a dedicated unit test beyond what `orderRowsWithGroupedChildren`
 already covers).
+
+**Fourth follow-up, after seeing the connector lines live on a phone
+screenshot**: two more layout gaps in the same tree-connector work above.
+(1) `Card`'s uniform `gap: Spacing.two` between every row meant grouped
+children still had visible daylight between them even with the Divider
+suppressed — switched from a container-level gap to per-pair spacing: a
+`Divider` (which carries its own `marginVertical`) renders *before* any
+row that doesn't continue its parent's group, and zero gap otherwise, so
+a group's rows now sit genuinely flush. (2) Moved the paid `Checkbox`
+from trailing next to the status `Chip` (bottom-right) to leading the row
+(top-left, in a new `checkboxColumn`), matching the tree-checkbox
+reference screenshot where the connector's branch visually plugs into
+the checkbox itself rather than the name text.
+
+tsc/lint/tests after this: clean, 25/25 suites, 225/225 tests.

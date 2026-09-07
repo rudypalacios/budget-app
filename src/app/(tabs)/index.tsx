@@ -276,20 +276,35 @@ export default function PaymentsScreen() {
                 siblingsInThisBucket[siblingsInThisBucket.length - 1]?.id === row.id;
               const parentIsAdjacent =
                 isGroupChild && rows.some((candidate) => candidate.id === row.parentExpenseId);
-              // Stage 18 (FR-21f) — suppress the divider right after this
-              // row when the next one continues the same connected group
-              // (its first child, or another sibling), so the tree reads
-              // as one block instead of being cut by a divider line.
-              const nextRow = rows[index + 1];
-              const nextRowContinuesGroup =
-                !!nextRow &&
-                nextRow.direction === 'expense' &&
-                !!nextRow.parentExpenseId &&
-                (nextRow.parentExpenseId === row.id ||
-                  (row.direction === 'expense' && nextRow.parentExpenseId === row.parentExpenseId));
+              // Stage 18 (FR-21f) — a row that directly continues its
+              // parent's group (immediately after the parent, or after a
+              // sibling — orderRowsWithGroupedChildren always places it
+              // right there) sits flush against the row above it: no
+              // divider, no extra gap, so the connector lines read as one
+              // continuous block instead of a chain of separately-spaced
+              // cards.
+              const continuesFromAbove = isGroupChild && parentIsAdjacent;
+              const checkboxElement = (
+                <Checkbox
+                  checked={row.paid}
+                  onValueChange={() => handleTogglePaid(row)}
+                  accessibilityLabel={t('payments.markAs', {
+                    name: row.name,
+                    state:
+                      row.direction === 'income'
+                        ? row.paid
+                          ? t('payments.state.expected')
+                          : t('payments.state.received')
+                        : row.paid
+                          ? t('payments.state.unpaid')
+                          : t('payments.state.paid'),
+                  })}
+                />
+              );
 
               return (
                 <View key={row.id}>
+                  {index > 0 && !continuesFromAbove && <Divider style={styles.divider} />}
                   <View
                     style={[
                       styles.row,
@@ -318,6 +333,11 @@ export default function PaymentsScreen() {
                         )}
                       </View>
                     )}
+                    {/* Stage 18 feedback: leading checkbox, matching the
+                        tree-checkbox reference the user shared — where the
+                        connector's branch stub visually plugs directly into
+                        the checkbox, not into the name text. */}
+                    <View style={styles.checkboxColumn}>{checkboxElement}</View>
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
                         {row.name}{' '}
@@ -395,25 +415,9 @@ export default function PaymentsScreen() {
                         ) : (
                           <Chip label={paidLabel} tone="warning" />
                         )}
-                        <Checkbox
-                          checked={row.paid}
-                          onValueChange={() => handleTogglePaid(row)}
-                          accessibilityLabel={t('payments.markAs', {
-                            name: row.name,
-                            state:
-                              row.direction === 'income'
-                                ? row.paid
-                                  ? t('payments.state.expected')
-                                  : t('payments.state.received')
-                                : row.paid
-                                  ? t('payments.state.unpaid')
-                                  : t('payments.state.paid'),
-                          })}
-                        />
                       </View>
                     </View>
                   </View>
-                  {index < rows.length - 1 && !nextRowContinuesGroup && <Divider style={styles.divider} />}
                 </View>
               );
             })}
@@ -521,7 +525,10 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   card: {
-    gap: Spacing.two,
+    // Stage 18 feedback: no uniform gap here — spacing between rows is now
+    // handled per-pair (a Divider, with its own marginVertical, before any
+    // row that doesn't continue the group above it; zero gap for one that
+    // does), so a grouped block's rows sit flush against each other.
   },
   row: {
     flexDirection: 'row',
@@ -534,6 +541,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.two,
     gap: Spacing.two,
+  },
+  // Stage 18 feedback: the paid checkbox now leads the row (matching the
+  // reference tree-checkbox screenshot) instead of trailing at the bottom
+  // next to the status chip.
+  checkboxColumn: {
+    justifyContent: 'flex-start',
   },
   // Stage 18 (FR-21f) — a grouped child's tree connector: a fixed-width
   // gutter to the row's left holding a vertical trunk segment (top half,
