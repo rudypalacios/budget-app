@@ -458,6 +458,27 @@ Stage 17 — Trash view & restore screen — is built and verified
 `stage-17-trash-archive` (off `develop`), commit `a1ce047`, pending merge.
 See its own summary below.
 
+**Note found while starting Stage 18 (2026-09-07):** `git log` on
+`develop` confirms Stage 17 above is also already merged (PR #26), plus
+further merged work this section never got paragraphs for — PR #25
+(`fix/cross-currency-budget-recommendation`), a Trash/Archive UI feedback
+round (bulk select, Move to Trash, dialog/menu overflow fixes), and two
+PRs restructuring the Budget tab's summary cards (#27, #28, "settled/
+pending grid + balance footer"). Same situation as the Stage 17 note
+above: left as-is rather than reconstructed from memory — flag for the
+user to confirm/rewrite this whole section's history whenever convenient.
+
+**Stage 18 — Expense grouping** is now planned: SRS §6.10/FR-21–FR-21f
+and `docs/data-model.md` §11 (schema, cascade rules, archive/trash
+interaction) were written this session after a back-and-forth with the
+user to pin down the amount/cascade semantics — see that section for the
+full design. No code written yet. Building on branch
+`claude/expense-grouping-categories-bxu05n`, created off the current tip
+of `develop` (verified — Stage 17 and everything after it is included).
+One open question flagged in `docs/data-model.md` §12 item 4 (restore
+cascade for a grouped parent) still needs the user's answer before that
+part is built.
+
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
   + `user-settings.ts`) — Settings now has one real Save button persisting

@@ -106,6 +106,51 @@ The POC's visual style (dark + green) is not carried forward as a requirement. T
 - FR-19: App can send a reminder for upcoming/due recurring expenses (e.g. a day before or on the due date).
 - FR-20: Reminders are **configurable and can be turned on or off**, globally and/or per recurring expense.
 
+### 6.10 Expense Grouping
+Lets a user track individually-billed items (e.g. Netflix, Disney+, Google
+Cloud) that are actually part of one larger combined payment (e.g. a
+shared credit card statement, or a debt to a person split into several
+obligations), without losing each item's own independent history. Scoped
+to expenses only for this stage — not income, which wasn't part of the
+motivating use case; a parallel extension later would follow the same
+shape if needed.
+
+- FR-21: User can associate one expense (recurring or one-time) as
+  belonging to another expense (its **group parent**) — e.g. marking
+  Netflix, Disney+, and Google Cloud as part of a credit card expense.
+  Both the parent and each child remain fully independent expenses with
+  their own category, amount, and history.
+- FR-21a: Grouping is single-level — an expense that is already a child
+  cannot itself be chosen as a parent for other expenses.
+- FR-21b: Marking a group's parent as paid/unpaid cascades the same state
+  (with a freshly-stamped paid date) to every active child. Marking or
+  unmarking an individual child re-evaluates the parent instead: the
+  parent reads as paid only when **every** active child is paid, and as
+  unpaid otherwise — so a group can show as partially paid purely from
+  each record's own paid state, with no separate "group status" field.
+- FR-21c: A recurring expense definition can set a persistent **default
+  group parent** (another recurring expense definition). Each newly
+  generated instance is automatically linked to that cycle's instance of
+  the parent, so recurring subscriptions don't need to be re-grouped by
+  hand every month. Changing this default only affects instances
+  generated from that point forward — it does not retroactively relink
+  instances already generated for the current or past cycles (those can
+  still be grouped by hand per FR-21).
+- FR-21d: The parent's own amount is always entered independently, the
+  same as any other expense — grouping never derives, recalculates, or
+  locks it, since the parent's real total (e.g. the actual credit card
+  statement) is typically larger than what's individually tracked as
+  children. The app shows the sum of a group's children as an
+  informational subtotal alongside the parent's own amount, purely for
+  visibility.
+- FR-21e: Archiving or trashing a parent that has active children prompts
+  the user to choose between cascading the same action to every child, or
+  detaching them first (so they remain independent, active expenses) and
+  applying the action to the parent alone.
+- FR-21f: Grouped children display visually nested under their parent
+  wherever expenses are listed (Payments Dashboard, Expenses tab,
+  History).
+
 ## 7. Non-Functional Requirements
 
 - NFR-1: **Offline-first** — no feature should require connectivity to function; sync is transparent.
@@ -210,6 +255,13 @@ These were discussed and deliberately deferred rather than overlooked — worth 
     definitions), restore them back to active, or confirm permanent purge —
     complements Stage 12's archive/trash state-transition engine with the
     screen users actually interact with.
+18. Expense grouping: associate one expense as a child of another (its
+    group parent) — e.g. Netflix/Disney+/Google Cloud grouped under a
+    shared credit card expense — with cascading paid/unpaid between parent
+    and children, an ad hoc "add to group" picker plus a persistent default
+    parent settable on recurring definitions, an informational
+    grouped-subtotal display, and an archive/trash cascade-or-detach
+    confirmation for parents with children (FR-21–FR-21f).
 
 ### Backlog — not yet scoped into a numbered stage
 
