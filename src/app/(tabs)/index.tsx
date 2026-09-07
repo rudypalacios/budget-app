@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -108,6 +108,23 @@ export default function PaymentsScreen() {
   const { overdueUnpaid, upcomingUnpaid, completedThisCycle } = usePaymentsDashboard();
   const categories = useCategoriesStore((state) => state.items);
   const expenses = useExpensesStore((state) => state.items);
+  // Stage 18 (FR-21) — looked up once per `expenses` change instead of once
+  // per row per render: renderGroup below needs a row's parent (by id) and
+  // its active children (by parent id) for every grouped row across all
+  // three status buckets, which previously meant re-scanning the whole
+  // `expenses` array per row via expenses.find()/findActiveChildren().
+  const expensesById = useMemo(() => new Map(expenses.map((expense) => [expense.id, expense])), [expenses]);
+  const activeChildrenByParentId = useMemo(() => {
+    const map = new Map<string, typeof expenses>();
+    for (const expense of expenses) {
+      if (expense.parentExpenseId && expense.lifecycleState === 'active') {
+        const siblings = map.get(expense.parentExpenseId) ?? [];
+        siblings.push(expense);
+        map.set(expense.parentExpenseId, siblings);
+      }
+    }
+    return map;
+  }, [expenses]);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const theme = useTheme();
   const uid = useSessionStore((state) => state.uid);
@@ -161,6 +178,12 @@ export default function PaymentsScreen() {
     }
   }
 
+  // Shared by handleArchiveOrTrash and applyGroupTransition below — both
+  // end in the same "toast the right message for this transition" step.
+  function archiveOrTrashToastMessage(transition: 'archive' | 'trash', name: string) {
+    return transition === 'archive' ? t('archive.movedToArchive', { name }) : t('archive.movedToTrash', { name });
+  }
+
   // FR-21e: a row with active children needs the cascade dialog instead of
   // a plain transition — checked against the raw expenses store (which,
   // unlike the dashboard's own rows, includes every lifecycleState, letting
@@ -172,30 +195,21 @@ export default function PaymentsScreen() {
     }
     if (transition === 'archive') {
       directArchiveRow(row);
-      showToast(t('archive.movedToArchive', { name: row.name }));
     } else {
       directTrashRow(row);
-      showToast(t('archive.movedToTrash', { name: row.name }));
     }
+    showToast(archiveOrTrashToastMessage(transition, row.name));
+  }
+
+  // Backs GroupCascadeDialog's two real choices (cascade vs. detach-then-
+  // apply) — same transition call and toast either way, only `mode` differs.
+  function applyGroupTransition(mode: 'cascade' | 'detach') {
+    if (!cascadeTarget) return;
+    archiveOrTrashExpenseGroup(cascadeTarget.row.id, cascadeTarget.transition, mode);
+    showToast(archiveOrTrashToastMessage(cascadeTarget.transition, cascadeTarget.row.name));
   }
 
   function renderGroup(title: string, rows: PaymentRow[], emptyLabel: string, isOverdue = false) {
-    // Stage 18 (FR-21f) — `rows` already arrives reordered so each parent's
-    // children sit directly after it (orderRowsWithGroupedChildren, called
-    // from usePaymentsDashboard). Rebuilding the same parent->children
-    // grouping here (cheap — this bucket's rows only) lets each child know
-    // whether it's the last sibling actually adjacent to its parent in
-    // *this* rendered list, so the connector glyph can be a real "└─▸" (last)
-    // vs "├─▸" (more siblings follow) instead of always the same glyph.
-    const childrenByParentIdInThisBucket = new Map<string, PaymentRow[]>();
-    for (const row of rows) {
-      if (row.direction === 'expense' && row.parentExpenseId) {
-        const siblings = childrenByParentIdInThisBucket.get(row.parentExpenseId) ?? [];
-        siblings.push(row);
-        childrenByParentIdInThisBucket.set(row.parentExpenseId, siblings);
-      }
-    }
-
     return (
       <View style={styles.section}>
         <SectionHeader title={title} />
@@ -252,30 +266,25 @@ export default function PaymentsScreen() {
                 },
               );
 
-              const groupChildren = row.direction === 'expense' ? findActiveChildren(expenses, row.id) : [];
+              const groupChildren =
+                row.direction === 'expense' ? (activeChildrenByParentId.get(row.id) ?? []) : [];
               const groupParentName =
                 row.direction === 'expense' && row.parentExpenseId
-                  ? expenses.find((item) => item.id === row.parentExpenseId)?.name
+                  ? expensesById.get(row.parentExpenseId)?.name
                   : undefined;
               // Stage 18 (FR-21f) — a child renders with a real tree
               // connector (vertical trunk + horizontal branch), matching
-              // the reference screenshot the user shared, replacing the
-              // earlier "└─▸" text-prefix attempt. `parentIsAdjacent` is
-              // only true when the parent row is actually present right
-              // above this child's stack in this same bucket (see
-              // orderRowsWithGroupedChildren) — a child whose parent
-              // landed in a different bucket has nothing to draw a line
-              // to, so it falls back to plain indent + the "Part of X"
-              // caption below instead of a dangling line.
-              const isGroupChild = !!groupParentName;
-              const siblingsInThisBucket = row.direction === 'expense' && row.parentExpenseId
-                ? (childrenByParentIdInThisBucket.get(row.parentExpenseId) ?? [])
-                : [];
-              const isLastSiblingInThisBucket =
-                siblingsInThisBucket.length === 0 ||
-                siblingsInThisBucket[siblingsInThisBucket.length - 1]?.id === row.id;
-              const parentIsAdjacent =
-                isGroupChild && rows.some((candidate) => candidate.id === row.parentExpenseId);
+              // the reference screenshot the user shared. `parentIsAdjacent`/
+              // `isLastSiblingInThisBucket` come straight from the row
+              // itself — orderRowsWithGroupedChildren (payments-dashboard.ts)
+              // already worked out both while reordering this bucket, so
+              // there's nothing left to re-derive here. A child whose parent
+              // landed in a different bucket has nothing to draw a line to,
+              // so it falls back to plain indent + the "Part of X" caption
+              // below instead of a dangling line.
+              const isGroupChild = row.direction === 'expense' && !!row.parentExpenseId;
+              const isLastSiblingInThisBucket = row.isLastAdjacentSibling;
+              const parentIsAdjacent = row.parentIsAdjacentInBucket;
               // Stage 18 (FR-21f) — a row that directly continues its
               // parent's group (immediately after the parent, or after a
               // sibling — orderRowsWithGroupedChildren always places it
@@ -491,22 +500,8 @@ export default function PaymentsScreen() {
           transition={cascadeTarget.transition}
           parentName={cascadeTarget.row.name}
           childNames={findActiveChildren(expenses, cascadeTarget.row.id).map((child) => child.name)}
-          onCascade={() => {
-            archiveOrTrashExpenseGroup(cascadeTarget.row.id, cascadeTarget.transition, 'cascade');
-            showToast(
-              cascadeTarget.transition === 'archive'
-                ? t('archive.movedToArchive', { name: cascadeTarget.row.name })
-                : t('archive.movedToTrash', { name: cascadeTarget.row.name }),
-            );
-          }}
-          onDetach={() => {
-            archiveOrTrashExpenseGroup(cascadeTarget.row.id, cascadeTarget.transition, 'detach');
-            showToast(
-              cascadeTarget.transition === 'archive'
-                ? t('archive.movedToArchive', { name: cascadeTarget.row.name })
-                : t('archive.movedToTrash', { name: cascadeTarget.row.name }),
-            );
-          }}
+          onCascade={() => applyGroupTransition('cascade')}
+          onDetach={() => applyGroupTransition('detach')}
         />
       )}
     </>

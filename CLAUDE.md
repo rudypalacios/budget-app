@@ -1214,3 +1214,52 @@ reference screenshot where the connector's branch visually plugs into
 the checkbox itself rather than the name text.
 
 tsc/lint/tests after this: clean, 25/25 suites, 225/225 tests.
+
+**`/simplify` pass over the full Stage 18 diff, at the user's request** —
+4 parallel review agents (reuse, simplification, efficiency, altitude)
+against every commit on this branch since it forked from `develop`.
+Applied:
+- `RestorableRecord` (the shape `restoreTransition` needs) is now
+  exported once from `src/lib/lifecycle-transitions.ts` instead of being
+  redefined identically as `ArchivedOrTrashedRecord` in all four stores
+  (`expenses.ts`/`incomes.ts`/`recurring-expenses.ts`/
+  `recurring-incomes.ts`).
+- `PaymentRow` gained `parentIsAdjacentInBucket`/`isLastAdjacentSibling`,
+  stamped once by `orderRowsWithGroupedChildren`
+  (`payments-dashboard.ts`) while it already reorders each bucket —
+  `(tabs)/index.tsx` no longer rebuilds the same parent/sibling
+  adjacency map from scratch per render to answer the same question.
+- `(tabs)/index.tsx` memoizes `expensesById`/`activeChildrenByParentId`
+  (`useMemo` keyed on `expenses`) instead of each grouped row running its
+  own `expenses.find()`/`findActiveChildren()` full-array scan on every
+  render.
+- Extracted `writeParentPaidIfChanged` in `src/store/expenses.ts` — the
+  "write the parent's paid state only if it actually changed" block was
+  identical in `applyExpenseGroupPaidCascade` and `setExpenseGroupParent`.
+- Fixed three spots doing independent Firestore writes sequentially
+  instead of concurrently: `setExpenseGroupParent`'s loop over the (at
+  most two) affected parents, `archiveOrTrashExpenseGroup`'s parent
+  transition vs. children writes, and `restoreExpense`'s parent restore
+  vs. children restores — all now go out together via `Promise.all`.
+- Extracted `archiveOrTrashToastMessage`/`applyGroupTransition` in
+  `(tabs)/index.tsx` — `onCascade`/`onDetach` were copy-pasted except for
+  one argument, and the same archive/trash toast ternary was inlined
+  three times.
+
+Deliberately skipped (documented, not silently dropped):
+- `GroupCascadeDialog` duplicating `ConfirmRecordsDialog`'s layout/styles,
+  and `GroupPickerDialog` duplicating `Select`'s hoverable-row pattern —
+  both are exactly 2 occurrences, below this codebase's own "don't
+  extract until the same logic appears 3+ times" convention (CLAUDE.md
+  Code style).
+- Having `setExpensePaid` return the cascaded children it just paid, so
+  `queuePendingChildConfirmations` wouldn't need its own
+  `findActiveChildren` call to re-derive the same set — a real layering
+  point, but it only runs once per user action (not a render hot path)
+  and already calls a shared, tested pure function rather than
+  reimplementing the filter; changing the function's return contract
+  wasn't judged worth it for that gain.
+
+tsc/lint/tests after the simplify pass: clean, 25/25 suites, 227/227
+tests (2 new, covering `orderRowsWithGroupedChildren`'s new
+`parentIsAdjacentInBucket`/`isLastAdjacentSibling` fields).

@@ -383,6 +383,8 @@ function paymentRow(overrides: Partial<PaymentRow> & { id: string }): PaymentRow
     skipped: false,
     skippedAt: null,
     parentExpenseId: null,
+    parentIsAdjacentInBucket: false,
+    isLastAdjacentSibling: false,
     ...overrides,
   };
 }
@@ -432,5 +434,27 @@ describe('orderRowsWithGroupedChildren (Stage 18, FR-21f)', () => {
     const orderedIds = orderRowsWithGroupedChildren(rows).map((r) => r.id);
     expect(orderedIds.sort()).toEqual(['a', 'b', 'c', 'd']);
     expect(new Set(orderedIds).size).toBe(4);
+  });
+
+  it('stamps parentIsAdjacentInBucket and isLastAdjacentSibling so the UI never has to re-derive them', () => {
+    const rows = [
+      paymentRow({ id: 'card' }),
+      paymentRow({ id: 'netflix', parentExpenseId: 'card' }),
+      paymentRow({ id: 'disney', parentExpenseId: 'card' }),
+    ];
+
+    const ordered = orderRowsWithGroupedChildren(rows);
+    const byId = new Map(ordered.map((row) => [row.id, row]));
+
+    expect(byId.get('card')?.parentIsAdjacentInBucket).toBe(false);
+    expect(byId.get('netflix')?.parentIsAdjacentInBucket).toBe(true);
+    expect(byId.get('netflix')?.isLastAdjacentSibling).toBe(false);
+    expect(byId.get('disney')?.isLastAdjacentSibling).toBe(true);
+  });
+
+  it('leaves parentIsAdjacentInBucket false for a child whose parent is not in this bucket', () => {
+    const rows = [paymentRow({ id: 'netflix', parentExpenseId: 'card-elsewhere' })];
+
+    expect(orderRowsWithGroupedChildren(rows)[0].parentIsAdjacentInBucket).toBe(false);
   });
 });

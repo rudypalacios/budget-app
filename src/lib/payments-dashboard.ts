@@ -35,6 +35,12 @@ export type PaymentRow = {
   // Stage 18 (FR-21, data-model.md §11) — grouping is expenses-only, so
   // this is always null on an income row.
   parentExpenseId: string | null;
+  // Stage 18 (FR-21f) — bucket-local tree-connector info, set only by
+  // orderRowsWithGroupedChildren below (buildPaymentRows has no bucket
+  // concept yet, so every row starts with both false). Lets the UI render
+  // the connector without re-deriving parent/sibling adjacency itself.
+  parentIsAdjacentInBucket: boolean;
+  isLastAdjacentSibling: boolean;
 };
 
 // Extracted from buildPaymentRows so other call sites that need a single
@@ -58,6 +64,8 @@ export function expenseToPaymentRow(expense: WithId<ExpenseRecord>): PaymentRow 
     skippedAt:
       expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
     parentExpenseId: expense.parentExpenseId,
+    parentIsAdjacentInBucket: false,
+    isLastAdjacentSibling: false,
   };
 }
 
@@ -89,6 +97,8 @@ export function buildPaymentRows(
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,
     skippedAt: income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
     parentExpenseId: null,
+    parentIsAdjacentInBucket: false,
+    isLastAdjacentSibling: false,
   }));
 
   return [...expenseRows, ...incomeRows];
@@ -188,7 +198,21 @@ export function orderRowsWithGroupedChildren(rows: PaymentRow[]): PaymentRow[] {
     if (consumedChildIds.has(row.id)) continue; // placed right after its parent below instead
     ordered.push(row);
     const children = childrenByParentId.get(row.id);
-    if (children) ordered.push(...children);
+    if (children) {
+      // Stamped here (not by the caller) since this is the one place that
+      // already knows both facts: the parent is in this bucket (that's
+      // exactly what qualified `children` for childrenByParentId above),
+      // and each child's position among the siblings it's actually
+      // adjacent to here — a UI rendering these rows shouldn't need to
+      // re-derive either from scratch.
+      children.forEach((child, index) => {
+        ordered.push({
+          ...child,
+          parentIsAdjacentInBucket: true,
+          isLastAdjacentSibling: index === children.length - 1,
+        });
+      });
+    }
   }
   return ordered;
 }

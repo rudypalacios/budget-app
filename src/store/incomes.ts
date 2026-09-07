@@ -1,29 +1,12 @@
 import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
-import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { archiveTransition, restoreTransition, trashTransition, type RestorableRecord } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
-import type {
-  ArchivableState,
-  CurrencyCode,
-  IncomeRecord,
-  OneTimeIncome,
-  RateSource,
-  RecurringIncomeInstance,
-  Timestamp,
-} from '@/types/firestore';
+import type { ArchivableState, CurrencyCode, IncomeRecord, OneTimeIncome, RateSource, RecurringIncomeInstance } from '@/types/firestore';
 
 const store = createCollectionStore<IncomeRecord>('incomes');
-
-// Narrowed shape restoreTransition (lifecycle-transitions.ts) needs — see
-// restoreIncome below, same cast rationale as expenses.ts's
-// ArchivedOrTrashedRecord.
-type ArchivedOrTrashedRecord = {
-  lifecycleState: 'archived' | 'trashed';
-  trashedFromState: ArchivableState | null;
-  archivedAt: Timestamp | null;
-};
 
 export const useIncomesStore = store.useStore;
 export const subscribeIncomes = store.subscribe;
@@ -212,7 +195,7 @@ export function restoreIncome(id: string) {
   if (!income || income.lifecycleState === 'active') {
     throw new Error(`incomes store: restoreIncome(${id}) — not currently archived or trashed`);
   }
-  return store.update(id, restoreTransition(income as ArchivedOrTrashedRecord));
+  return store.update(id, restoreTransition(income as RestorableRecord));
 }
 
 export function purgeIncome(id: string) {

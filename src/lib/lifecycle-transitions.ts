@@ -34,6 +34,16 @@ export function trashTransition(from: ArchivableState, now: Date, trashRetention
   };
 }
 
+// Exported so every restoreX() store function (expenses.ts, incomes.ts,
+// recurring-expenses.ts, recurring-incomes.ts) can cast a store snapshot to
+// this shape once, from one shared definition, instead of each redefining
+// the identical type locally.
+export type RestorableRecord = {
+  lifecycleState: 'archived' | 'trashed';
+  trashedFromState: ArchivableState | null;
+  archivedAt: TrashableLifecycle['archivedAt'];
+};
+
 // Restores a currently archived-or-trashed record. Two cases:
 // - trashed -> its trashedFromState (active or archived), clearing the
 //   trash fields. archivedAt is preserved when restoring to 'archived' (it
@@ -48,11 +58,7 @@ export function trashTransition(from: ArchivableState, now: Date, trashRetention
 // (categories were unaffected, they never went through restoreX at all).
 // Caught while building Stage 18's restore cascade (FR-21g), which needed
 // this path to actually work.
-export function restoreTransition(current: {
-  lifecycleState: 'archived' | 'trashed';
-  trashedFromState: ArchivableState | null;
-  archivedAt: TrashableLifecycle['archivedAt'];
-}): TrashableLifecycle {
+export function restoreTransition(current: RestorableRecord): TrashableLifecycle {
   if (current.lifecycleState === 'trashed') {
     if (!current.trashedFromState) {
       throw new Error('restoreTransition: trashed record is missing trashedFromState');

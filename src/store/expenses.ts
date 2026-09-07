@@ -1,33 +1,14 @@
 import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
 import { canGroupUnder, computeParentPaidFromChildren, findActiveChildren } from '@/lib/expense-grouping';
-import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { archiveTransition, restoreTransition, trashTransition, type RestorableRecord } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { recomputeBudgetRecommendation } from './recurring-expenses';
 import { useUserSettingsStore } from './user-settings';
-import type {
-  ArchivableState,
-  CurrencyCode,
-  ExpenseRecord,
-  OneTimeExpense,
-  RateSource,
-  RecurringExpenseInstance,
-  Timestamp,
-} from '@/types/firestore';
+import type { ArchivableState, CurrencyCode, ExpenseRecord, OneTimeExpense, RateSource, RecurringExpenseInstance } from '@/types/firestore';
 
 const store = createCollectionStore<ExpenseRecord>('expenses');
-
-// Narrowed shape restoreTransition (lifecycle-transitions.ts) needs — see
-// restoreExpense below, which reads this off a store snapshot after already
-// guarding lifecycleState !== 'active', but TypeScript's control-flow
-// narrowing doesn't carry that guard through the object literal that ends
-// up passed to a differently-typed function parameter, hence the cast.
-type ArchivedOrTrashedRecord = {
-  lifecycleState: 'archived' | 'trashed';
-  trashedFromState: ArchivableState | null;
-  archivedAt: Timestamp | null;
-};
 
 export const useExpensesStore = store.useStore;
 export const subscribeExpenses = store.subscribe;
@@ -146,6 +127,23 @@ export async function updateExpense(id: string, patch: Partial<EditableExpenseFi
 // comment on the same race). Returns every id this cascade actually
 // touched, so the caller can also recompute their budget recommendations
 // (a cascaded child/parent may itself be a recurring instance).
+// Shared by applyExpenseGroupPaidCascade and setExpenseGroupParent — both
+// need to conditionally rewrite a parent's paid state once they've worked
+// out what it should be. Returns whether it actually wrote, so callers can
+// track which ids changed (e.g. to recompute a budget recommendation).
+async function writeParentPaidIfChanged(
+  parentId: string,
+  currentPaid: boolean,
+  shouldBePaid: boolean,
+): Promise<boolean> {
+  if (currentPaid === shouldBePaid) return false;
+  await store.update(parentId, {
+    paid: shouldBePaid,
+    paidDate: shouldBePaid ? toTimestamp(new Date()) : null,
+  });
+  return true;
+}
+
 async function applyExpenseGroupPaidCascade(id: string, paid: boolean): Promise<string[]> {
   const items = store.useStore.getState().items;
   const record = items.find((item) => item.id === id);
@@ -183,11 +181,7 @@ async function applyExpenseGroupPaidCascade(id: string, paid: boolean): Promise<
       const siblings = findActiveChildren(items, parent.id);
       const parentShouldBePaid =
         siblings.length > 0 && computeParentPaidFromChildren(siblings, { id, paid });
-      if (parent.paid !== parentShouldBePaid) {
-        await store.update(parent.id, {
-          paid: parentShouldBePaid,
-          paidDate: parentShouldBePaid ? toTimestamp(new Date()) : null,
-        });
+      if (await writeParentPaidIfChanged(parent.id, parent.paid, parentShouldBePaid)) {
         touched.push(parent.id);
       }
     }
@@ -239,27 +233,27 @@ export async function setExpenseGroupParent(id: string, parentId: string | null)
   // Membership changed — recompute whichever parent(s) it affects (the one
   // it left, the one it joined) from the pre-write snapshot, substituting
   // `record`'s own current paid value for itself rather than re-reading
-  // store state (same race as applyExpenseGroupPaidCascade above).
+  // store state (same race as applyExpenseGroupPaidCascade above). At most
+  // two independent parents, so they're recomputed concurrently rather
+  // than one after another.
   const affectedParentIds = [previousParentId, parentId].filter(
     (candidateId, index, all): candidateId is string => candidateId !== null && all.indexOf(candidateId) === index,
   );
-  const recomputed: string[] = [];
-  for (const affectedParentId of affectedParentIds) {
-    const parent = items.find((item) => item.id === affectedParentId);
-    if (!parent) continue;
-    const siblingsExcludingSelf = findActiveChildren(items, affectedParentId).filter((item) => item.id !== id);
-    const selfIsNowAChildHere = parentId === affectedParentId && record.lifecycleState === 'active';
-    const currentChildren = selfIsNowAChildHere ? [...siblingsExcludingSelf, record] : siblingsExcludingSelf;
-    const parentShouldBePaid =
-      currentChildren.length > 0 && computeParentPaidFromChildren(currentChildren);
-    if (parent.paid !== parentShouldBePaid) {
-      await store.update(affectedParentId, {
-        paid: parentShouldBePaid,
-        paidDate: parentShouldBePaid ? toTimestamp(new Date()) : null,
-      });
-      recomputed.push(affectedParentId);
-    }
-  }
+  const recomputed = (
+    await Promise.all(
+      affectedParentIds.map(async (affectedParentId) => {
+        const parent = items.find((item) => item.id === affectedParentId);
+        if (!parent) return null;
+        const siblingsExcludingSelf = findActiveChildren(items, affectedParentId).filter((item) => item.id !== id);
+        const selfIsNowAChildHere = parentId === affectedParentId && record.lifecycleState === 'active';
+        const currentChildren = selfIsNowAChildHere ? [...siblingsExcludingSelf, record] : siblingsExcludingSelf;
+        const parentShouldBePaid =
+          currentChildren.length > 0 && computeParentPaidFromChildren(currentChildren);
+        const wrote = await writeParentPaidIfChanged(affectedParentId, parent.paid, parentShouldBePaid);
+        return wrote ? affectedParentId : null;
+      }),
+    )
+  ).filter((affectedId): affectedId is string => affectedId !== null);
   await Promise.all(recomputed.map((affectedId) => recomputeIfRecurringInstance(affectedId)));
 }
 
@@ -380,18 +374,18 @@ export async function archiveOrTrashExpenseGroup(
       : trashTransition(currentLifecycleState, new Date(), trashRetentionDays);
   }
 
-  if (mode === 'detach') {
-    await Promise.all(children.map((child) => store.update(child.id, { parentExpenseId: null })));
-  }
-
+  // The parent's own transition and the children's writes (detach, or
+  // their own cascade transition) touch independent documents with no
+  // dependency between them, so they all go out together rather than
+  // waiting on each other.
   const record = items.find((item) => item.id === id);
-  await store.update(id, transitionPatch((record?.lifecycleState as ArchivableState) ?? 'active'));
+  const parentWrite = store.update(id, transitionPatch((record?.lifecycleState as ArchivableState) ?? 'active'));
+  const childWrites =
+    mode === 'detach'
+      ? children.map((child) => store.update(child.id, { parentExpenseId: null }))
+      : children.map((child) => store.update(child.id, transitionPatch(child.lifecycleState as ArchivableState)));
 
-  if (mode === 'cascade') {
-    await Promise.all(
-      children.map((child) => store.update(child.id, transitionPatch(child.lifecycleState as ArchivableState))),
-    );
-  }
+  await Promise.all([parentWrite, ...childWrites]);
 }
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
@@ -419,20 +413,19 @@ export function restoreExpense(id: string) {
   const nonActiveChildren = items.filter(
     (item) => item.parentExpenseId === id && item.lifecycleState !== 'active',
   );
-  return store
-    .update(id, restoreTransition(expense as ArchivedOrTrashedRecord))
-    .then(() =>
-      Promise.all(
-        nonActiveChildren.map((child) => store.update(child.id, restoreTransition(child as ArchivedOrTrashedRecord))),
+  // Parent and children are independent documents with no write-order
+  // dependency, so they go in one Promise.all rather than awaiting the
+  // parent before starting the children.
+  return Promise.all([
+    store.update(id, restoreTransition(expense as RestorableRecord)),
+    ...nonActiveChildren.map((child) => store.update(child.id, restoreTransition(child as RestorableRecord))),
+  ]).then(() =>
+    Promise.all(
+      [id, ...nonActiveChildren.map((child) => child.id)].map((affectedId) =>
+        recomputeIfRecurringInstance(affectedId),
       ),
-    )
-    .then(() =>
-      Promise.all(
-        [id, ...nonActiveChildren.map((child) => child.id)].map((affectedId) =>
-          recomputeIfRecurringInstance(affectedId),
-        ),
-      ),
-    );
+    ),
+  );
 }
 
 export function purgeExpense(id: string) {

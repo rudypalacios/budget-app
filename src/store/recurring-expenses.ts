@@ -1,30 +1,14 @@
 import { createCollectionStore } from './create-collection-store';
 import { computeBudgetRecommendation } from '@/lib/budget-recommendation';
 import { firestoreClient } from '@/lib/firebase/firestore';
-import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { archiveTransition, restoreTransition, trashTransition, type RestorableRecord } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useSessionStore } from './session';
 import { useUserSettingsStore } from './user-settings';
-import type {
-  ArchivableState,
-  BudgetRecommendation,
-  CurrencyCode,
-  ExpenseRecord,
-  RecurringExpense,
-  Timestamp,
-} from '@/types/firestore';
+import type { ArchivableState, BudgetRecommendation, CurrencyCode, ExpenseRecord, RecurringExpense } from '@/types/firestore';
 
 const store = createCollectionStore<RecurringExpense>('recurringExpenses');
-
-// Narrowed shape restoreTransition (lifecycle-transitions.ts) needs — see
-// restoreRecurringExpense below, same cast rationale as expenses.ts's
-// ArchivedOrTrashedRecord.
-type ArchivedOrTrashedRecord = {
-  lifecycleState: 'archived' | 'trashed';
-  trashedFromState: ArchivableState | null;
-  archivedAt: Timestamp | null;
-};
 
 export const useRecurringExpensesStore = store.useStore;
 export const subscribeRecurringExpenses = store.subscribe;
@@ -137,7 +121,7 @@ export function restoreRecurringExpense(id: string) {
   if (!definition || definition.lifecycleState === 'active') {
     throw new Error(`recurringExpenses store: restoreRecurringExpense(${id}) — not currently archived or trashed`);
   }
-  return store.update(id, restoreTransition(definition as ArchivedOrTrashedRecord));
+  return store.update(id, restoreTransition(definition as RestorableRecord));
 }
 
 export function purgeRecurringExpense(id: string) {
