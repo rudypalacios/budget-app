@@ -1065,17 +1065,25 @@ non-active children.
   {{parent}}" caption, a parent shows "{{count}} grouped: {{subtotal}}" —
   computed at render time, never stored. (First pass shipped only the
   captions and missed the indent/marker entirely — caught by the user's
-  own manual QA pass, fixed in commit `9c5135d`.) **Real, still-standing
-  deviation from the original ASCII-tree mockup discussed in planning**:
-  every child uses the same `"└─▸"` connector rather than distinguishing
-  middle/last siblings (`├─▸` vs `└─▸`) — `PaymentRow`s are sorted into
-  three status buckets (overdue/upcoming/completed, see
-  `docs/data-model.md` §13) rather than one flat list, so a parent's
-  children are rarely contiguous in the rendered list; a "last sibling"
-  glyph would imply an adjacency that isn't real. A literal nested tree
-  (reordering rows so children sit directly under their parent) doesn't
-  fit that bucket model without a larger rework of the grouping/sort logic
-  itself, so it wasn't attempted.
+  own manual QA pass, fixed in commit `9c5135d`.) **Second round of user
+  feedback after seeing it live**: the caption-only version still didn't
+  match the Google-Keep-style reference the user actually wanted — a child
+  needed to visually sit *directly under* its parent, not just carry a
+  "Part of X" label wherever plain date-sort happened to place it, and a
+  fully-checked group needed to move into the completed section together,
+  same as Keep's checked-items behavior. Fixed in commit (see git log) by
+  adding `orderRowsWithGroupedChildren` (`src/lib/payments-dashboard.ts`,
+  called from `groupPaymentRows`) — after the normal date/action-timestamp
+  sort, each bucket's rows get a second pass that moves a parent's active
+  children to sit directly after it. This is bucket-local, not global: a
+  child only moves next to its parent when both landed in the *same*
+  bucket (overdue/upcoming/completed) to begin with — a child whose parent
+  is in a different bucket (e.g. parent already paid, child not) keeps its
+  own sorted position, since there's no parent row there to nest under.
+  With real adjacency now known, the connector glyph is genuine too:
+  `"├─▸"` when more siblings are still adjacent below in this bucket,
+  `"└─▸"` for the last (or only) one — no longer a single flat glyph for
+  every child.
 - `RecurringExpenseForm` gained an "Agrupar con" `Select` (edit-only, see
   Known Issues) wired through `recurring-expenses/[id]/edit.tsx` — a
   `NO_GROUP_PARENT` sentinel (`''`) stands in for `null` since `Select`'s
@@ -1089,12 +1097,14 @@ non-active children.
   tests (33 new: `expense-grouping.test.ts` in full, plus new cascade/
   restore-fix cases in `expenses.test.ts` and the extended
   `lifecycle-transitions.test.ts`).
-- Deviations from the approved plan: (1) the ASCII-tree connector doesn't
-  distinguish middle/last siblings (single `"└─▸"` for every child), for
-  the bucket-adjacency reason above; (2) the UI was wired onto the
-  Dashboard only, not also Expenses/Income/History, to keep this stage's
-  verification manageable — both disclosed above and in Known Issues, not
-  silently dropped.
+- Deviations from the approved plan: (1) the ASCII-tree connector only
+  distinguishes middle/last siblings *within the same status bucket* — a
+  child whose parent landed in a different bucket still can't nest under
+  it, an inherent limit of the overdue/upcoming/completed bucket model
+  rather than something worth a larger sort-logic rework for; (2) the UI
+  was wired onto the Dashboard only, not also Expenses/Income/History, to
+  keep this stage's verification manageable — both disclosed above and in
+  Known Issues, not silently dropped.
 - **Not yet manually verified end-to-end on a device/browser** — see the
   QA test-case list handed to the user alongside this summary. Do that
   before merging.

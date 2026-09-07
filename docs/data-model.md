@@ -398,6 +398,20 @@ pay in April"). That's cash-basis budget-vs-actual reporting, belongs to
 Stage 13, and is computed from `paidDate` at that time — Stage 8's
 dashboard only ever shows the live/current state.
 
+**Grouped-child reordering within a bucket (Stage 18, FR-21f):** after the
+date/action-timestamp sort above, each of the three groups is passed
+through `orderRowsWithGroupedChildren` (`payments-dashboard.ts`), which
+moves a grouped expense's active children to sit directly after their
+parent — Google-Keep-style visual nesting, not just an informational
+caption. This only ever reorders *within* a bucket: a child is pulled next
+to its parent only when both landed in the same bucket in the first place
+(e.g. both still overdue-and-unpaid, or both paid this cycle). A child
+whose parent is in a *different* bucket (e.g. the parent's already paid
+while this child isn't) keeps its own plain sorted position in its own
+bucket — there's no parent row present there to nest under, mirroring how
+a Keep list only drags a checked sub-item's parent along once the whole
+group is checked, not before.
+
 ---
 
 ## 14. Deployment checklist

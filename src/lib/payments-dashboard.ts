@@ -144,5 +144,43 @@ export function groupPaymentRows(
     return bTime - aTime;
   });
 
-  return { overdueUnpaid, upcomingUnpaid, completedThisCycle };
+  return {
+    overdueUnpaid: orderRowsWithGroupedChildren(overdueUnpaid),
+    upcomingUnpaid: orderRowsWithGroupedChildren(upcomingUnpaid),
+    completedThisCycle: orderRowsWithGroupedChildren(completedThisCycle),
+  };
+}
+
+// Stage 18 (FR-21f, data-model.md §11/§13) — visually nests a group's
+// children directly under their parent, Google-Keep-style, instead of
+// leaving them wherever plain date/action-timestamp sort happened to put
+// them. Applied *within* each already-sorted bucket, never across
+// buckets: a child only moves next to its parent when both landed in the
+// same bucket (e.g. both still unpaid-and-overdue, or both paid this
+// cycle) — a child whose parent is unpaid while it's already paid (or vice
+// versa) keeps its own natural sorted position in its own bucket, since
+// there's no parent row present there to nest under. This mirrors how a
+// Keep list's checked items move together as a group once the whole group
+// is checked, but a lone checked sub-item without its parent doesn't drag
+// the (still-unchecked) parent along with it.
+export function orderRowsWithGroupedChildren(rows: PaymentRow[]): PaymentRow[] {
+  const idsInThisBucket = new Set(rows.map((row) => row.id));
+  const childrenByParentId = new Map<string, PaymentRow[]>();
+  for (const row of rows) {
+    if (row.direction === 'expense' && row.parentExpenseId && idsInThisBucket.has(row.parentExpenseId)) {
+      const siblings = childrenByParentId.get(row.parentExpenseId) ?? [];
+      siblings.push(row);
+      childrenByParentId.set(row.parentExpenseId, siblings);
+    }
+  }
+  const consumedChildIds = new Set(Array.from(childrenByParentId.values()).flat().map((row) => row.id));
+
+  const ordered: PaymentRow[] = [];
+  for (const row of rows) {
+    if (consumedChildIds.has(row.id)) continue; // placed right after its parent below instead
+    ordered.push(row);
+    const children = childrenByParentId.get(row.id);
+    if (children) ordered.push(...children);
+  }
+  return ordered;
 }

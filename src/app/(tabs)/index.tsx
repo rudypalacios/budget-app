@@ -152,6 +152,22 @@ export default function PaymentsScreen() {
   }
 
   function renderGroup(title: string, rows: PaymentRow[], emptyLabel: string, isOverdue = false) {
+    // Stage 18 (FR-21f) — `rows` already arrives reordered so each parent's
+    // children sit directly after it (orderRowsWithGroupedChildren, called
+    // from usePaymentsDashboard). Rebuilding the same parent->children
+    // grouping here (cheap — this bucket's rows only) lets each child know
+    // whether it's the last sibling actually adjacent to its parent in
+    // *this* rendered list, so the connector glyph can be a real "└─▸" (last)
+    // vs "├─▸" (more siblings follow) instead of always the same glyph.
+    const childrenByParentIdInThisBucket = new Map<string, PaymentRow[]>();
+    for (const row of rows) {
+      if (row.direction === 'expense' && row.parentExpenseId) {
+        const siblings = childrenByParentIdInThisBucket.get(row.parentExpenseId) ?? [];
+        siblings.push(row);
+        childrenByParentIdInThisBucket.set(row.parentExpenseId, siblings);
+      }
+    }
+
     return (
       <View style={styles.section}>
         <SectionHeader title={title} />
@@ -214,17 +230,21 @@ export default function PaymentsScreen() {
                   ? expenses.find((item) => item.id === row.parentExpenseId)?.name
                   : undefined;
               // Stage 18 (FR-21f) — a child renders indented with an ASCII
-              // tree-connector prefix on its own name line, same idea as the
-              // original mockup discussed with the user. Every child uses
-              // the same "└─▸" connector rather than distinguishing
-              // middle/last siblings (├─▸ vs └─▸): rows within a bucket are
-              // sorted by date/action-timestamp, not grouped together, so a
-              // parent's children are rarely contiguous in the rendered
-              // list — a "last sibling" glyph would imply an adjacency that
-              // isn't real. See data-model.md §11 for why a literal nested
-              // tree (reordering rows so children sit right under their
-              // parent) isn't feasible given the three-bucket layout.
+              // tree-connector prefix on its own name line, matching the
+              // Keep-style reference the user shared: "├─▸" when more
+              // siblings are still adjacent below it in this same bucket,
+              // "└─▸" when it's the last (or only) one. A child whose
+              // parent isn't present in this bucket (see
+              // orderRowsWithGroupedChildren) has no rendered siblings here
+              // either, so it always falls back to "└─▸".
               const isGroupChild = !!groupParentName;
+              const siblingsInThisBucket = row.direction === 'expense' && row.parentExpenseId
+                ? (childrenByParentIdInThisBucket.get(row.parentExpenseId) ?? [])
+                : [];
+              const isLastSiblingInThisBucket =
+                siblingsInThisBucket.length === 0 ||
+                siblingsInThisBucket[siblingsInThisBucket.length - 1]?.id === row.id;
+              const treeConnector = isLastSiblingInThisBucket ? '└─▸ ' : '├─▸ ';
 
               return (
                 <View key={row.id}>
@@ -241,7 +261,7 @@ export default function PaymentsScreen() {
                   >
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
-                        {isGroupChild ? '└─▸ ' : ''}
+                        {isGroupChild ? treeConnector : ''}
                         {row.name}{' '}
                         <ThemedText type="caption" themeColor="textSecondary">
                           {row.paid && row.paidDate
