@@ -257,14 +257,16 @@ export default function PaymentsScreen() {
                 row.direction === 'expense' && row.parentExpenseId
                   ? expenses.find((item) => item.id === row.parentExpenseId)?.name
                   : undefined;
-              // Stage 18 (FR-21f) — a child renders indented with an ASCII
-              // tree-connector prefix on its own name line, matching the
-              // Keep-style reference the user shared: "├─▸" when more
-              // siblings are still adjacent below it in this same bucket,
-              // "└─▸" when it's the last (or only) one. A child whose
-              // parent isn't present in this bucket (see
-              // orderRowsWithGroupedChildren) has no rendered siblings here
-              // either, so it always falls back to "└─▸".
+              // Stage 18 (FR-21f) — a child renders with a real tree
+              // connector (vertical trunk + horizontal branch), matching
+              // the reference screenshot the user shared, replacing the
+              // earlier "└─▸" text-prefix attempt. `parentIsAdjacent` is
+              // only true when the parent row is actually present right
+              // above this child's stack in this same bucket (see
+              // orderRowsWithGroupedChildren) — a child whose parent
+              // landed in a different bucket has nothing to draw a line
+              // to, so it falls back to plain indent + the "Part of X"
+              // caption below instead of a dangling line.
               const isGroupChild = !!groupParentName;
               const siblingsInThisBucket = row.direction === 'expense' && row.parentExpenseId
                 ? (childrenByParentIdInThisBucket.get(row.parentExpenseId) ?? [])
@@ -272,21 +274,25 @@ export default function PaymentsScreen() {
               const isLastSiblingInThisBucket =
                 siblingsInThisBucket.length === 0 ||
                 siblingsInThisBucket[siblingsInThisBucket.length - 1]?.id === row.id;
-              const treeConnector = isLastSiblingInThisBucket ? '└─▸ ' : '├─▸ ';
+              const parentIsAdjacent =
+                isGroupChild && rows.some((candidate) => candidate.id === row.parentExpenseId);
+              // Stage 18 (FR-21f) — suppress the divider right after this
+              // row when the next one continues the same connected group
+              // (its first child, or another sibling), so the tree reads
+              // as one block instead of being cut by a divider line.
+              const nextRow = rows[index + 1];
+              const nextRowContinuesGroup =
+                !!nextRow &&
+                nextRow.direction === 'expense' &&
+                !!nextRow.parentExpenseId &&
+                (nextRow.parentExpenseId === row.id ||
+                  (row.direction === 'expense' && nextRow.parentExpenseId === row.parentExpenseId));
 
               return (
                 <View key={row.id}>
                   <View
                     style={[
                       styles.row,
-                      // Stage 18 (FR-21f) — the grouping cue marks the whole
-                      // card, not just the title text: indent + a colored
-                      // left rail spanning the row's full height, so it
-                      // reads as "this whole record is a sub-item" at a
-                      // glance (caught in the user's own review — the first
-                      // pass only prefixed the name line with the "└─▸"
-                      // text, easy to miss against a normal row).
-                      isGroupChild && [styles.rowChild, { borderLeftColor: theme.tint }],
                       // Overdue rows get a full-row danger tint (same
                       // translucent-wash convention as Chip's tone colors)
                       // so an overdue bill reads as urgent at a glance, not
@@ -294,9 +300,26 @@ export default function PaymentsScreen() {
                       isOverdue && !isCompleted ? { backgroundColor: `${theme.danger}1A` } : null,
                     ]}
                   >
+                    {isGroupChild && (
+                      <View style={styles.connectorGutter}>
+                        {parentIsAdjacent && (
+                          <>
+                            <View
+                              style={[
+                                styles.connectorTop,
+                                { backgroundColor: theme.border },
+                              ]}
+                            />
+                            {!isLastSiblingInThisBucket && (
+                              <View style={[styles.connectorBottom, { backgroundColor: theme.border }]} />
+                            )}
+                            <View style={[styles.connectorBranch, { backgroundColor: theme.border }]} />
+                          </>
+                        )}
+                      </View>
+                    )}
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
-                        {isGroupChild ? treeConnector : ''}
                         {row.name}{' '}
                         <ThemedText type="caption" themeColor="textSecondary">
                           {row.paid && row.paidDate
@@ -307,11 +330,13 @@ export default function PaymentsScreen() {
                             : t('payments.dueOnly', { dueDate: formatShortDate(row.date) })}
                         </ThemedText>
                       </ThemedText>
-                      {/* Stage 18 (FR-21f) — informational only: a child
-                          shows which group it belongs to (via the "└─▸"
-                          prefix above plus this caption naming the parent),
-                          a parent shows how much of its own amount is
-                          accounted for by its active children. */}
+                      {/* Stage 18 (FR-21f) — informational: a child names
+                          its group parent (redundant when the tree
+                          connector is also drawn, but it's the only cue at
+                          all when the parent isn't adjacent — see
+                          parentIsAdjacent above); a parent shows how much
+                          of its own amount is accounted for by its active
+                          children. */}
                       {groupParentName && (
                         <ThemedText type="caption" themeColor="textSecondary">
                           {t('grouping.partOf', { name: groupParentName })}
@@ -388,7 +413,7 @@ export default function PaymentsScreen() {
                       </View>
                     </View>
                   </View>
-                  {index < rows.length - 1 && <Divider style={styles.divider} />}
+                  {index < rows.length - 1 && !nextRowContinuesGroup && <Divider style={styles.divider} />}
                 </View>
               );
             })}
@@ -484,6 +509,13 @@ export default function PaymentsScreen() {
   );
 }
 
+// Stage 18 (FR-21f) tree-connector geometry — pulled out of styles below
+// since StyleSheet.create needs plain numbers to compute absolute
+// positions from, not tokens resolved at render time.
+const ConnectorGutterWidth = 20;
+const ConnectorLineWidth = 2;
+const ConnectorBranchY = 14; // roughly the vertical center of the name line
+
 const styles = StyleSheet.create({
   section: {
     gap: Spacing.two,
@@ -503,12 +535,35 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     gap: Spacing.two,
   },
-  // Stage 18 (FR-21f) — indents a grouped child's row so its "└─▸" name
-  // prefix reads as a visual sub-item, not just another top-level row.
-  rowChild: {
-    paddingLeft: Spacing.two + Spacing.three,
-    borderLeftWidth: 3,
-    // borderLeftColor set inline (theme.tint) — see the row's style array.
+  // Stage 18 (FR-21f) — a grouped child's tree connector: a fixed-width
+  // gutter to the row's left holding a vertical trunk segment (top half,
+  // always; bottom half too unless this is the last sibling) and a
+  // horizontal branch stub connecting the trunk to this row's content.
+  // Colors are set inline (theme.border) — see the row's JSX.
+  connectorGutter: {
+    width: ConnectorGutterWidth,
+    alignSelf: 'stretch',
+  },
+  connectorTop: {
+    position: 'absolute',
+    left: ConnectorGutterWidth / 2 - ConnectorLineWidth / 2,
+    top: 0,
+    height: ConnectorBranchY + ConnectorLineWidth,
+    width: ConnectorLineWidth,
+  },
+  connectorBottom: {
+    position: 'absolute',
+    left: ConnectorGutterWidth / 2 - ConnectorLineWidth / 2,
+    top: ConnectorBranchY,
+    bottom: 0,
+    width: ConnectorLineWidth,
+  },
+  connectorBranch: {
+    position: 'absolute',
+    left: ConnectorGutterWidth / 2 - ConnectorLineWidth / 2,
+    top: ConnectorBranchY,
+    width: ConnectorGutterWidth / 2 + ConnectorLineWidth,
+    height: ConnectorLineWidth,
   },
   rowMain: {
     flex: 1,

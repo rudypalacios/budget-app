@@ -1161,3 +1161,41 @@ beyond the visual-nesting fix already covered above:
 
 tsc/lint/tests after this round: clean, 25/25 suites, 225/225 tests (1
 new — the skipped-clearing cascade test).
+
+**Two more follow-ups from the same live review, after seeing it on web:**
+
+- **Switch → Checkbox for the paid toggle** — the user shared a
+  reference screenshot of a checked/unchecked tree list and asked for
+  that affordance instead of `Switch`'s on/off look. `Checkbox`
+  (`src/components/ui/checkbox.tsx`) already existed for the Archive/
+  Trash screens' bulk-select rows and has no "staged" behavior baked in
+  (just a pressable checked/unchecked box), so the Dashboard's paid
+  toggle now reuses it directly — same `handleTogglePaid` call as
+  before, only the visual changed. Updated the component's own comment,
+  previously scoped to Archive/Trash only.
+- **Real tree-connector lines, replacing the "└─▸"/"├─▸" text prefix** —
+  the same reference screenshot showed genuine vertical trunk + horizontal
+  branch lines connecting parent to children, not a text glyph. Rebuilt
+  the grouping cue in `(tabs)/index.tsx` as an absolutely-positioned
+  connector gutter to the left of a grouped child's row: a vertical
+  segment from the top down to a branch point (continuing further to the
+  bottom unless this is the last sibling in the bucket, so consecutive
+  children form one continuous trunk), plus a horizontal stub connecting
+  the trunk to the row. Colors come from `theme.border`, matching the
+  reference's gray lines. The branch point sits near the name line (top
+  of the row) rather than beside the checkbox (bottom) — replicating the
+  reference exactly would need measuring each row's actual rendered
+  height (the checkbox lives in a `bottomLine` below several other lines
+  of variable-height content), which isn't worth the complexity for a
+  connector whose job is just to visually read as "attached." Also
+  suppressed the `Divider` between a parent and its immediately-following
+  child (and between consecutive children), so the connected block isn't
+  cut by a divider line — matching the reference's continuous card. A
+  child whose parent isn't adjacent in the same status bucket (see
+  `orderRowsWithGroupedChildren`) still falls back to plain indent + the
+  "Part of X" caption, same as before — nothing to draw a line to there.
+
+tsc/lint/tests after these two: clean, 25/25 suites, 225/225 tests (no
+new tests — pure visual/component-swap changes, no new logic branches
+worth a dedicated unit test beyond what `orderRowsWithGroupedChildren`
+already covers).
