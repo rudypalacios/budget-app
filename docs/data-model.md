@@ -105,6 +105,7 @@ Rationale for moving rate entry here instead of inline on every transaction form
 | `remindersEnabled` | `boolean \| null` | `null` = inherit `users/{uid}.reminders.enabled` |
 | `reminderLeadDays` | `number \| null` | `null` = inherit global default |
 | `budgetRecommendation` | `object` | see §7 |
+| `defaultParentRecurringExpenseId` | `string \| null` | see §11 — persistent group-parent default; each newly generated instance inherits the link to that cycle's parent instance. `null` = ungrouped |
 | `createdAt` / `updatedAt` | `Timestamp` | |
 
 **Indexed on:** `lifecycleState` (list active definitions needing generation), `categoryId`.
@@ -148,12 +149,13 @@ Both collections share this shape (expenses adds budget-specific fields):
 | `trashedFromState` | `'active' \| 'archived' \| null` | |
 | `archivedAt` / `trashedAt` | `Timestamp \| null` | |
 | `purgeAt` | `Timestamp \| null` | trash auto-purge (§8) |
-| `skipped`, `skippedAt` *(recurring instances only)* | `boolean`, `Timestamp \| null` | `kind === 'recurringInstance'` only — `false`/`null` for `kind === 'oneTime'` (Stage 8, Payments Dashboard, §12). Marks a single generated occurrence as intentionally not going to be paid this period, without affecting the parent definition, its generation schedule, or any other instance. Orthogonal to `paid`/`paidDate`, same relationship those two have to `lifecycleState`: `lifecycleState` governs whether the doc is visible at all (active/archived/trashed), `paid` governs payment status, `skipped` governs whether this occurrence counts toward due/overdue — a skipped instance is still `lifecycleState: 'active'` and still appears in History. Setting `paid: true` on a skipped instance also clears `skipped`/`skippedAt` (paying an occurrence implies it's no longer being skipped); the reverse isn't true (marking unpaid doesn't touch `skipped`). |
+| `parentExpenseId` *(expenses only)* | `string \| null` | see §11 — self-referencing FK to another `expenses/{id}`, the group parent. `null` = ungrouped. Not present on `incomes` (grouping is expenses-only, §11) |
+| `skipped`, `skippedAt` *(recurring instances only)* | `boolean`, `Timestamp \| null` | `kind === 'recurringInstance'` only — `false`/`null` for `kind === 'oneTime'` (Stage 8, Payments Dashboard, §13). Marks a single generated occurrence as intentionally not going to be paid this period, without affecting the parent definition, its generation schedule, or any other instance. Orthogonal to `paid`/`paidDate`, same relationship those two have to `lifecycleState`: `lifecycleState` governs whether the doc is visible at all (active/archived/trashed), `paid` governs payment status, `skipped` governs whether this occurrence counts toward due/overdue — a skipped instance is still `lifecycleState: 'active'` and still appears in History. Setting `paid: true` on a skipped instance also clears `skipped`/`skippedAt` (paying an occurrence implies it's no longer being skipped); the reverse isn't true (marking unpaid doesn't touch `skipped`). |
 | `createdAt` / `updatedAt` | `Timestamp` | |
 
 **Document ID strategy:** recurring instances use a **deterministic ID** — `expenses/{recurringExpenseId}_{yyyy-MM}` for monthly expenses, `incomes/{recurringIncomeId}_{yyyy-MM-dd}` for income (date-keyed, since weekly/biweekly can produce multiple occurrences per month). Two devices independently generating "this period's instance" both write to the same doc ID — idempotent, consistent with last-write-wins (NFR-6), no server-side dedup/Cloud Functions needed (Spark plan, NFR-2). One-time records use random auto-IDs.
 
-**Indexed on:** `(lifecycleState, date)` (active list + Archive/Trash views), `(recurringExpenseId, paid, date)` on `expenses` and `(recurringIncomeId, paid, date)` on `incomes` (rolling average + per-definition drill-down — the income variant isn't queried by anything yet, listed for consistency since `incomes` now carries `paid` too, see §6 v1.3), `(categoryId, date)` (budget-vs-actual, FR-6).
+**Indexed on:** `(lifecycleState, date)` (active list + Archive/Trash views), `(recurringExpenseId, paid, date)` on `expenses` and `(recurringIncomeId, paid, date)` on `incomes` (rolling average + per-definition drill-down — the income variant isn't queried by anything yet, listed for consistency since `incomes` now carries `paid` too, see §6 v1.3), `(categoryId, date)` (budget-vs-actual, FR-6). `parentExpenseId` needs **no new Firestore index** — same as §7's lifecycle filtering, grouping/cascade logic runs client-side against the `expenses` collection's already-live real-time listener, not a fresh query.
 
 **History/reports:** FR-7/FR-8 run as one query each against `expenses`/`incomes`, filtered by `lifecycleState == 'active'` and a `date` range; `kind` just tags display (icon/label). No separate merge step between one-time and recurring-instance records.
 
@@ -167,12 +169,13 @@ Single enum `lifecycleState: 'active' | 'archived' | 'trashed'` per document (no
 - **FR-4b/4c (trash/restore/purge):** `lifecycleState → 'trashed'`, `trashedFromState` set, `trashedAt` + `purgeAt` set. Restore reads `trashedFromState` back into `lifecycleState`, clears trash fields. Manual purge = `deleteDoc()` on that document only — nothing cascades, since instances/history are separate documents, not children.
 - **FR-4d:** guaranteed structurally — a definition and its instances are different documents in different collections.
 - **FR-4e:** instance generation only scans `recurringExpenses`/`recurringIncomes` docs with `lifecycleState == 'active'`; archived/trashed definitions are skipped, while already-generated instances keep their own independent `lifecycleState`.
+- **Grouped expenses (§11):** archiving/trashing an expense that has active children (`parentExpenseId == thisId`) is not a plain state transition — the user is prompted to cascade the action to every child or detach them first. See §11 for the full rule.
 
 **Trash retention:** auto-purge after N days, not manual-only. `users/{uid}.trashRetentionDays` (default `30`, user-configurable) drives a `purgeAt` timestamp field set whenever a document is trashed. A Firestore TTL policy on `purgeAt` auto-deletes expired trash — free on Spark, no Cloud Functions required (NFR-2).
 
 Changing `trashRetentionDays` is **not retroactive** — only items trashed after the change use the new value; items already in Trash keep the `purgeAt` computed at the time they were trashed.
 
-> **Deployment note:** `purgeAt` only auto-deletes documents if a **Firestore TTL policy** is enabled on that field for each collection. This is not something `firestore.rules` or the TypeScript types create automatically — it must be enabled manually per collection (`recurringExpenses`, `recurringIncomes`, `expenses`, `incomes`) via the Firebase console or `gcloud firestore fields ttls update`. See §13 (Deployment checklist).
+> **Deployment note:** `purgeAt` only auto-deletes documents if a **Firestore TTL policy** is enabled on that field for each collection. This is not something `firestore.rules` or the TypeScript types create automatically — it must be enabled manually per collection (`recurringExpenses`, `recurringIncomes`, `expenses`, `incomes`) via the Firebase console or `gcloud firestore fields ttls update`. See §14 (Deployment checklist).
 
 ---
 
@@ -241,7 +244,102 @@ Two-tier config: `users/{uid}.reminders.{enabled, leadDays}` (global default) an
 
 ---
 
-## 11. Open design decisions (not yet resolved — revisit before they become load-bearing)
+## 11. Expense grouping (FR-21–FR-21f, Stage 18)
+
+Lets a user associate one expense with another as its **group parent** —
+e.g. Netflix/Disney+/Google Cloud each individually tracked, but grouped
+under a shared credit card expense — without merging them into one
+record. Expenses only (§6's `parentExpenseId`); income is out of scope
+for this stage.
+
+**No new collection.** `parentExpenseId` is a self-referencing field
+within the existing `expenses` collection (§6) — a child is a completely
+normal expense document that happens to point at another one. **Single
+level only**: the assignment UI refuses to let an expense that already
+has a non-null `parentExpenseId` be picked as a parent for something
+else, so a parent is never itself a child.
+
+### Assignment — two paths
+
+1. **Ad hoc** — an "Add to group... / Remove from group" action in the
+   overflow menu of any expense row (Payments Dashboard, Expenses tab,
+   History), picking any other active, non-child expense as parent. Sets/
+   clears `parentExpenseId` directly on that one document.
+2. **Persistent, via the recurring template** —
+   `recurringExpenses/{id}.defaultParentRecurringExpenseId` (§5) points at
+   another recurring definition. When `generateExpenseInstancesForDefinition`
+   creates a new instance and the definition has this default set, it
+   looks up the parent definition's already-generated instance for the
+   same cycle — cheap, since instance IDs are deterministic per
+   `(recurringExpenseId, cycle)` (§6) — and sets the new instance's
+   `parentExpenseId` to that document's ID. **Forward-only**: changing
+   the default does not retroactively relink instances already generated
+   for the current or past cycles; those still need path 1 if the user
+   wants them grouped too.
+
+### Amount handling
+
+The parent's own `amount` is always entered independently, exactly like
+any other expense — grouping never derives, recalculates, or locks it.
+This is deliberate: a group parent's real total (e.g. what a credit card
+statement actually charges) is typically larger than the subset of items
+the user bothers to track individually as children, so forcing
+`parent.amount == sum(children.amount)` would be wrong. The UI computes
+and displays a **grouped subtotal** — the sum of the group's active
+children's `amountInDefaultCurrency` — alongside the parent's own amount,
+purely informational and never written to any field (same "compute at
+render time from already-loaded state" approach as `budget.tsx`'s
+category totals).
+
+### Paid cascade
+
+Tri-state, "select-all checkbox" semantics — no new field, it falls
+directly out of each document's own existing `paid` boolean (FR-3):
+
+- **Parent → children:** marking the parent paid or unpaid sets the same
+  `paid` value on every active child, each stamped with its own
+  `paidDate`/cleared `paidDate` at the moment of the cascade (not copied
+  from the parent).
+- **Children → parent:** marking or unmarking any individual child
+  re-evaluates the parent afterward: `parent.paid = true` only when
+  **every** active child is `paid === true`; otherwise `parent.paid =
+  false`. Archived/trashed children are excluded from this check, so an
+  archived child can't permanently block the parent from reading as paid.
+- A child that joins an already-paid group (via either assignment path,
+  including generation catching up a missed cycle) always starts
+  `paid: false` — which immediately un-marks the parent per the rule
+  above. A newly grouped charge is never silently treated as already
+  settled.
+- This is enough to represent a "partially paid" group (e.g. only Netflix
+  paid so far, Disney+/Google Cloud still pending) with zero new schema —
+  it's just the natural state of each child's own `paid` field.
+
+### Archive/Trash interaction
+
+Extends §7. Archiving or trashing an expense that has active children
+(`parentExpenseId == thisId`) is not a plain state transition — it shows
+a confirmation naming the affected children, with two choices:
+
+- **Cascade** — apply the same archive/trash transition to the parent and
+  every active child.
+- **Detach and apply to parent only** — clear `parentExpenseId` on every
+  child first (they remain independent, active expenses), then
+  archive/trash the parent alone.
+
+**Restore cascades too (confirmed with the user):** restoring a parent
+also restores every child with `parentExpenseId == thisId` whose
+`lifecycleState` is still `'archived'` or `'trashed'` (i.e. not already
+independently restored or never grouped-and-archived in the first
+place). Each child restores through its own existing per-record restore
+logic (§7 — its own `trashedFromState`), just triggered together with the
+parent rather than requiring a separate tap per child. No new field is
+needed to track "which children belong to which cascade" — a child still
+sitting in a non-`'active'` state under this parent is, by definition,
+still part of the group that needs restoring.
+
+---
+
+## 12. Open design decisions (not yet resolved — revisit before they become load-bearing)
 
 1. **Actual-paid currency diverging from budgeted currency**: modeled as allowed (an instance's `amount`/`currency` are independent from `budgetedAmount`/`budgetedCurrency`), since a user might budget in one currency but actually pay in another that period. The SRS doesn't address this scenario explicitly.
 2. **Budget change history/versioning**: no dedicated "budget changed from X to Y on date Z" log exists — each generated instance implicitly preserves the budgeted amount at that time via its own `budgetedAmount` snapshot, but there's no explicit version list if a future chart needs to show *when within a month gap* a budget changed.
@@ -249,7 +347,7 @@ Two-tier config: `users/{uid}.reminders.{enabled, leadDays}` (global default) an
 
 ---
 
-## 12. Payments Dashboard view logic (Stage 8)
+## 13. Payments Dashboard view logic (Stage 8)
 
 Read-only view logic, not a new collection or write path (skip's schema
 addition is covered in §6). Documented here because the grouping rule has
@@ -300,9 +398,23 @@ pay in April"). That's cash-basis budget-vs-actual reporting, belongs to
 Stage 13, and is computed from `paidDate` at that time — Stage 8's
 dashboard only ever shows the live/current state.
 
+**Grouped-child reordering within a bucket (Stage 18, FR-21f):** after the
+date/action-timestamp sort above, each of the three groups is passed
+through `orderRowsWithGroupedChildren` (`payments-dashboard.ts`), which
+moves a grouped expense's active children to sit directly after their
+parent — Google-Keep-style visual nesting, not just an informational
+caption. This only ever reorders *within* a bucket: a child is pulled next
+to its parent only when both landed in the same bucket in the first place
+(e.g. both still overdue-and-unpaid, or both paid this cycle). A child
+whose parent is in a *different* bucket (e.g. the parent's already paid
+while this child isn't) keeps its own plain sorted position in its own
+bucket — there's no parent row present there to nest under, mirroring how
+a Keep list only drags a checked sub-item's parent along once the whole
+group is checked, not before.
+
 ---
 
-## 13. Deployment checklist
+## 14. Deployment checklist
 
 Steps that don't happen automatically from `firestore.rules` or app code deploys — must be done manually (once per environment/project):
 
@@ -312,7 +424,7 @@ Steps that don't happen automatically from `firestore.rules` or app code deploys
 
 ---
 
-## 14. Change log
+## 15. Change log
 
 - **1.0 (2026-07-07):** Initial approved model for Stage 1.
 - **1.1 (2026-07-07):** Added TTL deployment note (§7) and deployment checklist (§13) — `purgeAt` requires manually enabling a Firestore TTL policy per collection; this isn't created automatically by rules or app code.
@@ -320,3 +432,5 @@ Steps that don't happen automatically from `firestore.rules` or app code deploys
 - **1.3 (2026-07-07):** SRS FR-5c updated to add a paid/received toggle for income (projection support — expected vs. actually received). `paid`/`paidDate` now apply to `incomes` too, mirroring `expenses` exactly; `date` on income is redefined as the expected/due date only, distinct from `paidDate`. Supersedes 1.2's income-has-no-paid-gate note.
 - **1.4 (2026-07-07):** Doc cleanup — fixed section numbering (skipped straight from §11 to old §13, no §12; renumbered to §12/§13). Added the `(recurringIncomeId, paid, date)` index note alongside the existing `(recurringExpenseId, paid, date)` one in §6 and §12, for consistency now that `incomes` carries `paid` too (v1.3) — not queried by anything yet.
 - **1.5 (2026-07-11):** SRS §11 roadmap change inserted a new Stage 8 (Payments Dashboard) ahead of the former Stage 8 (Auth), pushing everything after it back by one. Added `skipped`/`skippedAt` fields to §6, scoped to `kind === 'recurringInstance'` only on `expenses`/`incomes` (not one-time records, not the recurring definitions themselves) — orthogonal to `paid`/`paidDate` the same way those are orthogonal to `lifecycleState`. Added new §12 documenting the Payments Dashboard's three-group, cycle-based grouping/sort rule (renumbering old §12/§13 Deployment checklist/Change log to §13/§14) — no new collections, no new Firestore indexes; the dashboard is a client-side merge of the already-fully-synced `expenses`/`incomes` listeners.
+- **1.6 (2026-09-07):** Added SRS §6.10 (FR-21–FR-21f) and new §11 documenting Stage 18 (expense grouping) — `parentExpenseId` on `expenses` (§6) and `defaultParentRecurringExpenseId` on `recurringExpenses` (§5), single-level, expenses-only. No new collection or Firestore index; cascade/subtotal logic runs client-side against already-synced listener state, same pattern as §7/§13. Cross-referenced from §7 (Archive/Trash — cascade-or-detach confirmation for a parent with active children) and flagged one open question in §12 (whether restoring a cascade-archived parent should also restore its children) to confirm with the user before that part is built. Renumbered old §11–§14 to §12–§15 to make room.
+- **1.7 (2026-09-07):** Resolved 1.6's open question — confirmed with the user that restoring a parent also restores any child still sitting in a non-`'active'` `lifecycleState` under it, each through its own existing per-record restore logic (§7). Added SRS FR-21g. Removed the now-resolved item from §12's open-decisions list.

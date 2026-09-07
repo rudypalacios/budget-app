@@ -1,18 +1,12 @@
 import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
-import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import { canGroupUnder, computeParentPaidFromChildren, findActiveChildren } from '@/lib/expense-grouping';
+import { archiveTransition, restoreTransition, trashTransition, type RestorableRecord } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { recomputeBudgetRecommendation } from './recurring-expenses';
 import { useUserSettingsStore } from './user-settings';
-import type {
-  ArchivableState,
-  CurrencyCode,
-  ExpenseRecord,
-  OneTimeExpense,
-  RateSource,
-  RecurringExpenseInstance,
-} from '@/types/firestore';
+import type { ArchivableState, CurrencyCode, ExpenseRecord, OneTimeExpense, RateSource, RecurringExpenseInstance } from '@/types/firestore';
 
 const store = createCollectionStore<ExpenseRecord>('expenses');
 
@@ -79,6 +73,10 @@ export function addExpense(input: NewExpenseInput) {
     // setExpensePaid below, where "now" is correct: that's a live
     // "marking this paid right now" action, not a backdated log.
     paidDate: paid ? toTimestamp(input.date) : null,
+    // Grouping (Stage 18, FR-21) is always assigned afterward via the "Add
+    // to group" action — a new one-time expense is never created already
+    // grouped.
+    parentExpenseId: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
@@ -116,6 +114,82 @@ export async function updateExpense(id: string, patch: Partial<EditableExpenseFi
   }
 }
 
+// Stage 18 (FR-21b, data-model.md §11) — the tri-state paid cascade between
+// a group parent and its active children:
+// - parent -> children: cascades the same paid value to every active child,
+//   each stamped with its own fresh paidDate/cleared paidDate.
+// - child -> parent: recomputes the parent from computeParentPaidFromChildren
+//   (paid only when every active child is paid) and rewrites it if that
+//   differs from its current value.
+// Reads a single upfront snapshot and never re-reads store state after a
+// write in this same call — the collection listener that backs `items` may
+// not have caught up with our own writes yet (see updateRecurringExpense's
+// comment on the same race). Returns every id this cascade actually
+// touched, so the caller can also recompute their budget recommendations
+// (a cascaded child/parent may itself be a recurring instance).
+// Shared by applyExpenseGroupPaidCascade and setExpenseGroupParent — both
+// need to conditionally rewrite a parent's paid state once they've worked
+// out what it should be. Returns whether it actually wrote, so callers can
+// track which ids changed (e.g. to recompute a budget recommendation).
+async function writeParentPaidIfChanged(
+  parentId: string,
+  currentPaid: boolean,
+  shouldBePaid: boolean,
+): Promise<boolean> {
+  if (currentPaid === shouldBePaid) return false;
+  await store.update(parentId, {
+    paid: shouldBePaid,
+    paidDate: shouldBePaid ? toTimestamp(new Date()) : null,
+  });
+  return true;
+}
+
+async function applyExpenseGroupPaidCascade(id: string, paid: boolean): Promise<string[]> {
+  const items = store.useStore.getState().items;
+  const record = items.find((item) => item.id === id);
+  if (!record) return [];
+
+  const touched: string[] = [];
+  const paidDate = paid ? toTimestamp(new Date()) : null;
+
+  const children = findActiveChildren(items, id);
+  if (children.length > 0) {
+    await Promise.all(
+      children.map((child) => {
+        // Mirrors setExpensePaid's own single-row convention: marking paid
+        // also clears a recurring instance's skipped state (an occurrence
+        // you just paid is, by definition, no longer one you're choosing
+        // not to pay this period — data-model.md §12). Cascaded children
+        // need the same treatment, not just the row the user directly
+        // toggled.
+        const clearsSkip = paid && child.kind === 'recurringInstance' && child.skipped;
+        // Same cast as setExpenseSkipped above — Omit<ExpenseRecord, ...>
+        // doesn't distribute skipped/skippedAt (RecurringExpenseInstance-
+        // only) across the OneTimeExpense | RecurringExpenseInstance union.
+        const patch = (
+          clearsSkip ? { paid, paidDate, skipped: false, skippedAt: null } : { paid, paidDate }
+        ) as Partial<Omit<ExpenseRecord, 'createdAt' | 'updatedAt'>>;
+        return store.update(child.id, patch);
+      }),
+    );
+    touched.push(...children.map((child) => child.id));
+  }
+
+  if (record.parentExpenseId) {
+    const parent = items.find((item) => item.id === record.parentExpenseId);
+    if (parent) {
+      const siblings = findActiveChildren(items, parent.id);
+      const parentShouldBePaid =
+        siblings.length > 0 && computeParentPaidFromChildren(siblings, { id, paid });
+      if (await writeParentPaidIfChanged(parent.id, parent.paid, parentShouldBePaid)) {
+        touched.push(parent.id);
+      }
+    }
+  }
+
+  return touched;
+}
+
 // `amount` is only meaningful when marking paid (the Dashboard's
 // confirm-amount modal, recurring instances only — see
 // confirm-amount-modal.tsx) — it corrects the instance's amount in the same
@@ -133,7 +207,54 @@ export async function setExpensePaid(id: string, paid: boolean, amount?: number)
   } else {
     await store.update(id, { paid, paidDate: paid ? toTimestamp(new Date()) : null });
   }
-  await recomputeIfRecurringInstance(id);
+  const cascaded = await applyExpenseGroupPaidCascade(id, paid);
+  await Promise.all([id, ...cascaded].map((affectedId) => recomputeIfRecurringInstance(affectedId)));
+}
+
+// Stage 18 (FR-21, FR-21a, data-model.md §11) — assigns or clears an
+// expense's group parent. `parentId: null` removes it from its current
+// group (if any). Throws on any single-level violation (self-parenting,
+// grouping under something that's itself a child, or grouping something
+// that already has its own children) — the UI's picker (eligibleGroupParents)
+// is expected to only ever offer valid choices, so this is a defensive
+// guard, not the primary UX validation.
+export async function setExpenseGroupParent(id: string, parentId: string | null) {
+  const items = store.useStore.getState().items;
+  const record = items.find((item) => item.id === id);
+  if (!record) throw new Error(`expenses store: setExpenseGroupParent(${id}) — not found`);
+
+  if (parentId !== null && !canGroupUnder(items, id, parentId)) {
+    throw new Error(`expenses store: setExpenseGroupParent(${id}) — cannot group under ${parentId}`);
+  }
+
+  const previousParentId = record.parentExpenseId;
+  await store.update(id, { parentExpenseId: parentId });
+
+  // Membership changed — recompute whichever parent(s) it affects (the one
+  // it left, the one it joined) from the pre-write snapshot, substituting
+  // `record`'s own current paid value for itself rather than re-reading
+  // store state (same race as applyExpenseGroupPaidCascade above). At most
+  // two independent parents, so they're recomputed concurrently rather
+  // than one after another.
+  const affectedParentIds = [previousParentId, parentId].filter(
+    (candidateId, index, all): candidateId is string => candidateId !== null && all.indexOf(candidateId) === index,
+  );
+  const recomputed = (
+    await Promise.all(
+      affectedParentIds.map(async (affectedParentId) => {
+        const parent = items.find((item) => item.id === affectedParentId);
+        if (!parent) return null;
+        const siblingsExcludingSelf = findActiveChildren(items, affectedParentId).filter((item) => item.id !== id);
+        const selfIsNowAChildHere = parentId === affectedParentId && record.lifecycleState === 'active';
+        const currentChildren = selfIsNowAChildHere ? [...siblingsExcludingSelf, record] : siblingsExcludingSelf;
+        const parentShouldBePaid =
+          currentChildren.length > 0 && computeParentPaidFromChildren(currentChildren);
+        const wrote = await writeParentPaidIfChanged(affectedParentId, parent.paid, parentShouldBePaid);
+        return wrote ? affectedParentId : null;
+      }),
+    )
+  ).filter((affectedId): affectedId is string => affectedId !== null);
+  await Promise.all(recomputed.map((affectedId) => recomputeIfRecurringInstance(affectedId)));
 }
 
 // Recurring-instance only (Stage 8, Payments Dashboard) — see
@@ -167,6 +288,11 @@ export type ExpenseInstanceInput = {
   exchangeRateToDefault: number;
   budgetedAmount: number;
   budgetedCurrency: CurrencyCode;
+  // Stage 18 (FR-21c) — set by recurring-generation.ts when the definition
+  // has a defaultParentRecurringExpenseId, synthesized as that parent
+  // definition's own deterministic instance ID for this same cycle (no
+  // lookup needed, see recurring-generation.ts). null = ungrouped.
+  parentExpenseId?: string | null;
 };
 
 // Deterministic-ID write for recurring-instance generation (Stage 6b) — see
@@ -192,6 +318,7 @@ export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
     amount: null,
     paid: false,
     paidDate: null,
+    parentExpenseId: input.parentExpenseId ?? null,
     skipped: false,
     skippedAt: null,
     lifecycleState: 'active',
@@ -207,6 +334,10 @@ export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
 // actual state-machine math shared across expenses/incomes/recurring
 // definitions. Applies to both one-time and recurring-instance rows
 // (independent per-document, never cascaded from the parent definition).
+// Plain transition only — a record with active children (Stage 18, FR-21e)
+// should go through archiveOrTrashExpenseGroup below instead, once the
+// caller has confirmed cascade-vs-detach with the user; see
+// findActiveChildren for how a caller checks this ahead of time.
 export function archiveExpense(id: string) {
   return store.update(id, archiveTransition(new Date()));
 }
@@ -221,21 +352,80 @@ export function trashExpense(id: string) {
   );
 }
 
+// Stage 18 (FR-21e, data-model.md §11) — archiving/trashing a record that
+// has active children is not a plain transition. `mode: 'cascade'` applies
+// the same transition to every active child too; `mode: 'detach'` clears
+// parentExpenseId on every child first (so they stay independent and
+// active), then transitions the parent alone. One function backs both the
+// Archive and Delete-to-trash OverflowMenu actions (`transition` picks
+// which) rather than duplicating the child-handling logic twice.
+export async function archiveOrTrashExpenseGroup(
+  id: string,
+  transition: 'archive' | 'trash',
+  mode: 'cascade' | 'detach',
+) {
+  const items = store.useStore.getState().items;
+  const children = findActiveChildren(items, id);
+  const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
+
+  function transitionPatch(currentLifecycleState: ArchivableState) {
+    return transition === 'archive'
+      ? archiveTransition(new Date())
+      : trashTransition(currentLifecycleState, new Date(), trashRetentionDays);
+  }
+
+  // The parent's own transition and the children's writes (detach, or
+  // their own cascade transition) touch independent documents with no
+  // dependency between them, so they all go out together rather than
+  // waiting on each other.
+  const record = items.find((item) => item.id === id);
+  const parentWrite = store.update(id, transitionPatch((record?.lifecycleState as ArchivableState) ?? 'active'));
+  const childWrites =
+    mode === 'detach'
+      ? children.map((child) => store.update(child.id, { parentExpenseId: null }))
+      : children.map((child) => store.update(child.id, transitionPatch(child.lifecycleState as ArchivableState)));
+
+  await Promise.all([parentWrite, ...childWrites]);
+}
+
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
 // real screen in Stage 17. Exercised by unit tests in the meantime.
 //
-// Deliberately not `async` — the not-currently-trashed guard below needs to
-// throw synchronously (matching trashExpense/trashRecurringExpense's same
-// guard idiom), which an `async function` can't do: it converts every throw,
-// even one before the first `await`, into a rejected Promise instead.
+// Deliberately not `async` — the not-currently-archived-or-trashed guard
+// below needs to throw synchronously (matching trashExpense/
+// trashRecurringExpense's same guard idiom), which an `async function`
+// can't do: it converts every throw, even one before the first `await`,
+// into a rejected Promise instead.
+//
+// FR-21g (data-model.md §11, Stage 18): also restores any active-group
+// child still sitting in the same non-active lifecycleState under this
+// record, each through its own restoreTransition (its own
+// trashedFromState) — a group archived/trashed together comes back
+// together. This is also where the restoreTransition bug fix (see that
+// function's comment) actually matters: restoring a merely-archived
+// (never-trashed) record now works instead of throwing.
 export function restoreExpense(id: string) {
-  const expense = store.useStore.getState().items.find((item) => item.id === id);
-  if (!expense?.trashedFromState) {
-    throw new Error(`expenses store: restoreExpense(${id}) — not currently trashed`);
+  const items = store.useStore.getState().items;
+  const expense = items.find((item) => item.id === id);
+  if (!expense || expense.lifecycleState === 'active') {
+    throw new Error(`expenses store: restoreExpense(${id}) — not currently archived or trashed`);
   }
-  return store
-    .update(id, restoreTransition(expense.trashedFromState, expense.archivedAt))
-    .then(() => recomputeIfRecurringInstance(id));
+  const nonActiveChildren = items.filter(
+    (item) => item.parentExpenseId === id && item.lifecycleState !== 'active',
+  );
+  // Parent and children are independent documents with no write-order
+  // dependency, so they go in one Promise.all rather than awaiting the
+  // parent before starting the children.
+  return Promise.all([
+    store.update(id, restoreTransition(expense as RestorableRecord)),
+    ...nonActiveChildren.map((child) => store.update(child.id, restoreTransition(child as RestorableRecord))),
+  ]).then(() =>
+    Promise.all(
+      [id, ...nonActiveChildren.map((child) => child.id)].map((affectedId) =>
+        recomputeIfRecurringInstance(affectedId),
+      ),
+    ),
+  );
 }
 
 export function purgeExpense(id: string) {

@@ -70,6 +70,22 @@
       "category": "Categoría"
     }
   },
+  "grouping": {
+    "addToGroup": "Agregar a grupo…",
+    "removeFromGroup": "Quitar del grupo",
+    "pickerTitle": "Agregar a grupo",
+    "pickerEmpty": "No hay nada disponible para agrupar.",
+    "partOf": "Parte de {{name}}",
+    "groupedSubtotal_one": "{{count}} agrupado: {{amount}}",
+    "groupedSubtotal_other": "{{count}} agrupados: {{amount}}",
+    "cascadeArchiveTitle": "¿Archivar \"{{name}}\" y su grupo?",
+    "cascadeTrashTitle": "¿Enviar \"{{name}}\" y su grupo a la papelera?",
+    "cascadeIntro_one": "Este gasto tiene 1 elemento agrupado con él:",
+    "cascadeIntro_other": "Este gasto tiene {{count}} elementos agrupados con él:",
+    "cascadeArchiveAll": "Archivar todo",
+    "cascadeTrashAll": "Enviar todo a la papelera",
+    "detachAndApply": "Solo \"{{name}}\" (separar los demás)"
+  },
   "nav": {
     "payments": "Panel",
     "expenses": "Gastos",
@@ -243,7 +259,9 @@
     "form": {
       "namePlaceholder": "p. ej. Alquiler",
       "amountPlaceholder": "0.00",
-      "dueDayOfMonth": "Día de vencimiento del mes"
+      "dueDayOfMonth": "Día de vencimiento del mes",
+      "groupParent": "Agrupar con",
+      "groupParentNone": "Ninguno"
     },
     "recommendation": {
       "message": "Promedio 6 meses {{average}} vs presupuestado {{budgeted}}",

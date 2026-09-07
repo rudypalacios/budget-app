@@ -41,6 +41,9 @@ export default function EditRecurringExpenseScreen() {
       dueDay: Number(values.dueDay),
       currency: values.currency,
       exchangeRateToDefault,
+      // '' is RecurringExpenseForm's NO_GROUP_PARENT sentinel (Select<string>
+      // can't hold null) — converted back to null at this store boundary.
+      defaultParentRecurringExpenseId: values.defaultParentRecurringExpenseId || null,
     });
     router.back();
   }
@@ -51,6 +54,7 @@ export default function EditRecurringExpenseScreen() {
     categoryId: definition.categoryId,
     dueDay: String(definition.dueDay),
     currency: definition.currency,
+    defaultParentRecurringExpenseId: definition.defaultParentRecurringExpenseId ?? '',
   };
 
   return (
@@ -62,6 +66,7 @@ export default function EditRecurringExpenseScreen() {
         submitLabel={t('common.saveChanges')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
+        editingId={id}
       />
     </ScreenScroll>
   );

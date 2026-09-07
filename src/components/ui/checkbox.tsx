@@ -10,10 +10,14 @@ export type CheckboxProps = {
   accessibilityLabel: string;
 };
 
-// Distinct from Switch (on/off state that takes effect immediately, e.g.
-// paid/archived) — this is a selection control for the Archive/Trash
-// screens' bulk-action checkboxes (Stage 17 feedback round), which only
-// stages rows for a separate explicit bulk action.
+// Originally built as a selection control for the Archive/Trash screens'
+// bulk-action checkboxes (Stage 17 feedback round), which only stage rows
+// for a separate explicit bulk action — but the component itself has no
+// "staged" behavior baked in, it's just a pressable checked/unchecked box,
+// so the Payments Dashboard also reuses it directly for the immediate
+// paid/received toggle (Stage 18 feedback: the user wanted a checkbox's
+// clear checked/unchecked affordance there instead of Switch's on/off
+// look, in a tree of parent/child grouped rows).
 export function Checkbox({ checked, onValueChange, accessibilityLabel }: CheckboxProps) {
   const theme = useTheme();
 

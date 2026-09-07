@@ -1,5 +1,5 @@
 import { getCurrentCycleRange } from './cycle';
-import { buildPaymentRows, groupPaymentRows } from './payments-dashboard';
+import { buildPaymentRows, groupPaymentRows, orderRowsWithGroupedChildren, type PaymentRow } from './payments-dashboard';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type {
   ExpenseRecord,
@@ -37,6 +37,7 @@ function oneTimeExpense(overrides: Partial<WithId<OneTimeExpense>> = {}): WithId
     amount: 100,
     paid: false,
     paidDate: null,
+    parentExpenseId: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
@@ -67,6 +68,7 @@ function recurringExpenseInstance(
     amount: null,
     paid: false,
     paidDate: null,
+    parentExpenseId: null,
     skipped: false,
     skippedAt: null,
     lifecycleState: 'active',
@@ -363,5 +365,96 @@ describe('groupPaymentRows', () => {
     const allIds = [...overdueUnpaid, ...upcomingUnpaid, ...completedThisCycle].map((r) => r.id);
     expect(allIds.sort()).toEqual(['overdue-1', 'paid-1', 'upcoming-1']);
     expect(new Set(allIds).size).toBe(allIds.length);
+  });
+});
+
+function paymentRow(overrides: Partial<PaymentRow> & { id: string }): PaymentRow {
+  return {
+    direction: 'expense',
+    kind: 'oneTime',
+    name: overrides.id,
+    categoryId: 'cat-1',
+    date: new Date(2026, 6, 1),
+    amount: 100,
+    currency: 'GTQ',
+    amountInDefaultCurrency: 100,
+    paid: false,
+    paidDate: null,
+    skipped: false,
+    skippedAt: null,
+    parentExpenseId: null,
+    parentIsAdjacentInBucket: false,
+    isLastAdjacentSibling: false,
+    ...overrides,
+  };
+}
+
+describe('orderRowsWithGroupedChildren (Stage 18, FR-21f)', () => {
+  it('moves a child to sit directly after its parent, regardless of date order', () => {
+    const rows = [
+      paymentRow({ id: 'netflix', parentExpenseId: 'card', date: new Date(2026, 6, 1) }),
+      paymentRow({ id: 'other', date: new Date(2026, 6, 5) }),
+      paymentRow({ id: 'card', date: new Date(2026, 6, 10) }),
+    ];
+
+    // Plain date sort would be netflix, other, card — grouping should
+    // instead pull netflix to sit right after card.
+    expect(orderRowsWithGroupedChildren(rows).map((r) => r.id)).toEqual(['other', 'card', 'netflix']);
+  });
+
+  it('keeps multiple children in their original relative order under the parent', () => {
+    const rows = [
+      paymentRow({ id: 'card', date: new Date(2026, 6, 1) }),
+      paymentRow({ id: 'netflix', parentExpenseId: 'card', date: new Date(2026, 6, 2) }),
+      paymentRow({ id: 'disney', parentExpenseId: 'card', date: new Date(2026, 6, 3) }),
+    ];
+
+    expect(orderRowsWithGroupedChildren(rows).map((r) => r.id)).toEqual(['card', 'netflix', 'disney']);
+  });
+
+  it('leaves a child in its own sorted position when its parent is not in this same list', () => {
+    // e.g. the parent already moved to a different status bucket (paid)
+    // while this child is still unpaid — nothing to nest it under here.
+    const rows = [
+      paymentRow({ id: 'netflix', parentExpenseId: 'card-not-in-this-bucket', date: new Date(2026, 6, 1) }),
+      paymentRow({ id: 'other', date: new Date(2026, 6, 5) }),
+    ];
+
+    expect(orderRowsWithGroupedChildren(rows).map((r) => r.id)).toEqual(['netflix', 'other']);
+  });
+
+  it('never drops or duplicates a row', () => {
+    const rows = [
+      paymentRow({ id: 'a' }),
+      paymentRow({ id: 'b', parentExpenseId: 'a' }),
+      paymentRow({ id: 'c' }),
+      paymentRow({ id: 'd', parentExpenseId: 'c' }),
+    ];
+
+    const orderedIds = orderRowsWithGroupedChildren(rows).map((r) => r.id);
+    expect(orderedIds.sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(new Set(orderedIds).size).toBe(4);
+  });
+
+  it('stamps parentIsAdjacentInBucket and isLastAdjacentSibling so the UI never has to re-derive them', () => {
+    const rows = [
+      paymentRow({ id: 'card' }),
+      paymentRow({ id: 'netflix', parentExpenseId: 'card' }),
+      paymentRow({ id: 'disney', parentExpenseId: 'card' }),
+    ];
+
+    const ordered = orderRowsWithGroupedChildren(rows);
+    const byId = new Map(ordered.map((row) => [row.id, row]));
+
+    expect(byId.get('card')?.parentIsAdjacentInBucket).toBe(false);
+    expect(byId.get('netflix')?.parentIsAdjacentInBucket).toBe(true);
+    expect(byId.get('netflix')?.isLastAdjacentSibling).toBe(false);
+    expect(byId.get('disney')?.isLastAdjacentSibling).toBe(true);
+  });
+
+  it('leaves parentIsAdjacentInBucket false for a child whose parent is not in this bucket', () => {
+    const rows = [paymentRow({ id: 'netflix', parentExpenseId: 'card-elsewhere' })];
+
+    expect(orderRowsWithGroupedChildren(rows)[0].parentIsAdjacentInBucket).toBe(false);
   });
 });

@@ -33,6 +33,9 @@ export type ExpenseDefinitionForGeneration = {
   amount: number;
   dueDay: number;
   startDate: Date;
+  // Stage 18 (FR-21c, data-model.md §11) — "Agrupar con" default; null =
+  // ungrouped.
+  defaultParentRecurringExpenseId: string | null;
 };
 
 export type IncomeDefinitionForGeneration = {
@@ -72,6 +75,17 @@ export async function generateExpenseInstancesForDefinition(
       exchangeRateToDefault: definition.exchangeRateToDefault,
       budgetedAmount: definition.amount,
       budgetedCurrency: definition.currency,
+      // Stage 18 (FR-21c) — synthesized directly from the parent
+      // definition's own deterministic instance ID for this same cycle, no
+      // lookup/query needed (data-model.md §6/§9's ID scheme): even if the
+      // parent definition's own instance for this cycle hasn't been written
+      // yet by this same generation pass, the ID it *will* have is already
+      // known. Forward-only by construction — this only ever runs for a
+      // newly generated instance, never rewrites an existing one (see the
+      // setAt idempotency note above).
+      parentExpenseId: definition.defaultParentRecurringExpenseId
+        ? `${definition.defaultParentRecurringExpenseId}_${formatYearMonth(date)}`
+        : null,
     });
   }
 }
@@ -137,6 +151,7 @@ export async function runRecurringGeneration(uid: string): Promise<void> {
           amount: definition.amount,
           dueDay: definition.dueDay,
           startDate: definition.startDate.toDate(),
+          defaultParentRecurringExpenseId: definition.defaultParentRecurringExpenseId,
         },
         now,
       );

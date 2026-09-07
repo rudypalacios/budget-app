@@ -32,20 +32,23 @@ export type PaymentRow = {
   paidDate: Date | null;
   skipped: boolean;
   skippedAt: Date | null;
+  // Stage 18 (FR-21, data-model.md §11) — grouping is expenses-only, so
+  // this is always null on an income row.
+  parentExpenseId: string | null;
+  // Stage 18 (FR-21f) — bucket-local tree-connector info, set only by
+  // orderRowsWithGroupedChildren below (buildPaymentRows has no bucket
+  // concept yet, so every row starts with both false). Lets the UI render
+  // the connector without re-deriving parent/sibling adjacency itself.
+  parentIsAdjacentInBucket: boolean;
+  isLastAdjacentSibling: boolean;
 };
 
-export function buildPaymentRows(
-  expenses: WithId<ExpenseRecord>[],
-  incomes: WithId<IncomeRecord>[],
-): PaymentRow[] {
-  // Archived/trashed records are hidden from every normal view (FR-4a) —
-  // filtered here, upstream of the overdue/upcoming/completed grouping
-  // below, so archive/delete removes a row the same way paying/skipping
-  // moves it, without either group needing its own lifecycleState check.
-  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
-  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
-
-  const expenseRows: PaymentRow[] = activeExpenses.map((expense) => ({
+// Extracted from buildPaymentRows so other call sites that need a single
+// expense converted to this dashboard's row shape (e.g. the Stage 18
+// follow-up amount-confirmation queue in (tabs)/index.tsx, for a child
+// just cascaded to paid) don't duplicate the field mapping.
+export function expenseToPaymentRow(expense: WithId<ExpenseRecord>): PaymentRow {
+  return {
     id: expense.id,
     direction: 'expense',
     kind: expense.kind,
@@ -60,7 +63,24 @@ export function buildPaymentRows(
     skipped: expense.kind === 'recurringInstance' ? expense.skipped : false,
     skippedAt:
       expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
-  }));
+    parentExpenseId: expense.parentExpenseId,
+    parentIsAdjacentInBucket: false,
+    isLastAdjacentSibling: false,
+  };
+}
+
+export function buildPaymentRows(
+  expenses: WithId<ExpenseRecord>[],
+  incomes: WithId<IncomeRecord>[],
+): PaymentRow[] {
+  // Archived/trashed records are hidden from every normal view (FR-4a) —
+  // filtered here, upstream of the overdue/upcoming/completed grouping
+  // below, so archive/delete removes a row the same way paying/skipping
+  // moves it, without either group needing its own lifecycleState check.
+  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
+  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
+
+  const expenseRows: PaymentRow[] = activeExpenses.map(expenseToPaymentRow);
 
   const incomeRows: PaymentRow[] = activeIncomes.map((income) => ({
     id: income.id,
@@ -76,6 +96,9 @@ export function buildPaymentRows(
     paidDate: income.paidDate ? income.paidDate.toDate() : null,
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,
     skippedAt: income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
+    parentExpenseId: null,
+    parentIsAdjacentInBucket: false,
+    isLastAdjacentSibling: false,
   }));
 
   return [...expenseRows, ...incomeRows];
@@ -139,5 +162,57 @@ export function groupPaymentRows(
     return bTime - aTime;
   });
 
-  return { overdueUnpaid, upcomingUnpaid, completedThisCycle };
+  return {
+    overdueUnpaid: orderRowsWithGroupedChildren(overdueUnpaid),
+    upcomingUnpaid: orderRowsWithGroupedChildren(upcomingUnpaid),
+    completedThisCycle: orderRowsWithGroupedChildren(completedThisCycle),
+  };
+}
+
+// Stage 18 (FR-21f, data-model.md §11/§13) — visually nests a group's
+// children directly under their parent, Google-Keep-style, instead of
+// leaving them wherever plain date/action-timestamp sort happened to put
+// them. Applied *within* each already-sorted bucket, never across
+// buckets: a child only moves next to its parent when both landed in the
+// same bucket (e.g. both still unpaid-and-overdue, or both paid this
+// cycle) — a child whose parent is unpaid while it's already paid (or vice
+// versa) keeps its own natural sorted position in its own bucket, since
+// there's no parent row present there to nest under. This mirrors how a
+// Keep list's checked items move together as a group once the whole group
+// is checked, but a lone checked sub-item without its parent doesn't drag
+// the (still-unchecked) parent along with it.
+export function orderRowsWithGroupedChildren(rows: PaymentRow[]): PaymentRow[] {
+  const idsInThisBucket = new Set(rows.map((row) => row.id));
+  const childrenByParentId = new Map<string, PaymentRow[]>();
+  for (const row of rows) {
+    if (row.direction === 'expense' && row.parentExpenseId && idsInThisBucket.has(row.parentExpenseId)) {
+      const siblings = childrenByParentId.get(row.parentExpenseId) ?? [];
+      siblings.push(row);
+      childrenByParentId.set(row.parentExpenseId, siblings);
+    }
+  }
+  const consumedChildIds = new Set(Array.from(childrenByParentId.values()).flat().map((row) => row.id));
+
+  const ordered: PaymentRow[] = [];
+  for (const row of rows) {
+    if (consumedChildIds.has(row.id)) continue; // placed right after its parent below instead
+    ordered.push(row);
+    const children = childrenByParentId.get(row.id);
+    if (children) {
+      // Stamped here (not by the caller) since this is the one place that
+      // already knows both facts: the parent is in this bucket (that's
+      // exactly what qualified `children` for childrenByParentId above),
+      // and each child's position among the siblings it's actually
+      // adjacent to here — a UI rendering these rows shouldn't need to
+      // re-derive either from scratch.
+      children.forEach((child, index) => {
+        ordered.push({
+          ...child,
+          parentIsAdjacentInBucket: true,
+          isLastAdjacentSibling: index === children.length - 1,
+        });
+      });
+    }
+  }
+  return ordered;
 }
