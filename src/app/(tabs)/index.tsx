@@ -24,7 +24,7 @@ import { categoryDisplayName } from '@/lib/category-display';
 import { computeGroupedSubtotal, eligibleGroupParents, findActiveChildren } from '@/lib/expense-grouping';
 import { formatCurrency, formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
-import type { PaymentRow } from '@/lib/payments-dashboard';
+import { expenseToPaymentRow, type PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
 import {
   archiveExpense,
@@ -116,6 +116,15 @@ export default function PaymentsScreen() {
   // one-time row's amount is already exact and not in question, so it keeps
   // the instant one-tap toggle (see togglePaid).
   const [confirmRow, setConfirmRow] = useState<PaymentRow | null>(null);
+  // Stage 18 (FR-21b) — follow-up confirm-amount queue for expenses that
+  // just got cascaded to paid (a group parent's active recurringInstance
+  // children, when the parent was the one directly toggled) — see
+  // queuePendingChildConfirmations. A cascaded child is populated into this
+  // queue only *after* the cascade actually happened (from confirmRow's own
+  // onSave, or right after a plain togglePaid on a one-time parent), never
+  // upfront — discarding confirmRow itself must never leave stale entries
+  // here for children that were never actually marked paid.
+  const [childAmountQueue, setChildAmountQueue] = useState<PaymentRow[]>([]);
   // Stage 18 (FR-21, data-model.md §11) — "Add to group..." picker and the
   // archive/trash cascade-or-detach confirmation. Both only ever apply to
   // expense rows (income isn't groupable).
@@ -124,10 +133,29 @@ export default function PaymentsScreen() {
     null,
   );
 
+  // FR-21b — every active recurringInstance child that's about to be (or
+  // was just) swept to paid by the group cascade also gets its own amount
+  // confirmation, same as if the user had tapped its switch directly; a
+  // cascade shouldn't silently skip the same validation a direct toggle
+  // gets. Reads `expenses` (this render's snapshot) before the cascade
+  // this call is following has landed back through the listener — that's
+  // fine here since it's only used to decide *which* children need
+  // confirming, not to read a value the cascade itself is writing.
+  function queuePendingChildConfirmations(row: PaymentRow) {
+    if (row.direction !== 'expense') return;
+    const pending = findActiveChildren(expenses, row.id)
+      .filter((child) => child.kind === 'recurringInstance' && !child.paid)
+      .map(expenseToPaymentRow);
+    if (pending.length > 0) setChildAmountQueue(pending);
+  }
+
   function handleTogglePaid(row: PaymentRow) {
     const nextPaid = !row.paid;
     if (nextPaid && row.kind === 'recurringInstance') {
       setConfirmRow(row);
+    } else if (nextPaid) {
+      togglePaid(row);
+      queuePendingChildConfirmations(row);
     } else {
       togglePaid(row);
     }
@@ -251,7 +279,14 @@ export default function PaymentsScreen() {
                   <View
                     style={[
                       styles.row,
-                      isGroupChild && styles.rowChild,
+                      // Stage 18 (FR-21f) — the grouping cue marks the whole
+                      // card, not just the title text: indent + a colored
+                      // left rail spanning the row's full height, so it
+                      // reads as "this whole record is a sub-item" at a
+                      // glance (caught in the user's own review — the first
+                      // pass only prefixed the name line with the "└─▸"
+                      // text, easy to miss against a normal row).
+                      isGroupChild && [styles.rowChild, { borderLeftColor: theme.tint }],
                       // Overdue rows get a full-row danger tint (same
                       // translucent-wash convention as Chip's tone colors)
                       // so an overdue bill reads as urgent at a glance, not
@@ -384,9 +419,32 @@ export default function PaymentsScreen() {
           initialAmount={confirmRow.amount}
           onSave={(amount) => {
             confirmMarkPaid(confirmRow, amount);
+            // Only queue follow-up child confirmations once this row is
+            // actually confirmed paid — the cascade it depends on hasn't
+            // happened at all if this gets discarded instead.
+            queuePendingChildConfirmations(confirmRow);
             setConfirmRow(null);
           }}
           onDiscard={() => setConfirmRow(null)}
+        />
+      )}
+      {/* Stage 18 (FR-21b) — follow-up queue: these children were already
+          cascaded to paid by the time this shows (see
+          queuePendingChildConfirmations), so "discard" here means "keep the
+          amount as cascaded," never "undo the payment" — unlike confirmRow
+          above, where discard means the row never gets marked paid at all. */}
+      {childAmountQueue.length > 0 && (
+        <ConfirmAmountModal
+          key={childAmountQueue[0].id}
+          isOpen
+          title={t('payments.confirmAmount.title', { name: childAmountQueue[0].name })}
+          currency={childAmountQueue[0].currency}
+          initialAmount={childAmountQueue[0].amount}
+          onSave={(amount) => {
+            confirmMarkPaid(childAmountQueue[0], amount);
+            setChildAmountQueue((queue) => queue.slice(1));
+          }}
+          onDiscard={() => setChildAmountQueue((queue) => queue.slice(1))}
         />
       )}
       {groupPickerRow && (
@@ -448,7 +506,9 @@ const styles = StyleSheet.create({
   // Stage 18 (FR-21f) — indents a grouped child's row so its "└─▸" name
   // prefix reads as a visual sub-item, not just another top-level row.
   rowChild: {
-    paddingLeft: Spacing.two + Spacing.four,
+    paddingLeft: Spacing.two + Spacing.three,
+    borderLeftWidth: 3,
+    // borderLeftColor set inline (theme.tint) — see the row's style array.
   },
   rowMain: {
     flex: 1,

@@ -156,7 +156,24 @@ async function applyExpenseGroupPaidCascade(id: string, paid: boolean): Promise<
 
   const children = findActiveChildren(items, id);
   if (children.length > 0) {
-    await Promise.all(children.map((child) => store.update(child.id, { paid, paidDate })));
+    await Promise.all(
+      children.map((child) => {
+        // Mirrors setExpensePaid's own single-row convention: marking paid
+        // also clears a recurring instance's skipped state (an occurrence
+        // you just paid is, by definition, no longer one you're choosing
+        // not to pay this period — data-model.md §12). Cascaded children
+        // need the same treatment, not just the row the user directly
+        // toggled.
+        const clearsSkip = paid && child.kind === 'recurringInstance' && child.skipped;
+        // Same cast as setExpenseSkipped above — Omit<ExpenseRecord, ...>
+        // doesn't distribute skipped/skippedAt (RecurringExpenseInstance-
+        // only) across the OneTimeExpense | RecurringExpenseInstance union.
+        const patch = (
+          clearsSkip ? { paid, paidDate, skipped: false, skippedAt: null } : { paid, paidDate }
+        ) as Partial<Omit<ExpenseRecord, 'createdAt' | 'updatedAt'>>;
+        return store.update(child.id, patch);
+      }),
+    );
     touched.push(...children.map((child) => child.id));
   }
 

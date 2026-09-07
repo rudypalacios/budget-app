@@ -1111,3 +1111,53 @@ non-active children.
 - Committed to branch `claude/expense-grouping-categories-bxu05n` (off
   `develop`), commit `123fcf3`, clean tree. Not merged — per the standing
   convention, that's the user's call.
+
+### Post-Stage-18 review round (live QA feedback)
+
+Three more issues surfaced from the user's own manual QA pass on web,
+beyond the visual-nesting fix already covered above:
+
+1. **Confirm-amount validation was silently skipped for cascaded
+   children** — marking a group's parent paid on the Dashboard cascades
+   `paid`/`paidDate` straight into `store.update()` for every active
+   child (`applyExpenseGroupPaidCascade`, `src/store/expenses.ts`),
+   bypassing `ConfirmAmountModal` entirely for any child that's a
+   `recurringInstance` — the same validation a direct single-row toggle
+   always gets. Fixed with a follow-up queue in `(tabs)/index.tsx`
+   (`childAmountQueue`/`queuePendingChildConfirmations`): after the row
+   the user actually toggled is confirmed (or, for a one-time parent,
+   immediately after `togglePaid`), every active `recurringInstance`
+   child that the cascade just swept to paid gets its own
+   `ConfirmAmountModal` in sequence. Deliberately populated only *after*
+   the cascade has actually happened (never upfront) — discarding the
+   first row must not leave stale entries queued for children that were
+   never actually marked paid. `ConfirmAmountModal`'s "Discard" is reused
+   as-is for both cases; its meaning is now context-dependent (documented
+   in the component's own comment) — "don't mark paid" for the row not
+   yet paid, "keep the cascaded amount" for an already-cascaded child.
+   Also fixed a smaller gap found in the same code path:
+   `applyExpenseGroupPaidCascade` wasn't clearing `skipped`/`skippedAt` on
+   a cascaded child the way the single-row `setExpensePaid`/`togglePaid`
+   convention already does (data-model.md §12) — now it does.
+2. **The grouping cue only marked the row's title text, not the whole
+   card** — raised with a reference screenshot. Added a themed
+   (`theme.tint`) left accent border spanning the full row height on a
+   grouped child (`styles.rowChild` in `(tabs)/index.tsx`), alongside the
+   existing indent and `"└─▸"`/`"├─▸"` name prefix, so the whole card
+   reads as a sub-item, not just its first line.
+3. **Whether a group parent's own amount should ever add its children's
+   subtotal on top of itself (e.g. parent 1000 + children 400 = 1400) —
+   open question, not yet resolved.** The user's own follow-up
+   clarification suggests the two scenarios discussed earlier (Tarjeta:
+   parent is a real independent total, e.g. a credit card statement,
+   never added to; a split payment to one person: three real amounts
+   that get settled together) may both already be served by the existing
+   design — picking one of the three as the group parent (its own real
+   amount, not a synthetic total) with the other two as children, where
+   the already-existing "N agrupados: subtotal" caption is the combined
+   figure — with no code change needed. Asked the user to confirm before
+   building anything for this one; do not add an amount-summing mode
+   without their answer.
+
+tsc/lint/tests after this round: clean, 25/25 suites, 225/225 tests (1
+new — the skipped-clearing cascade test).

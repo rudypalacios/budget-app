@@ -37,18 +37,12 @@ export type PaymentRow = {
   parentExpenseId: string | null;
 };
 
-export function buildPaymentRows(
-  expenses: WithId<ExpenseRecord>[],
-  incomes: WithId<IncomeRecord>[],
-): PaymentRow[] {
-  // Archived/trashed records are hidden from every normal view (FR-4a) —
-  // filtered here, upstream of the overdue/upcoming/completed grouping
-  // below, so archive/delete removes a row the same way paying/skipping
-  // moves it, without either group needing its own lifecycleState check.
-  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
-  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
-
-  const expenseRows: PaymentRow[] = activeExpenses.map((expense) => ({
+// Extracted from buildPaymentRows so other call sites that need a single
+// expense converted to this dashboard's row shape (e.g. the Stage 18
+// follow-up amount-confirmation queue in (tabs)/index.tsx, for a child
+// just cascaded to paid) don't duplicate the field mapping.
+export function expenseToPaymentRow(expense: WithId<ExpenseRecord>): PaymentRow {
+  return {
     id: expense.id,
     direction: 'expense',
     kind: expense.kind,
@@ -64,7 +58,21 @@ export function buildPaymentRows(
     skippedAt:
       expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
     parentExpenseId: expense.parentExpenseId,
-  }));
+  };
+}
+
+export function buildPaymentRows(
+  expenses: WithId<ExpenseRecord>[],
+  incomes: WithId<IncomeRecord>[],
+): PaymentRow[] {
+  // Archived/trashed records are hidden from every normal view (FR-4a) —
+  // filtered here, upstream of the overdue/upcoming/completed grouping
+  // below, so archive/delete removes a row the same way paying/skipping
+  // moves it, without either group needing its own lifecycleState check.
+  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
+  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
+
+  const expenseRows: PaymentRow[] = activeExpenses.map(expenseToPaymentRow);
 
   const incomeRows: PaymentRow[] = activeIncomes.map((income) => ({
     id: income.id,

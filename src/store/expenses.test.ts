@@ -186,6 +186,30 @@ describe('setExpensePaid group cascade (Stage 18, FR-21b)', () => {
     expect(mockUpdateDoc).not.toHaveBeenCalledWith('users/test-uid/expenses/old', expect.anything());
   });
 
+  it('clears skipped/skippedAt on a cascaded recurring-instance child, mirroring the single-row convention', async () => {
+    useExpensesStore.setState({
+      items: [
+        { id: 'card', kind: 'oneTime', parentExpenseId: null, lifecycleState: 'active', paid: false } as never,
+        {
+          id: 'netflix',
+          kind: 'recurringInstance',
+          parentExpenseId: 'card',
+          lifecycleState: 'active',
+          paid: false,
+          skipped: true,
+          skippedAt: {} as never,
+        } as never,
+      ],
+    });
+
+    await setExpensePaid('card', true);
+
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      'users/test-uid/expenses/netflix',
+      expect.objectContaining({ paid: true, skipped: false, skippedAt: null }),
+    );
+  });
+
   it('cascades unmarking the parent to every active child', async () => {
     useExpensesStore.setState({
       items: [
