@@ -9,13 +9,8 @@ import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput } from '@/lib/currency-input';
-import { eligibleGroupParents } from '@/lib/expense-grouping';
 import { useCategoriesStore } from '@/store/categories';
-import { useRecurringExpensesStore } from '@/store/recurring-expenses';
 import type { CurrencyCode } from '@/types/firestore';
-
-// Sentinel for Select<string>'s non-nullable value — "no group parent".
-const NO_GROUP_PARENT = '';
 
 export type RecurringExpenseFormValues = {
   name: string;
@@ -23,10 +18,6 @@ export type RecurringExpenseFormValues = {
   categoryId: string;
   dueDay: string;
   currency: CurrencyCode;
-  // Stage 18 (FR-21c, data-model.md §11) — "Agrupar con" default; empty
-  // string is the NO_GROUP_PARENT sentinel, converted to/from null at the
-  // store boundary (see recurring-expenses/[id]/edit.tsx).
-  defaultParentRecurringExpenseId: string;
 };
 
 export type RecurringExpenseFormProps = {
@@ -38,10 +29,6 @@ export type RecurringExpenseFormProps = {
   // currency/rate stay genuinely editable here (data-model.md §5: a "live
   // template", re-editable), unlike the one-time/instance forms.
   defaultCurrency: CurrencyCode;
-  // Editing an existing definition needs its own id excluded from the
-  // "Agrupar con" picker (an expense can't be its own parent) — undefined
-  // on Create, where there's no id yet.
-  editingId?: string;
 };
 
 export function RecurringExpenseForm({
@@ -50,30 +37,12 @@ export function RecurringExpenseForm({
   onSubmit,
   onCancel,
   defaultCurrency,
-  editingId,
 }: RecurringExpenseFormProps) {
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
   );
-  const recurringExpenses = useRecurringExpensesStore((state) => state.items);
-  // Reuses expense-grouping.ts's single-level guard against this store's
-  // own recurringExpenses collection instead of expenses — the shapes line
-  // up (id/lifecycleState + a "which other definition is this grouped
-  // under" field), just named defaultParentRecurringExpenseId here rather
-  // than parentExpenseId.
-  const groupParentOptions = editingId
-    ? eligibleGroupParents(
-        recurringExpenses.map((definition) => ({
-          id: definition.id,
-          name: definition.name,
-          lifecycleState: definition.lifecycleState,
-          parentExpenseId: definition.defaultParentRecurringExpenseId,
-        })),
-        editingId,
-      )
-    : [];
 
   const [values, setValues] = useState<RecurringExpenseFormValues>(
     initialValues ?? {
@@ -82,7 +51,6 @@ export function RecurringExpenseForm({
       categoryId: expenseCategories[0]?.id ?? '',
       dueDay: '1',
       currency: defaultCurrency,
-      defaultParentRecurringExpenseId: NO_GROUP_PARENT,
     },
   );
 
@@ -139,20 +107,6 @@ export function RecurringExpenseForm({
         onChangeText={(dueDay) => setValues((current) => ({ ...current, dueDay }))}
         keyboardType="number-pad"
       />
-
-      {editingId && (
-        <Select
-          label={t('recurringExpense.form.groupParent')}
-          value={values.defaultParentRecurringExpenseId}
-          options={[
-            { value: NO_GROUP_PARENT, label: t('recurringExpense.form.groupParentNone') },
-            ...groupParentOptions.map((definition) => ({ value: definition.id, label: definition.name })),
-          ]}
-          onChange={(defaultParentRecurringExpenseId) =>
-            setValues((current) => ({ ...current, defaultParentRecurringExpenseId }))
-          }
-        />
-      )}
 
       <View style={styles.actionRow}>
         <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />

@@ -70,22 +70,6 @@
       "category": "Category"
     }
   },
-  "grouping": {
-    "addToGroup": "Add to group…",
-    "removeFromGroup": "Remove from group",
-    "pickerTitle": "Add to group",
-    "pickerEmpty": "Nothing available to group with.",
-    "partOf": "Part of {{name}}",
-    "groupedSubtotal_one": "{{count}} grouped: {{amount}}",
-    "groupedSubtotal_other": "{{count}} grouped: {{amount}}",
-    "cascadeArchiveTitle": "Archive \"{{name}}\" and its group?",
-    "cascadeTrashTitle": "Move \"{{name}}\" and its group to Trash?",
-    "cascadeIntro_one": "This expense has 1 item grouped with it:",
-    "cascadeIntro_other": "This expense has {{count}} items grouped with it:",
-    "cascadeArchiveAll": "Archive all",
-    "cascadeTrashAll": "Move all to Trash",
-    "detachAndApply": "Only \"{{name}}\" (ungroup the rest)"
-  },
   "nav": {
     "payments": "Dashboard",
     "expenses": "Expenses",
@@ -259,9 +243,7 @@
     "form": {
       "namePlaceholder": "e.g. Rent",
       "amountPlaceholder": "0.00",
-      "dueDayOfMonth": "Due day of month",
-      "groupParent": "Group with",
-      "groupParentNone": "None"
+      "dueDayOfMonth": "Due day of month"
     },
     "recommendation": {
       "message": "6-month avg {{average}} vs budgeted {{budgeted}}",

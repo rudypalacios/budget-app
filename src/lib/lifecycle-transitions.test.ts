@@ -55,8 +55,8 @@ describe('trashTransition', () => {
 });
 
 describe('restoreTransition', () => {
-  it('restores a trashed-from-active record to active and clears trash fields, with archivedAt null', () => {
-    const result = restoreTransition({ lifecycleState: 'trashed', trashedFromState: 'active', archivedAt: null });
+  it('restores to active and clears trash fields, with archivedAt null', () => {
+    const result = restoreTransition('active', null);
 
     expect(result.lifecycleState).toBe('active');
     expect(result.trashedFromState).toBeNull();
@@ -65,36 +65,14 @@ describe('restoreTransition', () => {
     expect(result.archivedAt).toBeNull();
   });
 
-  it('restores a trashed-from-archived record to archived and preserves the original archivedAt', () => {
+  it('restores to archived and preserves the original archivedAt', () => {
     const originalArchivedAt = new Date(2026, 4, 1) as unknown as Timestamp;
-    const result = restoreTransition({
-      lifecycleState: 'trashed',
-      trashedFromState: 'archived',
-      archivedAt: originalArchivedAt,
-    });
+    const result = restoreTransition('archived', originalArchivedAt);
 
     expect(result.lifecycleState).toBe('archived');
     expect(result.archivedAt).toBe(originalArchivedAt);
     expect(result.trashedFromState).toBeNull();
     expect(result.trashedAt).toBeNull();
     expect(result.purgeAt).toBeNull();
-  });
-
-  it('restores a merely-archived (never trashed) record straight to active — bug fix, see restoreTransition comment', () => {
-    const result = restoreTransition({
-      lifecycleState: 'archived',
-      trashedFromState: null,
-      archivedAt: new Date(2026, 4, 1) as unknown as Timestamp,
-    });
-
-    expect(result.lifecycleState).toBe('active');
-    expect(result.archivedAt).toBeNull();
-    expect(result.trashedFromState).toBeNull();
-    expect(result.trashedAt).toBeNull();
-    expect(result.purgeAt).toBeNull();
-  });
-
-  it('throws if a trashed record is somehow missing trashedFromState', () => {
-    expect(() => restoreTransition({ lifecycleState: 'trashed', trashedFromState: null, archivedAt: null })).toThrow();
   });
 });

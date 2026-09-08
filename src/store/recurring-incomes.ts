@@ -1,5 +1,5 @@
 import { createCollectionStore } from './create-collection-store';
-import { archiveTransition, restoreTransition, trashTransition, type RestorableRecord } from '@/lib/lifecycle-transitions';
+import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
@@ -77,17 +77,12 @@ export function trashRecurringIncome(id: string) {
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a
 // real screen in Stage 17. Exercised by unit tests in the meantime.
-//
-// Restores either a trashed or a merely-archived record — see
-// lifecycle-transitions.ts's restoreTransition comment for the bug this
-// fixed (previously only the trashed case worked; restoring straight from
-// Archive threw for every recurring income definition).
 export function restoreRecurringIncome(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
-  if (!definition || definition.lifecycleState === 'active') {
-    throw new Error(`recurringIncomes store: restoreRecurringIncome(${id}) — not currently archived or trashed`);
+  if (!definition?.trashedFromState) {
+    throw new Error(`recurringIncomes store: restoreRecurringIncome(${id}) — not currently trashed`);
   }
-  return store.update(id, restoreTransition(definition as RestorableRecord));
+  return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
 }
 
 export function purgeRecurringIncome(id: string) {

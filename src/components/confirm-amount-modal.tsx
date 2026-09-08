@@ -23,12 +23,8 @@ export type ConfirmAmountModalProps = {
 // Marking a recurring instance paid/received often needs a quick correction
 // — e.g. a groceries bill budgeted at 1,000 that actually came in at 500 —
 // without a full trip to the edit screen. Prefilled with the budgeted/
-// current amount, editable, Save commits the (possibly edited) amount.
-// Discard's meaning depends on the caller's context — see (tabs)/index.tsx:
-// for a row not yet marked paid, Discard cancels entirely and leaves it
-// unpaid/unreceived; for a group's child already cascaded to paid by its
-// parent (Stage 18, FR-21b's follow-up confirm queue), Discard just keeps
-// the cascaded amount as-is rather than undoing the payment.
+// current amount, editable, Save commits the (possibly edited) amount,
+// Discard cancels entirely and leaves the row unpaid/unreceived.
 export function ConfirmAmountModal({
   isOpen,
   title,

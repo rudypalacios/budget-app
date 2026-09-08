@@ -51,19 +51,7 @@ export default function NewExpenseScreen() {
       if (isOnline) {
         await generateExpenseInstancesForDefinition(
           uid,
-          {
-            id,
-            categoryId,
-            name: values.name,
-            currency,
-            exchangeRateToDefault,
-            amount,
-            dueDay,
-            startDate,
-            // Grouping (Stage 18, FR-21c) is set afterward via Edit — this
-            // creation form doesn't expose the "Agrupar con" picker.
-            defaultParentRecurringExpenseId: null,
-          },
+          { id, categoryId, name: values.name, currency, exchangeRateToDefault, amount, dueDay, startDate },
           new Date(),
         );
       }

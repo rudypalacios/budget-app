@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -11,30 +11,19 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
-import { GroupCascadeDialog } from '@/components/ui/group-cascade-dialog';
-import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import { OverflowMenu, type OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
 import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { categoryDisplayName } from '@/lib/category-display';
-import { computeGroupedSubtotal, eligibleGroupParents, findActiveChildren } from '@/lib/expense-grouping';
-import { formatCurrency, formatCurrencyWithConversion } from '@/lib/format-currency';
+import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
-import { expenseToPaymentRow, type PaymentRow } from '@/lib/payments-dashboard';
+import type { PaymentRow } from '@/lib/payments-dashboard';
 import { useCategoriesStore } from '@/store/categories';
-import {
-  archiveExpense,
-  archiveOrTrashExpenseGroup,
-  setExpenseGroupParent,
-  setExpensePaid,
-  setExpenseSkipped,
-  trashExpense,
-  useExpensesStore,
-} from '@/store/expenses';
+import { archiveExpense, setExpensePaid, setExpenseSkipped, trashExpense } from '@/store/expenses';
 import { archiveIncome, setIncomeReceived, setIncomeSkipped, trashIncome } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import { useSessionStore } from '@/store/session';
@@ -84,10 +73,7 @@ function toggleSkipped(row: PaymentRow) {
 // FR-4a/4b (data-model.md §7) — a generated instance can be archived/
 // trashed independently of its parent recurring definition, same as a
 // one-time record. Applies to both kind values shown on this dashboard.
-// Plain transitions only — a row with active children goes through the
-// cascade dialog instead (Stage 18, FR-21e — see handleArchiveOrTrash in
-// PaymentsScreen below).
-function directArchiveRow(row: PaymentRow) {
+function archiveRow(row: PaymentRow) {
   if (row.direction === 'expense') {
     archiveExpense(row.id);
   } else {
@@ -95,7 +81,7 @@ function directArchiveRow(row: PaymentRow) {
   }
 }
 
-function directTrashRow(row: PaymentRow) {
+function trashRow(row: PaymentRow) {
   if (row.direction === 'expense') {
     trashExpense(row.id);
   } else {
@@ -107,24 +93,6 @@ export default function PaymentsScreen() {
   const { t } = useTranslation();
   const { overdueUnpaid, upcomingUnpaid, completedThisCycle } = usePaymentsDashboard();
   const categories = useCategoriesStore((state) => state.items);
-  const expenses = useExpensesStore((state) => state.items);
-  // Stage 18 (FR-21) — looked up once per `expenses` change instead of once
-  // per row per render: renderGroup below needs a row's parent (by id) and
-  // its active children (by parent id) for every grouped row across all
-  // three status buckets, which previously meant re-scanning the whole
-  // `expenses` array per row via expenses.find()/findActiveChildren().
-  const expensesById = useMemo(() => new Map(expenses.map((expense) => [expense.id, expense])), [expenses]);
-  const activeChildrenByParentId = useMemo(() => {
-    const map = new Map<string, typeof expenses>();
-    for (const expense of expenses) {
-      if (expense.parentExpenseId && expense.lifecycleState === 'active') {
-        const siblings = map.get(expense.parentExpenseId) ?? [];
-        siblings.push(expense);
-        map.set(expense.parentExpenseId, siblings);
-      }
-    }
-    return map;
-  }, [expenses]);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const theme = useTheme();
   const uid = useSessionStore((state) => state.uid);
@@ -133,80 +101,14 @@ export default function PaymentsScreen() {
   // one-time row's amount is already exact and not in question, so it keeps
   // the instant one-tap toggle (see togglePaid).
   const [confirmRow, setConfirmRow] = useState<PaymentRow | null>(null);
-  // Stage 18 (FR-21b) — follow-up confirm-amount queue for expenses that
-  // just got cascaded to paid (a group parent's active recurringInstance
-  // children, when the parent was the one directly toggled) — see
-  // queuePendingChildConfirmations. A cascaded child is populated into this
-  // queue only *after* the cascade actually happened (from confirmRow's own
-  // onSave, or right after a plain togglePaid on a one-time parent), never
-  // upfront — discarding confirmRow itself must never leave stale entries
-  // here for children that were never actually marked paid.
-  const [childAmountQueue, setChildAmountQueue] = useState<PaymentRow[]>([]);
-  // Stage 18 (FR-21, data-model.md §11) — "Add to group..." picker and the
-  // archive/trash cascade-or-detach confirmation. Both only ever apply to
-  // expense rows (income isn't groupable).
-  const [groupPickerRow, setGroupPickerRow] = useState<PaymentRow | null>(null);
-  const [cascadeTarget, setCascadeTarget] = useState<{ row: PaymentRow; transition: 'archive' | 'trash' } | null>(
-    null,
-  );
-
-  // FR-21b — every active recurringInstance child that's about to be (or
-  // was just) swept to paid by the group cascade also gets its own amount
-  // confirmation, same as if the user had tapped its switch directly; a
-  // cascade shouldn't silently skip the same validation a direct toggle
-  // gets. Reads `expenses` (this render's snapshot) before the cascade
-  // this call is following has landed back through the listener — that's
-  // fine here since it's only used to decide *which* children need
-  // confirming, not to read a value the cascade itself is writing.
-  function queuePendingChildConfirmations(row: PaymentRow) {
-    if (row.direction !== 'expense') return;
-    const pending = findActiveChildren(expenses, row.id)
-      .filter((child) => child.kind === 'recurringInstance' && !child.paid)
-      .map(expenseToPaymentRow);
-    if (pending.length > 0) setChildAmountQueue(pending);
-  }
 
   function handleTogglePaid(row: PaymentRow) {
     const nextPaid = !row.paid;
     if (nextPaid && row.kind === 'recurringInstance') {
       setConfirmRow(row);
-    } else if (nextPaid) {
-      togglePaid(row);
-      queuePendingChildConfirmations(row);
     } else {
       togglePaid(row);
     }
-  }
-
-  // Shared by handleArchiveOrTrash and applyGroupTransition below — both
-  // end in the same "toast the right message for this transition" step.
-  function archiveOrTrashToastMessage(transition: 'archive' | 'trash', name: string) {
-    return transition === 'archive' ? t('archive.movedToArchive', { name }) : t('archive.movedToTrash', { name });
-  }
-
-  // FR-21e: a row with active children needs the cascade dialog instead of
-  // a plain transition — checked against the raw expenses store (which,
-  // unlike the dashboard's own rows, includes every lifecycleState, letting
-  // findActiveChildren filter it itself).
-  function handleArchiveOrTrash(row: PaymentRow, transition: 'archive' | 'trash') {
-    if (row.direction === 'expense' && findActiveChildren(expenses, row.id).length > 0) {
-      setCascadeTarget({ row, transition });
-      return;
-    }
-    if (transition === 'archive') {
-      directArchiveRow(row);
-    } else {
-      directTrashRow(row);
-    }
-    showToast(archiveOrTrashToastMessage(transition, row.name));
-  }
-
-  // Backs GroupCascadeDialog's two real choices (cascade vs. detach-then-
-  // apply) — same transition call and toast either way, only `mode` differs.
-  function applyGroupTransition(mode: 'cascade' | 'detach') {
-    if (!cascadeTarget) return;
-    archiveOrTrashExpenseGroup(cascadeTarget.row.id, cascadeTarget.transition, mode);
-    showToast(archiveOrTrashToastMessage(cascadeTarget.transition, cascadeTarget.row.name));
   }
 
   function renderGroup(title: string, rows: PaymentRow[], emptyLabel: string, isOverdue = false) {
@@ -241,79 +143,25 @@ export default function PaymentsScreen() {
                   onPress: () => toggleSkipped(row),
                 });
               }
-              // Stage 18 (FR-21) — grouping is expense-only.
-              if (row.direction === 'expense') {
-                if (row.parentExpenseId) {
-                  overflowItems.push({
-                    label: t('grouping.removeFromGroup'),
-                    onPress: () => setExpenseGroupParent(row.id, null),
-                  });
-                } else {
-                  overflowItems.push({
-                    label: t('grouping.addToGroup'),
-                    onPress: () => setGroupPickerRow(row),
-                  });
-                }
-              }
               overflowItems.push(
                 {
                   label: t('common.archive'),
-                  onPress: () => handleArchiveOrTrash(row, 'archive'),
+                  onPress: () => {
+                    archiveRow(row);
+                    showToast(t('archive.movedToArchive', { name: row.name }));
+                  },
                 },
                 {
                   label: t('common.delete'),
-                  onPress: () => handleArchiveOrTrash(row, 'trash'),
+                  onPress: () => {
+                    trashRow(row);
+                    showToast(t('archive.movedToTrash', { name: row.name }));
+                  },
                 },
-              );
-
-              const groupChildren =
-                row.direction === 'expense' ? (activeChildrenByParentId.get(row.id) ?? []) : [];
-              const groupParentName =
-                row.direction === 'expense' && row.parentExpenseId
-                  ? expensesById.get(row.parentExpenseId)?.name
-                  : undefined;
-              // Stage 18 (FR-21f) — a child renders with a real tree
-              // connector (vertical trunk + horizontal branch), matching
-              // the reference screenshot the user shared. `parentIsAdjacent`/
-              // `isLastSiblingInThisBucket` come straight from the row
-              // itself — orderRowsWithGroupedChildren (payments-dashboard.ts)
-              // already worked out both while reordering this bucket, so
-              // there's nothing left to re-derive here. A child whose parent
-              // landed in a different bucket has nothing to draw a line to,
-              // so it falls back to plain indent + the "Part of X" caption
-              // below instead of a dangling line.
-              const isGroupChild = row.direction === 'expense' && !!row.parentExpenseId;
-              const isLastSiblingInThisBucket = row.isLastAdjacentSibling;
-              const parentIsAdjacent = row.parentIsAdjacentInBucket;
-              // Stage 18 (FR-21f) — a row that directly continues its
-              // parent's group (immediately after the parent, or after a
-              // sibling — orderRowsWithGroupedChildren always places it
-              // right there) sits flush against the row above it: no
-              // divider, no extra gap, so the connector lines read as one
-              // continuous block instead of a chain of separately-spaced
-              // cards.
-              const continuesFromAbove = isGroupChild && parentIsAdjacent;
-              const checkboxElement = (
-                <Checkbox
-                  checked={row.paid}
-                  onValueChange={() => handleTogglePaid(row)}
-                  accessibilityLabel={t('payments.markAs', {
-                    name: row.name,
-                    state:
-                      row.direction === 'income'
-                        ? row.paid
-                          ? t('payments.state.expected')
-                          : t('payments.state.received')
-                        : row.paid
-                          ? t('payments.state.unpaid')
-                          : t('payments.state.paid'),
-                  })}
-                />
               );
 
               return (
                 <View key={row.id}>
-                  {index > 0 && !continuesFromAbove && <Divider style={styles.divider} />}
                   <View
                     style={[
                       styles.row,
@@ -324,29 +172,6 @@ export default function PaymentsScreen() {
                       isOverdue && !isCompleted ? { backgroundColor: `${theme.danger}1A` } : null,
                     ]}
                   >
-                    {isGroupChild && (
-                      <View style={styles.connectorGutter}>
-                        {parentIsAdjacent && (
-                          <>
-                            <View
-                              style={[
-                                styles.connectorTop,
-                                { backgroundColor: theme.border },
-                              ]}
-                            />
-                            {!isLastSiblingInThisBucket && (
-                              <View style={[styles.connectorBottom, { backgroundColor: theme.border }]} />
-                            )}
-                            <View style={[styles.connectorBranch, { backgroundColor: theme.border }]} />
-                          </>
-                        )}
-                      </View>
-                    )}
-                    {/* Stage 18 feedback: leading checkbox, matching the
-                        tree-checkbox reference the user shared — where the
-                        connector's branch stub visually plugs directly into
-                        the checkbox, not into the name text. */}
-                    <View style={styles.checkboxColumn}>{checkboxElement}</View>
                     <View style={styles.rowMain}>
                       <ThemedText type="smallBold" style={[isCompleted && styles.completedText]}>
                         {row.name}{' '}
@@ -359,26 +184,6 @@ export default function PaymentsScreen() {
                             : t('payments.dueOnly', { dueDate: formatShortDate(row.date) })}
                         </ThemedText>
                       </ThemedText>
-                      {/* Stage 18 (FR-21f) — informational: a child names
-                          its group parent (redundant when the tree
-                          connector is also drawn, but it's the only cue at
-                          all when the parent isn't adjacent — see
-                          parentIsAdjacent above); a parent shows how much
-                          of its own amount is accounted for by its active
-                          children. */}
-                      {groupParentName && (
-                        <ThemedText type="caption" themeColor="textSecondary">
-                          {t('grouping.partOf', { name: groupParentName })}
-                        </ThemedText>
-                      )}
-                      {groupChildren.length > 0 && (
-                        <ThemedText type="caption" themeColor="textSecondary">
-                          {t('grouping.groupedSubtotal', {
-                            count: groupChildren.length,
-                            amount: formatCurrency(computeGroupedSubtotal(groupChildren), defaultCurrency),
-                          })}
-                        </ThemedText>
-                      )}
                       <View style={styles.rowMeta}>
                         <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
                         {/* Recurring/Skipped are grouped in their own
@@ -424,9 +229,25 @@ export default function PaymentsScreen() {
                         ) : (
                           <Chip label={paidLabel} tone="warning" />
                         )}
+                        <Switch
+                          value={row.paid}
+                          onValueChange={() => handleTogglePaid(row)}
+                          accessibilityLabel={t('payments.markAs', {
+                            name: row.name,
+                            state:
+                              row.direction === 'income'
+                                ? row.paid
+                                  ? t('payments.state.expected')
+                                  : t('payments.state.received')
+                                : row.paid
+                                  ? t('payments.state.unpaid')
+                                  : t('payments.state.paid'),
+                          })}
+                        />
                       </View>
                     </View>
                   </View>
+                  {index < rows.length - 1 && <Divider style={styles.divider} />}
                 </View>
               );
             })}
@@ -457,73 +278,21 @@ export default function PaymentsScreen() {
           initialAmount={confirmRow.amount}
           onSave={(amount) => {
             confirmMarkPaid(confirmRow, amount);
-            // Only queue follow-up child confirmations once this row is
-            // actually confirmed paid — the cascade it depends on hasn't
-            // happened at all if this gets discarded instead.
-            queuePendingChildConfirmations(confirmRow);
             setConfirmRow(null);
           }}
           onDiscard={() => setConfirmRow(null)}
-        />
-      )}
-      {/* Stage 18 (FR-21b) — follow-up queue: these children were already
-          cascaded to paid by the time this shows (see
-          queuePendingChildConfirmations), so "discard" here means "keep the
-          amount as cascaded," never "undo the payment" — unlike confirmRow
-          above, where discard means the row never gets marked paid at all. */}
-      {childAmountQueue.length > 0 && (
-        <ConfirmAmountModal
-          key={childAmountQueue[0].id}
-          isOpen
-          title={t('payments.confirmAmount.title', { name: childAmountQueue[0].name })}
-          currency={childAmountQueue[0].currency}
-          initialAmount={childAmountQueue[0].amount}
-          onSave={(amount) => {
-            confirmMarkPaid(childAmountQueue[0], amount);
-            setChildAmountQueue((queue) => queue.slice(1));
-          }}
-          onDiscard={() => setChildAmountQueue((queue) => queue.slice(1))}
-        />
-      )}
-      {groupPickerRow && (
-        <GroupPickerDialog
-          isOpen
-          onClose={() => setGroupPickerRow(null)}
-          options={eligibleGroupParents(expenses, groupPickerRow.id)}
-          onSelect={(parentId) => setExpenseGroupParent(groupPickerRow.id, parentId)}
-        />
-      )}
-      {cascadeTarget && (
-        <GroupCascadeDialog
-          isOpen
-          onClose={() => setCascadeTarget(null)}
-          transition={cascadeTarget.transition}
-          parentName={cascadeTarget.row.name}
-          childNames={findActiveChildren(expenses, cascadeTarget.row.id).map((child) => child.name)}
-          onCascade={() => applyGroupTransition('cascade')}
-          onDetach={() => applyGroupTransition('detach')}
         />
       )}
     </>
   );
 }
 
-// Stage 18 (FR-21f) tree-connector geometry — pulled out of styles below
-// since StyleSheet.create needs plain numbers to compute absolute
-// positions from, not tokens resolved at render time.
-const ConnectorGutterWidth = 20;
-const ConnectorLineWidth = 2;
-const ConnectorBranchY = 14; // roughly the vertical center of the name line
-
 const styles = StyleSheet.create({
   section: {
     gap: Spacing.two,
   },
   card: {
-    // Stage 18 feedback: no uniform gap here — spacing between rows is now
-    // handled per-pair (a Divider, with its own marginVertical, before any
-    // row that doesn't continue the group above it; zero gap for one that
-    // does), so a grouped block's rows sit flush against each other.
+    gap: Spacing.two,
   },
   row: {
     flexDirection: 'row',
@@ -536,42 +305,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.two,
     gap: Spacing.two,
-  },
-  // Stage 18 feedback: the paid checkbox now leads the row (matching the
-  // reference tree-checkbox screenshot) instead of trailing at the bottom
-  // next to the status chip.
-  checkboxColumn: {
-    justifyContent: 'flex-start',
-  },
-  // Stage 18 (FR-21f) — a grouped child's tree connector: a fixed-width
-  // gutter to the row's left holding a vertical trunk segment (top half,
-  // always; bottom half too unless this is the last sibling) and a
-  // horizontal branch stub connecting the trunk to this row's content.
-  // Colors are set inline (theme.border) — see the row's JSX.
-  connectorGutter: {
-    width: ConnectorGutterWidth,
-    alignSelf: 'stretch',
-  },
-  connectorTop: {
-    position: 'absolute',
-    left: ConnectorGutterWidth / 2 - ConnectorLineWidth / 2,
-    top: 0,
-    height: ConnectorBranchY + ConnectorLineWidth,
-    width: ConnectorLineWidth,
-  },
-  connectorBottom: {
-    position: 'absolute',
-    left: ConnectorGutterWidth / 2 - ConnectorLineWidth / 2,
-    top: ConnectorBranchY,
-    bottom: 0,
-    width: ConnectorLineWidth,
-  },
-  connectorBranch: {
-    position: 'absolute',
-    left: ConnectorGutterWidth / 2 - ConnectorLineWidth / 2,
-    top: ConnectorBranchY,
-    width: ConnectorGutterWidth / 2 + ConnectorLineWidth,
-    height: ConnectorLineWidth,
   },
   rowMain: {
     flex: 1,
