@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { addRecurringGroup, useRecurringGroupsStore } from '@/store/recurring-groups';
+import { showToast } from '@/store/toast';
 
 const NO_GROUP = '';
 const NEW_GROUP = '__new__';
@@ -29,6 +30,11 @@ export function RecurringGroupField({ value, onChange }: RecurringGroupFieldProp
   );
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  // Without this, a rejected addRecurringGroup (e.g. a permission error)
+  // left the inline form stuck open forever with no feedback — caught live
+  // when the recurringGroups Firestore rule was still missing (see
+  // firestore.rules).
+  const [isSaving, setIsSaving] = useState(false);
 
   function handleSelect(selected: string) {
     if (selected === NEW_GROUP) {
@@ -40,10 +46,18 @@ export function RecurringGroupField({ value, onChange }: RecurringGroupFieldProp
 
   async function handleCreate() {
     if (!newName.trim()) return;
-    const id = await addRecurringGroup(newName);
-    setIsCreating(false);
-    setNewName('');
-    onChange(id);
+    setIsSaving(true);
+    try {
+      const id = await addRecurringGroup(newName);
+      setIsCreating(false);
+      setNewName('');
+      onChange(id);
+    } catch (error) {
+      showToast(t('recurringGroups.createFailed'));
+      console.warn('[recurring-group-field] addRecurringGroup failed:', error);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   if (isCreating) {
@@ -56,8 +70,13 @@ export function RecurringGroupField({ value, onChange }: RecurringGroupFieldProp
           placeholder={t('recurringGroups.newGroupNamePlaceholder')}
         />
         <View style={styles.actionRow}>
-          <Button label={t('common.save')} onPress={handleCreate} disabled={!newName.trim()} />
-          <Button label={t('common.cancel')} variant="secondary" onPress={() => setIsCreating(false)} />
+          <Button label={t('common.save')} onPress={handleCreate} disabled={!newName.trim() || isSaving} />
+          <Button
+            label={t('common.cancel')}
+            variant="secondary"
+            onPress={() => setIsCreating(false)}
+            disabled={isSaving}
+          />
         </View>
       </View>
     );

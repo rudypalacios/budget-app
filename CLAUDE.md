@@ -415,16 +415,6 @@ actually resolved.)_
   sliding feel but is a new dependency (ask first, per the tech-stack table)
   and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
   doesn't need this — the user confirmed swipe only matters on mobile.
-- **No dedicated recurring-groups admin screen** (Stage 18 redo) — a group
-  can be created inline from any "Grupo…" picker
-  (`src/components/recurring-group-field.tsx`, used by `ExpenseForm`,
-  `RecurringExpenseForm`, and the Dashboard's `GroupPickerDialog`), but
-  there's no screen to rename an existing group or archive/trash the
-  container itself outside that flow — `renameRecurringGroup`/
-  `archiveRecurringGroup`/`trashRecurringGroup` (`src/store/recurring-groups.ts`)
-  exist and are unit-tested, just not wired to any UI yet. A small screen
-  under `src/app/recurring-groups/`, same list pattern as
-  `currencies/`/`categories/`, would close this.
 - **Recurring-groups UI doesn't extend to the Expenses/Income tabs or
   History** (Stage 18 redo) — same scope limitation the abandoned
   parent/child design had: the "Grupo…" row action and the grouped-header
@@ -1032,5 +1022,67 @@ abandoned design had briefly landed on `develop` via a squash-merged PR).
   design); confirm creating a new recurring expense with a group already
   shows it grouped on the Dashboard immediately.
 - Committed to branch `claude/expense-grouping-categories-bxu05n` (off the
-  reverted `develop`), clean tree — see git log for the commit hash. Not
-  merged — per the standing convention, that's the user's call.
+  reverted `develop`), clean tree — see git log for the commit hash.
+  Re-pushed to a fresh branch, `stage-18-recurring-groups`, once the
+  original branch name turned out to still be associated with PR #29
+  (closed/merged, then reverted) — GitHub was showing that stale
+  association, confusing for opening a new PR. **PR #30** opened from
+  `stage-18-recurring-groups` into `develop`. Not merged — per the
+  standing convention, that's the user's call.
+
+### fix/recurring-groups-admin-and-rules-bug summary
+
+Two items from the user's first live test of the branch above, both fixed
+on the same `stage-18-recurring-groups` branch (pushed as a follow-up
+commit to PR #30, not a separate branch):
+
+- **Real bug found: `firestore.rules` had no block for the new
+  `recurringGroups` collection at all** — every other collection
+  (`recurringExpenses`, `currencies`, etc.) has one, but it was missed
+  when this stage was built. Firestore denies reads/writes by default with
+  no matching rule, so `addRecurringGroup` was throwing
+  `permission-denied` on every attempt — this is what the user hit
+  ("wasn't able to save the groups... didn't close"). Added a
+  `recurringGroups/{id}` block mirroring `recurringExpenses`'s exactly
+  (owner-only + the same `isValidNewLifecycle`/`isValidLifecycleTransition`
+  state-machine checks) — no new validation logic needed, since
+  `RecurringGroup` has no snapshot fields to lock the way `expenses`/
+  `incomes` do. **Not yet deployed** to the live `lighthouse-budget-app`
+  project — same as every prior rules change in this repo's history, that
+  deploy (`firebase deploy --only firestore:rules`) is a manual step for
+  the user to run, no `firebase` CLI available in this dev environment.
+- **Real gap found alongside it: `RecurringGroupField`'s inline
+  "create new group" flow had no error handling** — `handleCreate` awaited
+  `addRecurringGroup` with no try/catch, so a rejected promise (this
+  permission error, or any future failure) left `isCreating` stuck `true`
+  forever with zero feedback — exactly the "didn't close" symptom, and it
+  would have silently done the same for any other write failure even
+  after the rules fix. Now wrapped in try/catch with a toast
+  (`recurringGroups.createFailed`) and an `isSaving` guard disabling both
+  buttons mid-request.
+- **The actual "where do I manage groups" ask**: new
+  `src/app/recurring-groups/index.tsx` — same active/archived-toggle +
+  permanent-delete-confirm-`Dialog` pattern `categories/index.tsx` already
+  established, plus inline rename via a second `Dialog`. `RecurringGroup`
+  carries a real `'trashed'` state (unlike `Category`), but this screen
+  deliberately doesn't expose it as its own step — "Delete permanently"
+  calls `trashRecurringGroup` then `purgeRecurringGroup` in one action,
+  since `firestore.rules` only allows purge from `'trashed'`; from the
+  user's side it's a single confirm. Deleting a group never touches its
+  members' own `recurringGroupId` — a member pointing at a since-deleted
+  group id simply isn't in `buildDashboardSections`' `activeGroups` list,
+  so it silently renders as a plain ungrouped row, same as an
+  archived/trashed group's members already do (`src/lib/recurring-groups.ts`).
+  Reached from a new "Recurring groups" section in Settings, same
+  `Pressable`→`Card` row as Categories/Currencies.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (the one
+  pre-existing, unrelated `@/global.css` error), `npm run lint` clean,
+  `npm test` 26/26 suites, 208/208 tests (unchanged — no new tests this
+  round; the admin screen follows the existing convention of deferring
+  UI-level coverage to manual verification, matching every other
+  `*/index.tsx` admin screen in this codebase, none of which have a test
+  file).
+- **Still not manually verified end-to-end in a browser** — the rules fix
+  in particular can't be confirmed working from `tsc`/`jest` alone, since
+  it's Firestore's own server-side enforcement; needs the rules deploy
+  above plus an actual create-a-group attempt against the live project.
