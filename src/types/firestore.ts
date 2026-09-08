@@ -101,6 +101,27 @@ export interface RecurringExpense extends TrashableLifecycle {
   remindersEnabled: boolean | null; // null = inherit UserSettings.reminders.enabled
   reminderLeadDays: number | null; // null = inherit UserSettings.reminders.leadDays
   budgetRecommendation: BudgetRecommendation;
+  // Stage 18 redo (FR-21, data-model.md §11) — membership in a
+  // recurringGroups/{id} container (e.g. "Suscripciones"). Each generated
+  // instance copies this verbatim at generation time (data-model.md §9) —
+  // changing it does not retroactively relink already-generated instances.
+  recurringGroupId: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// --- users/{uid}/recurringGroups/{id} — §11 (Stage 18 redo) ---
+//
+// A named container an expense (recurring or one-time) can belong to — e.g.
+// Netflix/Disney+/Google Cloud all in "Suscripciones". Holds no amount, date,
+// or paid state of its own: those are always derived from its current
+// members at render time (see computeGroupSubtotal/groupBucket in
+// src/lib/recurring-groups.ts). This replaces the earlier "one expense
+// doubles as the group parent" design (parentExpenseId/
+// defaultParentRecurringExpenseId), abandoned after live review — see
+// CLAUDE.md's Known Issues / Current stage for why.
+export interface RecurringGroup extends TrashableLifecycle {
+  name: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -133,6 +154,13 @@ interface ExpenseRecordShared extends TrashableLifecycle {
   rateSource: RateSource;
   paid: boolean;
   paidDate: Timestamp | null;
+  // Stage 18 redo (FR-21, data-model.md §11) — membership in a
+  // recurringGroups/{id} container. null = not in any group. Both one-time
+  // and recurring-instance expenses can carry this (a recurring instance
+  // inherits it from its definition at generation time — see
+  // RecurringExpense.recurringGroupId above; a one-time expense is assigned
+  // directly, same as a category).
+  recurringGroupId: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

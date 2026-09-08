@@ -397,5 +397,18 @@
       "save": "Save",
       "discard": "Discard"
     }
+  },
+  "recurringGroups": {
+    "fieldLabel": "Group",
+    "none": "None",
+    "newGroup": "+ New group…",
+    "newGroupName": "Group name",
+    "newGroupNamePlaceholder": "e.g. Subscriptions",
+    "rowAction": "Group…",
+    "pickerTitle": "Assign to group",
+    "memberCount_one": "{{count}} item",
+    "memberCount_other": "{{count}} items",
+    "showMembers": "Show {{name}} group members",
+    "hideMembers": "Hide {{name}} group members"
   }
 }

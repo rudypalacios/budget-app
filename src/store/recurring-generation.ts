@@ -33,6 +33,9 @@ export type ExpenseDefinitionForGeneration = {
   amount: number;
   dueDay: number;
   startDate: Date;
+  // Stage 18 redo (FR-21, data-model.md §11) — copied verbatim onto every
+  // generated instance (see generateExpenseInstancesForDefinition below).
+  recurringGroupId: string | null;
 };
 
 export type IncomeDefinitionForGeneration = {
@@ -72,6 +75,7 @@ export async function generateExpenseInstancesForDefinition(
       exchangeRateToDefault: definition.exchangeRateToDefault,
       budgetedAmount: definition.amount,
       budgetedCurrency: definition.currency,
+      recurringGroupId: definition.recurringGroupId,
     });
   }
 }
@@ -137,6 +141,7 @@ export async function runRecurringGeneration(uid: string): Promise<void> {
           amount: definition.amount,
           dueDay: definition.dueDay,
           startDate: definition.startDate.toDate(),
+          recurringGroupId: definition.recurringGroupId,
         },
         now,
       );

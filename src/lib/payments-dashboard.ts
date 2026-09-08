@@ -32,6 +32,9 @@ export type PaymentRow = {
   paidDate: Date | null;
   skipped: boolean;
   skippedAt: Date | null;
+  // Stage 18 redo (FR-21, data-model.md §11) — recurringGroups/{id}
+  // membership. Expenses only; always null on an income row.
+  recurringGroupId: string | null;
 };
 
 export function buildPaymentRows(
@@ -60,6 +63,7 @@ export function buildPaymentRows(
     skipped: expense.kind === 'recurringInstance' ? expense.skipped : false,
     skippedAt:
       expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
+    recurringGroupId: expense.recurringGroupId,
   }));
 
   const incomeRows: PaymentRow[] = activeIncomes.map((income) => ({
@@ -76,6 +80,7 @@ export function buildPaymentRows(
     paidDate: income.paidDate ? income.paidDate.toDate() : null,
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,
     skippedAt: income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
+    recurringGroupId: null,
   }));
 
   return [...expenseRows, ...incomeRows];

@@ -415,48 +415,72 @@ actually resolved.)_
   sliding feel but is a new dependency (ask first, per the tech-stack table)
   and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
   doesn't need this — the user confirmed swipe only matters on mobile.
+- **No dedicated recurring-groups admin screen** (Stage 18 redo) — a group
+  can be created inline from any "Grupo…" picker
+  (`src/components/recurring-group-field.tsx`, used by `ExpenseForm`,
+  `RecurringExpenseForm`, and the Dashboard's `GroupPickerDialog`), but
+  there's no screen to rename an existing group or archive/trash the
+  container itself outside that flow — `renameRecurringGroup`/
+  `archiveRecurringGroup`/`trashRecurringGroup` (`src/store/recurring-groups.ts`)
+  exist and are unit-tested, just not wired to any UI yet. A small screen
+  under `src/app/recurring-groups/`, same list pattern as
+  `currencies/`/`categories/`, would close this.
+- **Recurring-groups UI doesn't extend to the Expenses/Income tabs or
+  History** (Stage 18 redo) — same scope limitation the abandoned
+  parent/child design had: the "Grupo…" row action and the grouped-header
+  display only exist on the Payments Dashboard
+  (`src/app/(tabs)/index.tsx`). A grouped expense created/edited elsewhere
+  is still fully correct (it's the same document, same `recurringGroupId`
+  field), it just can't be grouped/ungrouped or seen nested from those
+  other screens yet.
+- **Dashboard's paid toggle is back to `Switch`, not `Checkbox`** (Stage 18
+  redo) — the abandoned parent/child design's later live-review rounds had
+  swapped this to a `Checkbox` (a deliberate visual preference, unrelated
+  to the parent/child data model itself) and reworked the row layout
+  around it. The full rollback restored the pre-Stage-18 `Switch`-based row
+  along with everything else; whether to reapply the `Checkbox` swap on
+  top of this redesign wasn't part of what the user asked for this round —
+  flagged here rather than silently deciding either way.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **17 — Trash view & restore screen** (built on branch
-`stage-17-trash-archive`, pending merge — see its own summary below).
-9a-12 are merged to `develop`; 9c remains blocked on Facebook Developer
-console setup — see SRS §11. Stage 12's own section below still documents
-what shipped there.
+`git log` on `develop` confirms Stages 9a–17 (through PR #26), round 3/4 UX
+polish, the post-Stage-13 review, and the Budget tab's summary-card
+restructure (PRs #27/#28) are all merged. 9c (Facebook sign-in) remains
+blocked on Facebook Developer console setup — see SRS §11. This section's
+older prose speculating about several of these being "pending merge" was
+stale by the time Stage 18 started and is not reproduced here — see git
+history directly if the exact PR-by-PR order ever matters.
 
-Stage 13 is built and verified on branch `stage-13-budget-recommendations`
-(off `develop`), pending merge — see its own summary below for what
-shipped. A round of user review against that branch surfaced seven
-smaller product/UX gaps spanning several already-shipped stages (date
-labels, a recurring-generation edge case, Dashboard naming, mark-paid
-placement, income-aware budgeting) — fixed on branch
-`fix/post-stage-13-review`, stacked on top of `stage-13-budget-recommendations`
-per the user's explicit direction to keep this work separate. See its own
-summary below.
+**Stage 18 (Recurring groups) — first design abandoned, rebuilt from
+scratch (2026-09-08).** Originally built as "one expense doubles as the
+group parent" (`parentExpenseId`/`defaultParentRecurringExpenseId`, a
+tri-state paid cascade, archive/trash cascade-or-detach) — went through
+many rounds of live-review fixes and even briefly landed on `develop` via
+a squash-merged PR #29 (whose title, "docs: plan Stage 18...", undersold
+what it actually contained — the full implementation, not just docs).
+The user then decided the whole concept didn't match how they think about
+grouping ("no me gusta, hagamos revert") and asked for a real named
+**recurring group** container instead — Netflix/Disney+/etc. as members
+of e.g. "Suscripciones", not one bill secretly standing in for the group.
 
-Two further rounds of live-review UX polish followed, both still pending
-merge: **round 3** (`fix/ux-polish-round-3`, commit `3ce04b2`) — input
-trimming, category emoji icons, categories-admin list counts, and
-cross-screen display consistency; see that commit's message for the full
-breakdown, not duplicated here. **round 4** (`fix/ux-polish-round-4`) —
-see its own summary below.
+Handled as a full rollback, not a patch: the abandoned work is preserved
+at branch `claude/stage-18-parent-child-abandoned` (tip `1511d98`) for
+reference; `develop` itself got a revert commit (`44ee62a`, undoing
+`f2ad444`/PR #29) since that squash-merge had put the abandoned code there
+too, not just on the feature branch; this branch was then reset onto the
+now-genuinely-clean `develop`. See `docs/data-model.md` §11's changelog
+(v1.6/v1.7) for the schema-level before/after.
 
-**Note found while starting Stage 17 (2026-08-07):** `git log` on
-`develop` shows Stage 13, round 3, and round 4 above are actually already
-merged (PRs #19–#24), plus two more merged branches this section never
-got a paragraph for — `fix/dashboard-category-ux-review` (PR #22) and
-`fix/google-signin-account-picker` (PR #21). This section's prose above
-was never updated after those merges landed and is stale; left as-is here
-rather than silently rewritten, since reconstructing exactly what each
-merged PR contained isn't something to guess at — flag for the user to
-confirm/rewrite this section's history whenever convenient.
-
-Stage 17 — Trash view & restore screen — is built and verified
-(`tsc`/lint/tests, not yet live-verified in a browser/device) on branch
-`stage-17-trash-archive` (off `develop`), commit `a1ce047`, pending merge.
-See its own summary below.
+The replacement — a `recurringGroups/{id}` container holding no
+amount/date/paid state of its own, with the Payments Dashboard deriving a
+combined total and overdue/upcoming/completed placement from its current
+members — is built and verified (`tsc`/lint/tests) on branch
+`claude/expense-grouping-categories-bxu05n` (off the reverted `develop`).
+See its own summary below. **Not yet manually verified in a browser** —
+do that before merging (see the summary's own note).
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -929,3 +953,84 @@ same keep-each-review-round-separate convention as
 - Committed to branch `stage-17-trash-archive` (off `develop`), commit
   `a1ce047`, clean tree. Not merged — per the standing convention, that's
   the user's call.
+
+### Stage 18 summary — Recurring groups (rebuilt design)
+
+Second attempt at Stage 18, from scratch on a genuinely clean base — see
+"Current stage" above for why the first design (one expense as group
+parent) was abandoned and how the rollback was done (a real `git revert`
+on `develop` itself, not just a reset of this feature branch, since the
+abandoned design had briefly landed on `develop` via a squash-merged PR).
+
+- **Schema**: new `users/{uid}/recurringGroups/{id}` collection
+  (`src/types/firestore.ts`'s `RecurringGroup`) — `name` + the standard
+  `TrashableLifecycle` fields only, no amount/date/paid state of its own
+  (`docs/data-model.md` §11). `RecurringExpense` gained
+  `recurringGroupId: string | null` (persistent default, inherited by
+  every instance generated from it); `ExpenseRecordShared` (both
+  `OneTimeExpense` and `RecurringExpenseInstance`) gained the same field
+  directly, so a one-time expense or an already-generated instance can
+  also be assigned/reassigned/cleared independently of its definition's
+  default. No `firestore.rules` change — neither field is locked.
+- **Store**: new `src/store/recurring-groups.ts` — plain CRUD + the same
+  archive/trash/restore/purge lifecycle every other definition-like
+  collection has, modeled directly on `recurring-incomes.ts` (the
+  simplest existing example). No cascade logic anywhere — a group holds
+  no state to cascade, which is the whole point of this redesign versus
+  the abandoned parent/child model. New `setExpenseGroupId` in
+  `expenses.ts` — a plain field update usable on either expense `kind`,
+  since `recurringGroupId` is common to the `ExpenseRecord` union (unlike
+  `skipped`/`skippedAt`, no cast needed).
+- **Pure logic**: new `src/lib/recurring-groups.ts` —
+  `computeGroupSubtotal` (sum of members' `amountInDefaultCurrency`),
+  `groupBucket` (`'completed'` once every member is paid/skipped, else
+  `'overdue'`/`'upcoming'` from its still-unpaid members — a partial
+  payment leaves the group open, carrying its full membership rather than
+  just the unpaid remainder), and `buildDashboardSections`, which runs
+  after `payments-dashboard.ts`'s existing three-bucket grouping and folds
+  each active group's members (gathered across all three buckets, since a
+  partially-settled group can have members in more than one) into a
+  single header entry. Unit tested in `recurring-groups.test.ts`.
+- **Recurring generation**: `generateExpenseInstancesForDefinition` copies
+  `recurringGroupId` straight from the definition onto each new instance —
+  a direct copy, not the ID-synthesis trick the abandoned design needed
+  (that existed only because its "parent" was itself a per-cycle
+  instance; a `RecurringGroup` has one stable id forever).
+- **UI**: `(tabs)/index.tsx`'s Dashboard renders one `Card` per group
+  (name, member count, combined total, chevron-accordion revealing
+  members — same expand/collapse idiom `category-budget-card.tsx` already
+  established) alongside the existing plain-row cards for ungrouped
+  entries; group members render with the exact same row markup as any
+  other row (no visual nesting/connector work needed, since they're
+  already contained inside the header's own accordion body). New shared
+  `src/components/recurring-group-field.tsx` (a `Select` over active
+  groups + inline "create new group" — used by `ExpenseForm`,
+  `RecurringExpenseForm`, and a new `GroupPickerDialog` for the
+  Dashboard's row-level "Grupo…" action) so the create-inline flow isn't
+  built three times. Unlike the abandoned design, the group picker is
+  wired into recurring-expense **creation**, not just edit
+  (`ExpenseForm`'s `isRecurring` branch), since nothing about this model
+  makes that harder.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (the one
+  pre-existing, unrelated `@/global.css` error, confirmed present on
+  `develop` before this work), `npm run lint` clean, `npm test` 26/26
+  suites, 207/207 tests (17 new, across `recurring-groups.test.ts` in both
+  `src/lib/` and `src/store/`).
+- Deliberately deferred, not silently dropped: no dedicated
+  recurring-groups admin screen (rename/archive a group outside the
+  create-inline flow) — see Known Issues. The Switch→Checkbox swap from
+  the abandoned design's later live-review rounds was **not** carried
+  forward (this rebuild restored the plain `Switch` from before that
+  round) — flagged for the user to say whether they still want it
+  reapplied on top of this redesign.
+- **Not yet manually verified end-to-end on a device/browser** — do that
+  before merging: create a group, add a recurring and a one-time expense
+  to it, confirm the header's combined total and expand/collapse; mark
+  one member paid (partial — header stays open) then the rest (header
+  moves to completed); reassign/clear a member's group via "Grupo…";
+  archive a member directly (no cascade prompt, unlike the abandoned
+  design); confirm creating a new recurring expense with a group already
+  shows it grouped on the Dashboard immediately.
+- Committed to branch `claude/expense-grouping-categories-bxu05n` (off the
+  reverted `develop`), clean tree — see git log for the commit hash. Not
+  merged — per the standing convention, that's the user's call.

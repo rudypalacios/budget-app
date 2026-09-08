@@ -106,6 +106,33 @@ The POC's visual style (dark + green) is not carried forward as a requirement. T
 - FR-19: App can send a reminder for upcoming/due recurring expenses (e.g. a day before or on the due date).
 - FR-20: Reminders are **configurable and can be turned on or off**, globally and/or per recurring expense.
 
+### 6.10 Recurring Groups
+_(Supersedes an earlier "one expense doubles as the group parent" design,
+built and then abandoned after live review — see CLAUDE.md's Current stage
+notes for what changed and why. That design's FR-21–FR-21g numbering below
+is reused for its replacement, not renumbered, since nothing shipped under
+the old numbering.)_
+
+- FR-21: User can create a **recurring group** — a named container (e.g.
+  "Suscripciones") — and assign an expense (recurring or one-time) to it.
+  A group holds no amount, date, or paid state of its own; everything
+  shown about it is derived from its current members.
+- FR-21a: Each member keeps its own independent due date/schedule — a
+  group does not impose a shared date on its members.
+- FR-21b: The Payments Dashboard shows one row per group with the sum of
+  its current members' amounts next to its name, expandable to the
+  individual members.
+- FR-21c: A group only moves to "completed" once every member is paid or
+  skipped for the current cycle — a partial payment leaves the group in
+  whichever open bucket (overdue/upcoming) its still-unpaid members call
+  for.
+- FR-21d: A recurring expense definition can set a persistent group
+  membership; each newly generated instance inherits it automatically.
+  Changing it does not retroactively relink already-generated instances.
+- FR-21e: Archiving/trashing/restoring a member is independent of the
+  group and of its other members — a group has no cascade behavior, since
+  it holds no state to cascade.
+
 ## 7. Non-Functional Requirements
 
 - NFR-1: **Offline-first** — no feature should require connectivity to function; sync is transparent.
@@ -210,6 +237,11 @@ These were discussed and deliberately deferred rather than overlooked — worth 
     definitions), restore them back to active, or confirm permanent purge —
     complements Stage 12's archive/trash state-transition engine with the
     screen users actually interact with.
+18. Recurring groups (FR-21–FR-21e): a named `recurringGroups` container an
+    expense (recurring or one-time) can belong to — the Payments Dashboard
+    shows one row per group with its members' combined total, expandable to
+    the individual members, moving to "completed" only once every member is
+    settled for the cycle.
 
 ### Backlog — not yet scoped into a numbered stage
 

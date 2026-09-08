@@ -121,6 +121,7 @@ describe('suggestCategoryMonthlyBudget', () => {
   const baseDefinition: Omit<RecurringExpense, 'categoryId' | 'amount' | 'currency' | 'exchangeRateToDefault'> = {
     name: 'Test',
     dueDay: 1,
+    recurringGroupId: null,
     startDate: new Date() as unknown as RecurringExpense['startDate'],
     remindersEnabled: null,
     reminderLeadDays: null,

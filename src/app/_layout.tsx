@@ -13,6 +13,7 @@ import { subscribeExpenses, useExpensesStore } from '@/store/expenses';
 import { subscribeIncomes, useIncomesStore } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import { subscribeRecurringExpenses, useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { subscribeRecurringGroups } from '@/store/recurring-groups';
 import { subscribeRecurringIncomes, useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { bootstrapSession, subscribeAuthState, useSessionStore } from '@/store/session';
 import { seedDefaultUserSettings, subscribeUserSettings, useUserSettingsStore } from '@/store/user-settings';
@@ -51,6 +52,7 @@ export default function RootLayout() {
     subscribeExpenses(uid);
     subscribeIncomes(uid);
     subscribeRecurringExpenses(uid);
+    subscribeRecurringGroups(uid);
     subscribeRecurringIncomes(uid);
     subscribeUserSettings(uid);
   }, [uid]);

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { AmountCurrencyField } from '@/components/amount-currency-field';
+import { RecurringGroupField } from '@/components/recurring-group-field';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { TextField } from '@/components/ui/text-field';
@@ -18,6 +19,7 @@ export type RecurringExpenseFormValues = {
   categoryId: string;
   dueDay: string;
   currency: CurrencyCode;
+  recurringGroupId: string | null;
 };
 
 export type RecurringExpenseFormProps = {
@@ -51,6 +53,7 @@ export function RecurringExpenseForm({
       categoryId: expenseCategories[0]?.id ?? '',
       dueDay: '1',
       currency: defaultCurrency,
+      recurringGroupId: null,
     },
   );
 
@@ -106,6 +109,11 @@ export function RecurringExpenseForm({
         value={values.dueDay}
         onChangeText={(dueDay) => setValues((current) => ({ ...current, dueDay }))}
         keyboardType="number-pad"
+      />
+
+      <RecurringGroupField
+        value={values.recurringGroupId}
+        onChange={(recurringGroupId) => setValues((current) => ({ ...current, recurringGroupId }))}
       />
 
       <View style={styles.actionRow}>

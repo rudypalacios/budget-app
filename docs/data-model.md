@@ -1,8 +1,8 @@
 # Firestore Data Model
 
 **Status:** Approved — Stage 1 deliverable (see `docs/SRS-presupuesto-app.md` §11)
-**Version:** 1.6
-**Date:** 2026-08-01
+**Version:** 1.7
+**Date:** 2026-09-08
 
 This document is the source of truth for the Firestore schema. It formalizes the collections, document shapes, and design decisions needed to satisfy the functional requirements in `docs/SRS-presupuesto-app.md` §6 (FR-1 through FR-20). TypeScript types (`src/types/firestore.ts`) and security rules (`firestore.rules`) are derived from this document, not the other way around — if they ever disagree, this document wins and the code should be updated to match.
 
@@ -148,7 +148,7 @@ Both collections share this shape (expenses adds budget-specific fields):
 | `trashedFromState` | `'active' \| 'archived' \| null` | |
 | `archivedAt` / `trashedAt` | `Timestamp \| null` | |
 | `purgeAt` | `Timestamp \| null` | trash auto-purge (§8) |
-| `skipped`, `skippedAt` *(recurring instances only)* | `boolean`, `Timestamp \| null` | `kind === 'recurringInstance'` only — `false`/`null` for `kind === 'oneTime'` (Stage 8, Payments Dashboard, §12). Marks a single generated occurrence as intentionally not going to be paid this period, without affecting the parent definition, its generation schedule, or any other instance. Orthogonal to `paid`/`paidDate`, same relationship those two have to `lifecycleState`: `lifecycleState` governs whether the doc is visible at all (active/archived/trashed), `paid` governs payment status, `skipped` governs whether this occurrence counts toward due/overdue — a skipped instance is still `lifecycleState: 'active'` and still appears in History. Setting `paid: true` on a skipped instance also clears `skipped`/`skippedAt` (paying an occurrence implies it's no longer being skipped); the reverse isn't true (marking unpaid doesn't touch `skipped`). |
+| `skipped`, `skippedAt` *(recurring instances only)* | `boolean`, `Timestamp \| null` | `kind === 'recurringInstance'` only — `false`/`null` for `kind === 'oneTime'` (Stage 8, Payments Dashboard, §13). Marks a single generated occurrence as intentionally not going to be paid this period, without affecting the parent definition, its generation schedule, or any other instance. Orthogonal to `paid`/`paidDate`, same relationship those two have to `lifecycleState`: `lifecycleState` governs whether the doc is visible at all (active/archived/trashed), `paid` governs payment status, `skipped` governs whether this occurrence counts toward due/overdue — a skipped instance is still `lifecycleState: 'active'` and still appears in History. Setting `paid: true` on a skipped instance also clears `skipped`/`skippedAt` (paying an occurrence implies it's no longer being skipped); the reverse isn't true (marking unpaid doesn't touch `skipped`). |
 | `createdAt` / `updatedAt` | `Timestamp` | |
 
 **Document ID strategy:** recurring instances use a **deterministic ID** — `expenses/{recurringExpenseId}_{yyyy-MM}` for monthly expenses, `incomes/{recurringIncomeId}_{yyyy-MM-dd}` for income (date-keyed, since weekly/biweekly can produce multiple occurrences per month). Two devices independently generating "this period's instance" both write to the same doc ID — idempotent, consistent with last-write-wins (NFR-6), no server-side dedup/Cloud Functions needed (Spark plan, NFR-2). One-time records use random auto-IDs.
@@ -172,7 +172,7 @@ Single enum `lifecycleState: 'active' | 'archived' | 'trashed'` per document (no
 
 Changing `trashRetentionDays` is **not retroactive** — only items trashed after the change use the new value; items already in Trash keep the `purgeAt` computed at the time they were trashed.
 
-> **Deployment note:** `purgeAt` only auto-deletes documents if a **Firestore TTL policy** is enabled on that field for each collection. This is not something `firestore.rules` or the TypeScript types create automatically — it must be enabled manually per collection (`recurringExpenses`, `recurringIncomes`, `expenses`, `incomes`) via the Firebase console or `gcloud firestore fields ttls update`. See §13 (Deployment checklist).
+> **Deployment note:** `purgeAt` only auto-deletes documents if a **Firestore TTL policy** is enabled on that field for each collection. This is not something `firestore.rules` or the TypeScript types create automatically — it must be enabled manually per collection (`recurringExpenses`, `recurringIncomes`, `expenses`, `incomes`) via the Firebase console or `gcloud firestore fields ttls update`. See §14 (Deployment checklist).
 
 ---
 
@@ -241,7 +241,91 @@ Two-tier config: `users/{uid}.reminders.{enabled, leadDays}` (global default) an
 
 ---
 
-## 11. Open design decisions (not yet resolved — revisit before they become load-bearing)
+## 11. Recurring groups (FR-21–FR-21e, Stage 18)
+
+_(Supersedes an earlier "one expense doubles as the group parent" design —
+built (`parentExpenseId`/`defaultParentRecurringExpenseId`, a tri-state paid
+cascade, archive/trash cascade-or-detach) and then abandoned after live
+review, before ever merging: the user wanted grouping to work like a real
+named container instead of one expense secretly standing in for the group.
+Reused the §11 slot and FR-21 numbering rather than renumbering, since
+nothing shipped under the old version.)_
+
+Lets a user create a **recurring group** — a named container (e.g.
+"Suscripciones") — and assign an expense (recurring or one-time) to it, so
+Netflix/Disney+/Google Cloud each stay individually tracked but read
+together on the Payments Dashboard.
+
+### `users/{uid}/recurringGroups/{id}`
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | `string` | |
+| `lifecycleState` | `'active' \| 'archived' \| 'trashed'` | same archive/trash lifecycle as every other record type (§7) |
+| `trashedFromState` | `'active' \| 'archived' \| null` | |
+| `archivedAt` / `trashedAt` | `Timestamp \| null` | |
+| `purgeAt` | `Timestamp \| null` | |
+| `createdAt` / `updatedAt` | `Timestamp` | |
+
+That's the entire document — **no amount, date, or paid field**. A group
+holds no state of its own; everything shown about it (combined total,
+overdue/upcoming/completed placement) is derived at render time from its
+current members (`src/lib/recurring-groups.ts`), same reasoning as
+§9's on-the-fly rolling average.
+
+### Membership
+
+- `recurringExpenses/{id}` gains `recurringGroupId: string | null` — a
+  persistent default. Every instance generated from that definition copies
+  it verbatim (`recurring-generation.ts`); changing the definition's
+  membership only affects instances generated from that point forward
+  (same forward-only convention as any other definition edit, §5).
+- `expenses/{id}` (both `kind` values — §6's shared `ExpenseRecordShared`)
+  also carries `recurringGroupId: string | null` directly, independent of
+  its definition's own value. A one-time expense is assigned the same way
+  a category is: picked once, no auto-inheritance path since it has no
+  definition to inherit from. An already-generated recurring instance can
+  also be reassigned/cleared ad hoc (the Payments Dashboard's "Grupo…" row
+  action) without touching its definition's own default.
+- Income is out of scope — `recurringGroupId` only exists on the expenses
+  side.
+- No `firestore.rules` change needed: neither field is locked, and rules
+  don't enumerate an allowed-field whitelist.
+
+### Payments Dashboard placement (extends §13 below)
+
+`src/lib/recurring-groups.ts`'s `buildDashboardSections` runs after §13's
+existing overdue/upcoming/completed bucketing: it gathers a group's
+current members from *all three* buckets (a partially-settled group can
+have some members already paid-this-cycle and others still open), then
+places one header entry for the whole group into a single bucket:
+
+- `computeGroupSubtotal` — sum of members' `amountInDefaultCurrency`; shown
+  next to the group's name.
+- `groupBucket` — `'completed'` once every member is paid or skipped;
+  otherwise `'overdue'` if any unpaid member is past due, else
+  `'upcoming'`. A partial payment therefore leaves the group in an open
+  bucket, carrying *all* its members (not just the still-unpaid ones), so
+  the header always reflects the group's full membership.
+
+A member folded into a group header is removed from that bucket's plain
+row list, so it isn't shown twice. A group whose `lifecycleState` isn't
+`'active'` renders no header at all — its members fall back to plain,
+ungrouped rows (archiving/trashing the container doesn't touch
+`recurringGroupId` on its members, so restoring the group later brings the
+grouped view back for free).
+
+### Archive/Trash/restore
+
+A member (one-time expense or recurring instance) is archived/trashed/
+restored completely independently of its group and of its other
+members — the group holds no state to cascade, so there is no
+cascade-or-detach decision to make (unlike a hierarchical parent/child
+model would need). The group entity itself goes through the same plain
+archive/trash/restore lifecycle as any other record (`recurring-groups.ts`
+store) — archiving it only hides its header; it does not detach members.
+
+## 12. Open design decisions (not yet resolved — revisit before they become load-bearing)
 
 1. **Actual-paid currency diverging from budgeted currency**: modeled as allowed (an instance's `amount`/`currency` are independent from `budgetedAmount`/`budgetedCurrency`), since a user might budget in one currency but actually pay in another that period. The SRS doesn't address this scenario explicitly.
 2. **Budget change history/versioning**: no dedicated "budget changed from X to Y on date Z" log exists — each generated instance implicitly preserves the budgeted amount at that time via its own `budgetedAmount` snapshot, but there's no explicit version list if a future chart needs to show *when within a month gap* a budget changed.
@@ -249,7 +333,7 @@ Two-tier config: `users/{uid}.reminders.{enabled, leadDays}` (global default) an
 
 ---
 
-## 12. Payments Dashboard view logic (Stage 8)
+## 13. Payments Dashboard view logic (Stage 8)
 
 Read-only view logic, not a new collection or write path (skip's schema
 addition is covered in §6). Documented here because the grouping rule has
@@ -302,7 +386,7 @@ dashboard only ever shows the live/current state.
 
 ---
 
-## 13. Deployment checklist
+## 14. Deployment checklist
 
 Steps that don't happen automatically from `firestore.rules` or app code deploys — must be done manually (once per environment/project):
 
@@ -312,7 +396,7 @@ Steps that don't happen automatically from `firestore.rules` or app code deploys
 
 ---
 
-## 14. Change log
+## 15. Change log
 
 - **1.0 (2026-07-07):** Initial approved model for Stage 1.
 - **1.1 (2026-07-07):** Added TTL deployment note (§7) and deployment checklist (§13) — `purgeAt` requires manually enabling a Firestore TTL policy per collection; this isn't created automatically by rules or app code.
@@ -320,3 +404,16 @@ Steps that don't happen automatically from `firestore.rules` or app code deploys
 - **1.3 (2026-07-07):** SRS FR-5c updated to add a paid/received toggle for income (projection support — expected vs. actually received). `paid`/`paidDate` now apply to `incomes` too, mirroring `expenses` exactly; `date` on income is redefined as the expected/due date only, distinct from `paidDate`. Supersedes 1.2's income-has-no-paid-gate note.
 - **1.4 (2026-07-07):** Doc cleanup — fixed section numbering (skipped straight from §11 to old §13, no §12; renumbered to §12/§13). Added the `(recurringIncomeId, paid, date)` index note alongside the existing `(recurringExpenseId, paid, date)` one in §6 and §12, for consistency now that `incomes` carries `paid` too (v1.3) — not queried by anything yet.
 - **1.5 (2026-07-11):** SRS §11 roadmap change inserted a new Stage 8 (Payments Dashboard) ahead of the former Stage 8 (Auth), pushing everything after it back by one. Added `skipped`/`skippedAt` fields to §6, scoped to `kind === 'recurringInstance'` only on `expenses`/`incomes` (not one-time records, not the recurring definitions themselves) — orthogonal to `paid`/`paidDate` the same way those are orthogonal to `lifecycleState`. Added new §12 documenting the Payments Dashboard's three-group, cycle-based grouping/sort rule (renumbering old §12/§13 Deployment checklist/Change log to §13/§14) — no new collections, no new Firestore indexes; the dashboard is a client-side merge of the already-fully-synced `expenses`/`incomes` listeners.
+- **1.6:** Stage 18's first design — expense grouping via one expense acting
+  as a "group parent" (`parentExpenseId`/`defaultParentRecurringExpenseId`,
+  paid cascade, archive/trash cascade-or-detach). Built in full, then
+  abandoned after live review before merging — see 1.7 below.
+- **1.7 (2026-09-08):** Replaced 1.6's abandoned parent/child design with
+  **recurring groups** — a real `recurringGroups/{id}` container
+  (`name` + lifecycle only, no amount/date/paid state of its own) that an
+  expense (recurring or one-time) points at via `recurringGroupId`. Added
+  new §11 documenting the collection, membership fields, Payments Dashboard
+  placement rule (derived subtotal + bucket from current members, no
+  cascade), and archive/trash independence (renumbering old §11–§14 to
+  §12–§15). Reuses the FR-21 numbering from the abandoned design rather
+  than incrementing past it, since nothing shipped under the old numbering.
