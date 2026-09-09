@@ -431,6 +431,22 @@ actually resolved.)_
   along with everything else; whether to reapply the `Checkbox` swap on
   top of this redesign wasn't part of what the user asked for this round —
   flagged here rather than silently deciding either way.
+- **Drag-and-drop grouping has no haptic feedback, no live sibling-row
+  reflow while dragging, and is unverified end-to-end** (drag-and-drop
+  grouping follow-up) — `expo-haptics` isn't installed and would be a new
+  dependency, so the drag interaction is visual-only for now (highlight +
+  lift + spring-back), not the vibration-on-hover Android's own folder
+  gesture has; ask first if that's wanted. Sibling rows don't animate out
+  of the way while something is being dragged over them — deliberately
+  scoped out as the highest-effort/highest-risk-of-feeling-janky part of
+  the original gesture description, to ship the core interaction first.
+  More importantly: **this hasn't been exercised against real data at
+  all** — the dev sandbox that built it has no real Firebase credentials
+  to reach a live Dashboard with. `react-native-gesture-handler`'s `Pan`
+  gesture on web via mouse pointer events specifically — the exact risk
+  the from-scratch-vs-dependency decision was made to manage — has never
+  actually been tried. Verify this before relying on it; see this
+  feature's own summary above for the full manual test list.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
@@ -468,9 +484,25 @@ The replacement — a `recurringGroups/{id}` container holding no
 amount/date/paid state of its own, with the Payments Dashboard deriving a
 combined total and overdue/upcoming/completed placement from its current
 members — is built and verified (`tsc`/lint/tests) on branch
-`claude/expense-grouping-categories-bxu05n` (off the reverted `develop`).
-See its own summary below. **Not yet manually verified in a browser** —
-do that before merging (see the summary's own note).
+`stage-18-recurring-groups` (re-pushed there from
+`claude/expense-grouping-categories-bxu05n` once that branch name turned
+out to still be associated with the closed/reverted PR #29 — see its own
+summary below for why). **PR #30** is open from this branch into
+`develop`, not merged — that's the user's call, per the standing
+convention.
+
+Two follow-up rounds landed on the same branch/PR after the user's first
+live test: a real bug fix (`firestore.rules` had no block for the new
+`recurringGroups` collection at all, so every group-create attempt was
+silently denied) plus the recurring-groups admin screen the user asked
+for — see the `fix/recurring-groups-admin-and-rules-bug` summary below.
+Then a UX follow-up: drag-and-drop grouping (drag one expense onto another
+to group them, Android-home-screen style, alongside the existing "Grupo…"
+menu action) — see `fix/drag-and-drop-grouping` below. **Neither the
+admin screen nor the drag-and-drop feature has been manually verified
+end-to-end** — this dev sandbox has no real Firebase credentials to reach
+live data with; do that (see each summary's own test list) before relying
+on either.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -1086,3 +1118,84 @@ commit to PR #30, not a separate branch):
   in particular can't be confirmed working from `tsc`/`jest` alone, since
   it's Firestore's own server-side enforcement; needs the rules deploy
   above plus an actual create-a-group attempt against the live project.
+
+### fix/drag-and-drop-grouping summary
+
+Android-home-screen-style shortcut for the same grouping feature: drag one
+expense row onto another to group them, instead of only via the "Grupo…"
+menu picker (which stays, unchanged, as the non-drag path).
+
+- **Dependency decision, researched not guessed**: SortableJS is DOM-only
+  (no RN native support) — rejected outright, would only ever cover web.
+  Searched current RN drag-and-drop options; the closest fit
+  (`react-native-reanimated-dnd`, has real drop-to-merge collision
+  detection) has no confirmed `react-native-web` support in its docs — a
+  real risk for an app that must behave the same on both. **Built from
+  scratch on `react-native-gesture-handler` + `react-native-reanimated`
+  instead — zero new dependencies** (both were already in `package.json`
+  but, confirmed via `grep`, genuinely unused anywhere until this round;
+  `src/app/_layout.tsx` now wraps the navigator in
+  `GestureHandlerRootView` for the first time, required for gestures to
+  register at all, especially on Android).
+- **Pure logic, unit-tested**: new `src/lib/drag-drop-groups.ts` —
+  `resolveDropAction` (drop-target → what happens: `createGroup`,
+  `assignToGroup`, `clearGroup`, or `noop`; simplified during design so
+  every action only ever mutates the *dragged* row's own
+  `recurringGroupId`, never the target's — dragging a grouped row onto an
+  ungrouped one always forms a fresh group with the target rather than
+  also reassigning the target), `suggestGroupName` (shared category name,
+  or `null` for the caller's translated fallback), `findRowUnderPoint`
+  (plain point-in-rect collision, no gesture library needed to test it).
+- **Gesture orchestration**: new `src/hooks/use-row-drag-and-drop.ts` owns
+  the bounds registry (every draggable row/group-header registers its
+  measured on-screen rect via `onLayout`/`measureInWindow`, same idiom
+  `Select`'s `FloatingPanel` anchoring already used) and the dragged row's
+  shared values — but never calls a store function itself; it hands the
+  resolved `DropAction` back to the Dashboard screen, which owns the
+  actual `setExpenseGroupId`/`addRecurringGroup` calls and the
+  create-group name-confirmation dialog. New `src/components/ui/drag-handle.tsx`
+  (small grip icon + its own `Gesture.Pan()`) is the confirmed-with-the-user
+  UX choice — an explicit handle on **both** web and native, not
+  long-press-anywhere like Android's icons, since mouse long-press fights
+  with text-selection/scroll on web.
+- **`(tabs)/index.tsx`'s rows became real components** (`PaymentRowItem`,
+  `GroupHeaderRow`), extracted out of the previous plain render-function
+  closures — required, not optional: `useAnimatedStyle`/`useSharedValue`
+  can't be called from inside a `.map()` callback (Rules of Hooks). Drop
+  semantics confirmed with the user: drop on an ungrouped row → new group,
+  name confirmed via a dialog first (new shared
+  `src/components/ui/group-name-dialog.tsx`, also used to refactor
+  `recurring-groups/index.tsx`'s existing rename dialog onto the same
+  component — same shape, now its 2nd/3rd occurrence); drop on any grouped
+  row or a group's header → joins directly, no dialog; drop outside any
+  target while already grouped → leaves the group; everything else is a
+  no-op. No live reflow of sibling rows while dragging, and no haptics
+  (`expo-haptics` isn't installed and would be a new dependency) —
+  deliberately scoped out of this first pass, not silently dropped; see
+  Known Issues.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (the one
+  pre-existing, unrelated `@/global.css` error), `npm run lint` clean,
+  `npm test` 27/27 suites, 227/227 tests (19 new, all in
+  `drag-drop-groups.test.ts` — the pure logic; the gesture/animation code
+  itself has no automated coverage, consistent with this project's
+  established convention).
+- **Could not manually verify end-to-end in this session** — attempted via
+  `npm run web` + a Playwright driver script; the dev server bundled this
+  code successfully with zero Metro/bundler errors (1556+ modules,
+  confirming no syntax/import/type issue reaches runtime), but this dev
+  environment has no real Firebase project credentials (`.env` only has
+  `.env.example`'s placeholders), so the app can't get past
+  `auth/invalid-api-key` to reach real synced data to actually drag. Real
+  verification needs to happen against a deployed preview or a local dev
+  environment with real credentials, same as this project's standing
+  practice for every prior UI-heavy stage. **Do this before merging** —
+  drag an ungrouped expense onto another (name dialog appears, confirm →
+  both grouped), drag a third onto the new group's header (joins, no
+  dialog), drag a member out of an expanded group onto the plain list
+  (removed), drag a member from one group onto a different group's header
+  (moved), and confirm a normal (non-drag) interaction — toggling a row's
+  paid `Switch` — still works with no regression. Test on **both** web and
+  native if at all possible: web pointer-event behavior for
+  `react-native-gesture-handler`'s `Pan` gesture is the specific risk this
+  whole dependency decision was made to manage, and it has never
+  actually been exercised.

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Divider } from '@/components/ui/divider';
+import { GroupNameDialog } from '@/components/ui/group-name-dialog';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
@@ -53,7 +54,6 @@ export default function RecurringGroupsScreen() {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [renameTarget, setRenameTarget] = useState<WithId<RecurringGroup> | null>(null);
-  const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<WithId<RecurringGroup> | null>(null);
 
   async function handleCreate() {
@@ -71,14 +71,9 @@ export default function RecurringGroupsScreen() {
     }
   }
 
-  function openRename(group: WithId<RecurringGroup>) {
-    setRenameTarget(group);
-    setRenameValue(group.name);
-  }
-
-  async function handleConfirmRename() {
-    if (!renameTarget || !renameValue.trim()) return;
-    await renameRecurringGroup(renameTarget.id, renameValue);
+  async function handleConfirmRename(name: string) {
+    if (!renameTarget || !name.trim()) return;
+    await renameRecurringGroup(renameTarget.id, name);
     setRenameTarget(null);
   }
 
@@ -136,7 +131,7 @@ export default function RecurringGroupsScreen() {
                   <OverflowMenu
                     accessibilityLabel={t('common.actionsFor', { name: group.name })}
                     items={[
-                      { label: t('common.rename'), onPress: () => openRename(group) },
+                      { label: t('common.rename'), onPress: () => setRenameTarget(group) },
                       { label: t('common.deletePermanently'), onPress: () => setDeleteTarget(group) },
                     ]}
                   />
@@ -166,27 +161,16 @@ export default function RecurringGroupsScreen() {
         </Card>
       )}
 
-      <Dialog
-        isOpen={renameTarget !== null}
-        onClose={() => setRenameTarget(null)}
-        title={t('recurringGroups.renameTitle')}
-      >
-        <TextField label={t('recurringGroups.newGroupName')} value={renameValue} onChangeText={setRenameValue} />
-        <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
-          <Button
-            label={t('common.save')}
-            onPress={handleConfirmRename}
-            disabled={!renameValue.trim()}
-            style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
-          />
-          <Button
-            label={t('common.cancel')}
-            variant="secondary"
-            onPress={() => setRenameTarget(null)}
-            style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
-          />
-        </View>
-      </Dialog>
+      {renameTarget && (
+        <GroupNameDialog
+          key={renameTarget.id}
+          isOpen
+          title={t('recurringGroups.renameTitle')}
+          initialName={renameTarget.name}
+          onConfirm={handleConfirmRename}
+          onCancel={() => setRenameTarget(null)}
+        />
+      )}
 
       <Dialog
         isOpen={deleteTarget !== null}
