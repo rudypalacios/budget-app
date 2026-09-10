@@ -79,7 +79,21 @@ export function DraggableRowContainer<T extends GroupableItem>({
   return (
     <View ref={outerRef} onLayout={handleLayout}>
       <Animated.View
-        style={[style, animatedStyle, isDropTarget && { backgroundColor: `${theme.tint}26`, borderColor: theme.tint }]}
+        style={[
+          style,
+          animatedStyle,
+          // The border-bottom is the primary "drop here" marker — set with
+          // its own width/color rather than relying on a row's own base
+          // `style` already having a borderWidth (some row types, e.g.
+          // RecurringDefinitionRowItem, don't), so every row type gets a
+          // visible indicator regardless of its own border styling. Layered
+          // with the translucent tint wash, not a replacement for it.
+          isDropTarget && {
+            backgroundColor: `${theme.tint}26`,
+            borderBottomWidth: 3,
+            borderBottomColor: theme.tint,
+          },
+        ]}
       >
         {groupable && (
           <DragHandle

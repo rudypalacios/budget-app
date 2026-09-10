@@ -55,7 +55,14 @@ export function GroupHeaderRow<T extends GroupableItem>({
         accessibilityLabel={t(expanded ? 'recurringGroups.hideMembers' : 'recurringGroups.showMembers', {
           name: section.name,
         })}
-        style={[styles.groupHeader, isDropTarget && { backgroundColor: `${theme.tint}26` }]}
+        style={[
+          styles.groupHeader,
+          isDropTarget && {
+            backgroundColor: `${theme.tint}26`,
+            borderBottomWidth: 3,
+            borderBottomColor: theme.tint,
+          },
+        ]}
       >
         <View style={styles.groupHeaderMain}>
           <ThemedText type="smallBold">{section.name}</ThemedText>

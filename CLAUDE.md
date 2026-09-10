@@ -511,10 +511,14 @@ Dashboard — the drag/group core (`drag-drop-groups.ts`,
 `use-row-drag-and-drop.ts`, `recurring-groups.ts`) was genericized over a
 new `GroupableItem` structural type to support this without a third
 copy-paste, per this project's own 3+-occurrences DRY convention — see
-`fix/expenses-tab-grouping` below. **None of the admin screen, the
-Dashboard drag-and-drop, or the Expenses-tab drag-and-drop has been
-manually verified end-to-end** — this dev sandbox has no real Firebase
-credentials to reach live data with; do that (see each summary's own test
+`fix/expenses-tab-grouping` below. Then a visual polish round — a
+border-bottom drop indicator (fixing a case where it silently didn't
+render at all on "Recurrentes" rows) and a grip-icon/cursor swap on the
+drag handle — see `fix/drag-drop-visual-polish` below. **None of the
+admin screen, the Dashboard drag-and-drop, or the Expenses-tab
+drag-and-drop has been manually verified end-to-end** — this dev sandbox
+has no real Firebase credentials to reach live data with; do that (see
+each summary's own test
 list) before relying on any of them.
 
 ### Stage 10 summary
@@ -1364,3 +1368,62 @@ occurrences" DRY line for real.
   both sections; confirm the Dashboard itself is unchanged after the
   `PaymentRowItem`/`GroupHeaderRow` extraction (paid toggle, skip, archive/
   delete, existing drag-and-drop all still behave identically).
+
+### fix/drag-drop-visual-polish summary
+
+Two visual/UX fixes to the drag-and-drop grouping interaction, raised
+after live review of the Expenses-tab-grouping round:
+
+- **Border-bottom drop indicator** — `isDropTarget`'s highlight
+  previously relied on `borderColor: theme.tint` layered on top of
+  whatever `borderWidth` a row's own base style happened to set, which
+  worked for `PaymentRowItem` (has `borderWidth: 1`) but was a silent
+  no-op for `RecurringDefinitionRowItem` (no border at all in its base
+  style) — a real inconsistency, not just weak styling. Fixed in the one
+  place both route through: `DraggableRowContainer`'s `isDropTarget`
+  style now also sets `borderBottomWidth: 3, borderBottomColor:
+  theme.tint` directly, independent of the row's own style, so every row
+  type gets a visible marker; `GroupHeaderRow` (a drop target that's
+  never itself draggable, so it doesn't route through
+  `DraggableRowContainer`) got the identical treatment applied directly.
+  Confirmed with the user: layered with the existing translucent
+  `theme.tint` background wash, not a replacement for it — closer to
+  SortableJS's combined ghost/chosen visual language than either style
+  alone.
+- **Grip icon + grab/grabbing cursor** — `DragHandle` previously showed
+  `line.3.horizontal`/`drag_handle` (a 3-line hamburger glyph, matching
+  iOS's own native reordering convention) and no cursor change on hover.
+  Replaced with the actual Google Material Symbols `drag_indicator` glyph
+  (the 2×3 six-dot grip near-universal in web/Android sortable-list UIs,
+  and the specific icon the user linked from fonts.google.com), rendered
+  via `react-native-svg`'s `Svg`/`Path` (already a project dependency,
+  Stage 5's `line-chart.tsx`) rather than a per-platform `SymbolView`
+  name — SF Symbols has no equivalent 6-dot grip glyph, and this
+  feature's confirmed UX decision was one consistent handle look across
+  web *and* native, so a platform-symbol lookup couldn't give the same
+  result on iOS anyway. Path data pulled verbatim from Google's
+  `material-design-icons` GitHub source
+  (`symbols/web/drag_indicator/materialsymbolsoutlined/drag_indicator_24px.svg`).
+  `DragHandle` also now tracks local `isDragging` state (set in the
+  existing `Gesture.Pan()`'s `onStart`/`onEnd`, alongside the unchanged
+  `onDragStart`/`onDragEnd` callbacks) to drive `cursor: 'grab'` at rest /
+  `'grabbing'` while dragging. **One narrow, commented type-cast was
+  unavoidable**: RN core's `CursorValue` type
+  (`StyleSheetTypes.d.ts`) is only `'auto' | 'pointer'`, even though
+  `react-native-web` passes the value straight through to real CSS
+  `cursor` (which supports the full keyword set) at runtime — the style
+  object is cast `as unknown as ViewStyle` with a comment explaining the
+  gap, the only such cast in this change. `cursor` is a no-op on native
+  (no mouse pointer there), so this half is effectively web-only polish.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 230/230 tests (unchanged — pure
+  presentation, no pure-logic changes, consistent with this project's
+  convention of not writing tests for gesture/animation/styling code).
+- **Not manually verified end-to-end** — same no-real-Firebase-credentials
+  sandbox limitation as every prior drag-and-drop round. Verify before
+  merging: the border-bottom marker shows on **every** row type
+  (Dashboard payment rows, group headers, and — the specific
+  previously-broken case — Expenses tab "Recurrentes" rows) while
+  hovering a valid drop target; the grip icon renders identically on
+  iOS, Android, and web; the cursor shows a grab hand at rest over the
+  handle and a grabbing hand while dragging, on web.
