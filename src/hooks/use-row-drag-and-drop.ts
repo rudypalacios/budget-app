@@ -38,12 +38,11 @@ export function useRowDragAndDrop<T extends GroupableItem>(onDropResolved: (drag
   const targetsRef = useRef(new Map<string, DropTarget<T>>());
   const draggedRowRef = useRef<T | null>(null);
 
-  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
   const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
-  // Mirrors draggedRowId inside worklet context — each row's
-  // useAnimatedStyle reads this (not the plain state above, which isn't
-  // safe to read from a worklet) to decide whether translateX/Y apply to
-  // it specifically, since every row shares the same one pair of values.
+  // The dragged row's id, readable from worklet context — each row's
+  // useAnimatedStyle reads this (a plain useState wouldn't be safe to read
+  // from a worklet) to decide whether translateX/Y apply to it
+  // specifically, since every row shares the same one pair of values.
   const draggedRowIdShared = useSharedValue<string | null>(null);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -53,14 +52,8 @@ export function useRowDragAndDrop<T extends GroupableItem>(onDropResolved: (drag
     targetsRef.current.set(id, target);
   }
 
-  function unregisterTarget(id: string) {
-    boundsRef.current.delete(id);
-    targetsRef.current.delete(id);
-  }
-
   function handleDragStart(row: T) {
     draggedRowRef.current = row;
-    setDraggedRowId(row.id);
     draggedRowIdShared.value = row.id;
     translateX.value = 0;
     translateY.value = 0;
@@ -87,14 +80,11 @@ export function useRowDragAndDrop<T extends GroupableItem>(onDropResolved: (drag
     }
 
     draggedRowRef.current = null;
-    setDraggedRowId(null);
     setHoveredTargetId(null);
   }
 
   return {
     registerTarget,
-    unregisterTarget,
-    draggedRowId,
     hoveredTargetId,
     draggedRowIdShared,
     translateX,

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -19,8 +19,10 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
 import { useGroupDragOrchestration } from '@/hooks/use-group-drag-orchestration';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import type { RowDragAndDrop } from '@/hooks/use-row-drag-and-drop';
+import { groupDropTargetId, type GroupableItem } from '@/lib/drag-drop-groups';
 import { expenseToPaymentRow, type PaymentRow } from '@/lib/payments-dashboard';
-import { groupRowsIntoSections } from '@/lib/recurring-groups';
+import { groupRowsIntoSections, type GroupSection } from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, setExpenseGroupId, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
 import { runRecurringGeneration } from '@/store/recurring-generation';
@@ -213,6 +215,40 @@ export default function ExpensesScreen() {
     ];
   }
 
+  // Both sections' grouped rows render identically (Card → GroupHeaderRow →
+  // expand-conditional member list), differing only in which drag object
+  // and which row component are plugged in — extracted once so the two
+  // sections don't duplicate this JSX, mirroring how (tabs)/index.tsx
+  // already solved the same problem for its own single section.
+  function renderGroupSections<T extends GroupableItem>(
+    groups: GroupSection<T>[],
+    drag: RowDragAndDrop<T>,
+    renderRow: (item: T) => ReactNode,
+  ) {
+    return groups.map((section) => {
+      const expanded = expandedGroupIds.has(section.groupId);
+      return (
+        <Card key={section.groupId} style={styles.card}>
+          <GroupHeaderRow
+            section={section}
+            expanded={expanded}
+            isDropTarget={drag.hoveredTargetId === groupDropTargetId(section.groupId)}
+            dragAndDrop={drag}
+            onToggleExpanded={toggleGroupExpanded}
+            defaultCurrency={defaultCurrency}
+          />
+          {expanded &&
+            section.members.map((item) => (
+              <View key={item.id}>
+                <Divider style={styles.divider} />
+                {renderRow(item)}
+              </View>
+            ))}
+        </Card>
+      );
+    });
+  }
+
   return (
     <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title={t('expenses.title')} />
@@ -240,33 +276,14 @@ export default function ExpensesScreen() {
                 ))}
               </Card>
             )}
-            {recurringSections.groups.map((section) => {
-              const expanded = expandedGroupIds.has(section.groupId);
-              return (
-                <Card key={section.groupId} style={styles.card}>
-                  <GroupHeaderRow
-                    section={section}
-                    expanded={expanded}
-                    isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === `group:${section.groupId}`}
-                    dragAndDrop={recurringDrag.dragAndDrop}
-                    onToggleExpanded={toggleGroupExpanded}
-                    defaultCurrency={defaultCurrency}
-                  />
-                  {expanded &&
-                    section.members.map((definition) => (
-                      <View key={definition.id}>
-                        <Divider style={styles.divider} />
-                        <RecurringDefinitionRowItem
-                          definition={definition}
-                          isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
-                          dragAndDrop={recurringDrag.dragAndDrop}
-                          overflowItems={recurringOverflowItems(definition)}
-                        />
-                      </View>
-                    ))}
-                </Card>
-              );
-            })}
+            {renderGroupSections(recurringSections.groups, recurringDrag.dragAndDrop, (definition) => (
+              <RecurringDefinitionRowItem
+                definition={definition}
+                isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
+                dragAndDrop={recurringDrag.dragAndDrop}
+                overflowItems={recurringOverflowItems(definition)}
+              />
+            ))}
           </>
         )}
       </View>
@@ -296,37 +313,18 @@ export default function ExpensesScreen() {
                 ))}
               </Card>
             )}
-            {oneTimeSections.groups.map((section) => {
-              const expanded = expandedGroupIds.has(section.groupId);
-              return (
-                <Card key={section.groupId} style={styles.card}>
-                  <GroupHeaderRow
-                    section={section}
-                    expanded={expanded}
-                    isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === `group:${section.groupId}`}
-                    dragAndDrop={oneTimeDrag.dragAndDrop}
-                    onToggleExpanded={toggleGroupExpanded}
-                    defaultCurrency={defaultCurrency}
-                  />
-                  {expanded &&
-                    section.members.map((row) => (
-                      <View key={row.id}>
-                        <Divider style={styles.divider} />
-                        <PaymentRowItem
-                          row={row}
-                          isOverdue={false}
-                          isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
-                          dragAndDrop={oneTimeDrag.dragAndDrop}
-                          categories={categories}
-                          defaultCurrency={defaultCurrency}
-                          onTogglePaid={handleMarkExpensePaid}
-                          overflowItems={oneTimeOverflowItems(row)}
-                        />
-                      </View>
-                    ))}
-                </Card>
-              );
-            })}
+            {renderGroupSections(oneTimeSections.groups, oneTimeDrag.dragAndDrop, (row) => (
+              <PaymentRowItem
+                row={row}
+                isOverdue={false}
+                isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
+                dragAndDrop={oneTimeDrag.dragAndDrop}
+                categories={categories}
+                defaultCurrency={defaultCurrency}
+                onTogglePaid={handleMarkExpensePaid}
+                overflowItems={oneTimeOverflowItems(row)}
+              />
+            ))}
           </>
         )}
       </View>

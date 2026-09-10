@@ -30,7 +30,15 @@ jest.mock('@/store/session', () => ({
   useSessionStore: { getState: () => ({ uid: 'test-uid' }) },
 }));
 
-import { archiveExpense, purgeExpense, restoreExpense, subscribeExpenses, trashExpense, useExpensesStore } from './expenses';
+import {
+  archiveExpense,
+  purgeExpense,
+  restoreExpense,
+  setExpenseGroupId,
+  subscribeExpenses,
+  trashExpense,
+  useExpensesStore,
+} from './expenses';
 /* eslint-enable import/first */
 
 beforeAll(() => {
@@ -112,5 +120,19 @@ describe('purgeExpense', () => {
     await purgeExpense('e1');
 
     expect(mockDeleteDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1');
+  });
+});
+
+describe('setExpenseGroupId', () => {
+  it('writes the given recurringGroupId', async () => {
+    await setExpenseGroupId('e1', 'g1');
+
+    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1', { recurringGroupId: 'g1' });
+  });
+
+  it('clears the group when passed null', async () => {
+    await setExpenseGroupId('e1', null);
+
+    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1', { recurringGroupId: null });
   });
 });

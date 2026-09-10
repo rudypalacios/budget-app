@@ -30,7 +30,7 @@ export type GroupDragOrchestration<T extends GroupableItem> = {
 //   RecurringGroup and assigns both ids to it, used only after the
 //   name-confirm dialog (driven by groupCreatePrompt/
 //   createGroupSuggestedName/handleConfirmCreateGroup below) is accepted.
-export function useGroupDragOrchestration<T extends GroupableItem & { name: string }>(
+export function useGroupDragOrchestration<T extends GroupableItem>(
   allItems: T[],
   categories: WithId<Category>[],
   assignGroup: (id: string, groupId: string | null) => void | Promise<void>,

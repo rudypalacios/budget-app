@@ -65,14 +65,15 @@ function gatherMembersByGroupId<T extends GroupableItem>(
   const activeGroupIds = new Set(activeGroups.map((group) => group.id));
 
   const membersByGroupId = new Map<string, T[]>();
+  const groupedRowIds = new Set<string>();
   for (const row of rows) {
     if (row.recurringGroupId && activeGroupIds.has(row.recurringGroupId)) {
       const members = membersByGroupId.get(row.recurringGroupId) ?? [];
       members.push(row);
       membersByGroupId.set(row.recurringGroupId, members);
+      groupedRowIds.add(row.id);
     }
   }
-  const groupedRowIds = new Set(Array.from(membersByGroupId.values()).flat().map((row) => row.id));
 
   return { membersByGroupId, groupedRowIds };
 }

@@ -54,10 +54,6 @@ export type NewExpenseInput = {
   // (setExpenseInstanceAt below), which always starts unpaid until settled
   // on the Payments dashboard, this is a one-off, user-set initial state.
   paid?: boolean;
-  // Stage 18 redo (FR-21, data-model.md §11) — optional recurringGroups/{id}
-  // membership, assignable at creation same as category. null/omitted =
-  // ungrouped.
-  recurringGroupId?: string | null;
 };
 
 export function addExpense(input: NewExpenseInput) {
@@ -83,7 +79,10 @@ export function addExpense(input: NewExpenseInput) {
     // setExpensePaid below, where "now" is correct: that's a live
     // "marking this paid right now" action, not a backdated log.
     paidDate: paid ? toTimestamp(input.date) : null,
-    recurringGroupId: input.recurringGroupId ?? null,
+    // Stage 18 redo (FR-21, data-model.md §11) — a one-time expense always
+    // starts ungrouped; group (re)assignment only ever happens afterward,
+    // through setExpenseGroupId below (no creation-time UI path exists).
+    recurringGroupId: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
@@ -95,11 +94,14 @@ export function addExpense(input: NewExpenseInput) {
 
 type EditableExpenseFields = Pick<
   OneTimeExpense,
-  'name' | 'categoryId' | 'date' | 'currency' | 'amount' | 'paid' | 'paidDate' | 'recurringGroupId'
+  'name' | 'categoryId' | 'date' | 'currency' | 'amount' | 'paid' | 'paidDate'
 >;
 
 // exchangeRateToDefault/budgetedAmount/budgetedCurrency/kind/recurringExpenseId
 // are deliberately excluded — firestore.rules locks them after creation (FR-16).
+// recurringGroupId is deliberately excluded too — setExpenseGroupId below is
+// the one sanctioned path for changing it, so this type doesn't let a future
+// updateExpense call bypass that.
 export async function updateExpense(id: string, patch: Partial<EditableExpenseFields>) {
   const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
   if (trimmedPatch.amount === undefined) {

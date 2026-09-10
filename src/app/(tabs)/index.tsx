@@ -20,6 +20,7 @@ import { Spacing } from '@/constants/theme';
 import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useGroupDragOrchestration } from '@/hooks/use-group-drag-orchestration';
+import { groupDropTargetId } from '@/lib/drag-drop-groups';
 import type { PaymentRow } from '@/lib/payments-dashboard';
 import type { DashboardBucket, DashboardSections, GroupSection } from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
@@ -216,7 +217,7 @@ export default function PaymentsScreen() {
         <GroupHeaderRow
           section={section}
           expanded={expanded}
-          isDropTarget={dragAndDrop.hoveredTargetId === `group:${section.groupId}`}
+          isDropTarget={dragAndDrop.hoveredTargetId === groupDropTargetId(section.groupId)}
           dragAndDrop={dragAndDrop}
           onToggleExpanded={toggleGroupExpanded}
           defaultCurrency={defaultCurrency}

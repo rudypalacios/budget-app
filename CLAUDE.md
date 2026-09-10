@@ -514,11 +514,14 @@ copy-paste, per this project's own 3+-occurrences DRY convention — see
 `fix/expenses-tab-grouping` below. Then a visual polish round — a
 border-bottom drop indicator (fixing a case where it silently didn't
 render at all on "Recurrentes" rows) and a grip-icon/cursor swap on the
-drag handle — see `fix/drag-drop-visual-polish` below. **None of the
-admin screen, the Dashboard drag-and-drop, or the Expenses-tab
-drag-and-drop has been manually verified end-to-end** — this dev sandbox
-has no real Firebase credentials to reach live data with; do that (see
-each summary's own test
+drag handle — see `fix/drag-drop-visual-polish` below. Then a code-quality
+cleanup pass over the whole branch (dead code, a duplicated string
+convention, duplicated JSX, two missing tests) — see the "Code-quality
+cleanup pass summary" below; tsc/lint/tests clean throughout, no behavior
+change intended or observed. **None of the admin screen, the Dashboard
+drag-and-drop, or the Expenses-tab drag-and-drop has been manually
+verified end-to-end** — this dev sandbox has no real Firebase credentials
+to reach live data with; do that (see each summary's own test
 list) before relying on any of them.
 
 ### Stage 10 summary
@@ -1427,3 +1430,70 @@ after live review of the Expenses-tab-grouping round:
   hovering a valid drop target; the grip icon renders identically on
   iOS, Android, and web; the cursor shows a grab hand at rest over the
   handle and a grabbing hand while dragging, on web.
+
+### Code-quality cleanup pass summary
+
+The user asked for a code review over this whole branch (`stage-18-recurring-groups`
+vs. `origin/develop`, 42 files/~3,900 lines at the time) to cut duplication,
+dead code, and over-engineering. Ran three parallel read-only audits (core
+drag/group logic, screen-level UI wiring, store/lib/types + i18n), each
+grepping real call sites rather than assuming. Verdict: the branch was
+unusually disciplined already — most extractions were already justified by
+genuine 3+ call sites with inline reasoning, and several things that looked
+suspicious turned out to be self-documented as intentional. What survived
+scrutiny, all applied:
+
+- **`src/hooks/use-row-drag-and-drop.ts`**: removed two dead exports —
+  `unregisterTarget` (defined + returned, zero call sites anywhere; its own
+  neighboring code already explains unregistration is deliberately not
+  done) and the plain `draggedRowId`/`setDraggedRowId` state (only the
+  worklet-safe `draggedRowIdShared` is ever read).
+- **`src/hooks/use-group-drag-orchestration.ts`**: narrowed
+  `useGroupDragOrchestration<T extends GroupableItem & { name: string }>`
+  to `T extends GroupableItem` — nothing in the hook body reads `item.name`
+  (a leftover constraint from an earlier iteration).
+- **`src/store/expenses.ts`**: removed dead `recurringGroupId` type
+  surface from `NewExpenseInput`/`EditableExpenseFields` — confirmed via
+  grep that no call site (`expenses/new.tsx`, `quick-expense.tsx`,
+  `expenses/[id]/edit.tsx`) ever populates it; `setExpenseGroupId` is the
+  only real path, and the old `EditableExpenseFields` Pick let a future
+  `updateExpense` caller silently bypass that single-writer intent.
+  `addExpense` now hardcodes `recurringGroupId: null` at creation.
+- **New `groupDropTargetId(groupId)` helper in `drag-drop-groups.ts`** —
+  the `` `group:${groupId}` `` bounds-registry convention was hand-spelled
+  4 times (`group-header-row.tsx`, `(tabs)/index.tsx`, `(tabs)/expenses.tsx`
+  ×2) with no type safety against a typo silently breaking the drop
+  highlight; all 4 now call the one helper.
+- **`src/lib/recurring-groups.ts`**: folded `gatherMembersByGroupId`'s
+  two-pass `groupedRowIds` computation (a separate
+  flatten-then-map after the main loop) into the same loop that already
+  visits every grouped row once.
+- **`src/app/(tabs)/expenses.tsx`**: extracted a local
+  `renderGroupSections` helper, mirroring `(tabs)/index.tsx`'s existing
+  `renderGroupSection` pattern — the "Recurrentes" and "Una vez" sections'
+  group-rendering JSX (Card → GroupHeaderRow → expand → Divider → row) was
+  structurally identical, differing only in which drag object and row
+  component get plugged in. Removed ~25 lines of duplication; verified the
+  diff is behavior-preserving (same props reach the same components, just
+  through the shared function).
+- **Closed two real test gaps**: `groupRowsIntoSections` (used by both
+  Expenses-tab sections) had zero direct tests despite
+  `buildDashboardSections`/`computeGroupSubtotal`/`groupBucket` all being
+  covered — added a `describe` block mirroring the existing fold/filter/
+  empty-group cases. `setExpenseGroupId` (a new store action) had no test
+  at all, unlike every sibling store action in this feature — added one.
+- **Explicitly left alone** (considered, not worth the churn): the two
+  near-identical `GroupNameDialog` create-prompt blocks in `expenses.tsx`
+  (genuinely independent orchestration instances, ~10 lines each); the
+  three separate "type a name, Save/Cancel" UIs across `GroupNameDialog`/
+  `RecurringGroupField`'s inline creator/the admin screen's inline
+  creator (plausibly a deliberate modal-vs-inline UX distinction, not
+  confirmed either way — unifying them risks a real UX change, not a pure
+  cleanup); `expenses/[id]/edit.tsx`'s `recurringGroupId` in
+  `initialValues` (already self-documented as intentionally kept for a
+  future edit-path change).
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 236/236 tests (6 new: 4 for
+  `groupRowsIntoSections`, 2 for `setExpenseGroupId`; zero regressions,
+  as expected since every change is either dead-code removal, a pure
+  refactor, or a type-level narrowing of fields nothing populated).

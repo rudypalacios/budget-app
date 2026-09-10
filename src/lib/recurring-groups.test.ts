@@ -1,4 +1,4 @@
-import { buildDashboardSections, computeGroupSubtotal, groupBucket } from './recurring-groups';
+import { buildDashboardSections, computeGroupSubtotal, groupBucket, groupRowsIntoSections } from './recurring-groups';
 import type { PaymentRow, PaymentRowGroups } from './payments-dashboard';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type { RecurringGroup, Timestamp } from '@/types/firestore';
@@ -177,5 +177,59 @@ describe('buildDashboardSections', () => {
 
     expect(sections.upcoming.groups).toHaveLength(0);
     expect(sections.upcoming.rows.map((row) => row.id)).toEqual(['salary']);
+  });
+});
+
+// The Expenses tab's flat-list equivalent of buildDashboardSections — no
+// bucket concept, so these cases focus on its own { rows, groups } shape
+// rather than re-testing groupBucket/computeGroupSubtotal, already covered
+// above via the shared gatherMembersByGroupId helper.
+describe('groupRowsIntoSections', () => {
+  it('folds a group\'s members into one section, removed from the plain rows list', () => {
+    const rows = [
+      paymentRow({ id: 'netflix', name: 'Netflix', recurringGroupId: 'g1', amountInDefaultCurrency: 50 }),
+      paymentRow({ id: 'disney', name: 'Disney+', recurringGroupId: 'g1', amountInDefaultCurrency: 30 }),
+      paymentRow({ id: 'standalone', name: 'Groceries', recurringGroupId: null }),
+    ];
+
+    const result = groupRowsIntoSections(rows, [recurringGroup()]);
+
+    expect(result.rows.map((row) => row.id)).toEqual(['standalone']);
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0]).toMatchObject({ groupId: 'g1', name: 'Suscripciones', subtotal: 80 });
+    expect(result.groups[0].members.map((m) => m.id)).toEqual(['netflix', 'disney']);
+  });
+
+  it('returns no groups when nothing is grouped', () => {
+    const rows = [paymentRow({ id: 'standalone', recurringGroupId: null })];
+
+    const result = groupRowsIntoSections(rows, [recurringGroup()]);
+
+    expect(result.groups).toHaveLength(0);
+    expect(result.rows.map((row) => row.id)).toEqual(['standalone']);
+  });
+
+  it('treats members of a group missing from activeGroups (e.g. archived/trashed) as plain rows', () => {
+    const rows = [paymentRow({ id: 'netflix', recurringGroupId: 'g1' })];
+
+    const result = groupRowsIntoSections(rows, []);
+
+    expect(result.groups).toHaveLength(0);
+    expect(result.rows.map((row) => row.id)).toEqual(['netflix']);
+  });
+
+  it('handles multiple active groups independently', () => {
+    const rows = [
+      paymentRow({ id: 'netflix', recurringGroupId: 'g1', amountInDefaultCurrency: 50 }),
+      paymentRow({ id: 'internet', recurringGroupId: 'g2', amountInDefaultCurrency: 40 }),
+    ];
+    const groups = [recurringGroup({ id: 'g1', name: 'Suscripciones' }), recurringGroup({ id: 'g2', name: 'Servicios' })];
+
+    const result = groupRowsIntoSections(rows, groups);
+
+    expect(result.rows).toHaveLength(0);
+    expect(result.groups).toHaveLength(2);
+    expect(result.groups.find((g) => g.groupId === 'g1')).toMatchObject({ name: 'Suscripciones', subtotal: 50 });
+    expect(result.groups.find((g) => g.groupId === 'g2')).toMatchObject({ name: 'Servicios', subtotal: 40 });
   });
 });

@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import type { RowDragAndDrop } from '@/hooks/use-row-drag-and-drop';
 import { formatCurrency } from '@/lib/format-currency';
-import type { GroupableItem } from '@/lib/drag-drop-groups';
+import { groupDropTargetId, type GroupableItem } from '@/lib/drag-drop-groups';
 import type { GroupSection } from '@/lib/recurring-groups';
 import { Spacing } from '@/constants/theme';
 
@@ -38,7 +38,7 @@ export function GroupHeaderRow<T extends GroupableItem>({
   const { t } = useTranslation();
   const theme = useTheme();
   const outerRef = useRef<View>(null);
-  const targetId = `group:${section.groupId}`;
+  const targetId = groupDropTargetId(section.groupId);
 
   function handleLayout() {
     outerRef.current?.measureInWindow((x, y, width, height) => {

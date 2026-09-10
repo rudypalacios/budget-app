@@ -43,6 +43,14 @@ export type DropTarget<T extends GroupableItem> =
   | { kind: 'groupHeader'; groupId: string }
   | { kind: 'outsideGroup' };
 
+// The bounds-registry id a group header registers itself under (see
+// GroupHeaderRow/useRowDragAndDrop's registerTarget) — a shared helper so
+// every screen computing "is this group's header the current drop target"
+// uses the exact same string convention rather than re-deriving it.
+export function groupDropTargetId(groupId: string): string {
+  return `group:${groupId}`;
+}
+
 export type DropAction =
   | { type: 'createGroup'; otherRowId: string }
   | { type: 'assignToGroup'; groupId: string }
