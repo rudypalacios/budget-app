@@ -1,5 +1,4 @@
 import { categoryDisplayName } from './category-display';
-import type { PaymentRow } from './payments-dashboard';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type { Category } from '@/types/firestore';
 
@@ -8,14 +7,30 @@ import type { Category } from '@/types/firestore';
 // detection are unit-testable independent of react-native-gesture-handler/
 // reanimated. See src/hooks/use-row-drag-and-drop.ts for the orchestration
 // that calls these from real gesture events.
+//
+// Generic over GroupableItem rather than hard-typed to PaymentRow — three
+// call sites now need the exact same collision/drop-resolution/subtotal
+// math (the Payments Dashboard, the Expenses tab's "Una vez" one-time
+// section, and its "Recurrentes" section, whose rows are RecurringExpense
+// *definitions*, not payment rows: no paid/date/skipped, and a definition
+// is never "paid" itself). All three only ever need these four fields, so
+// that's the whole contract — no adapter classes needed, both PaymentRow
+// and a RecurringExpense (plus a computed amountInDefaultCurrency) satisfy
+// this structurally.
+export type GroupableItem = {
+  id: string;
+  categoryId: string;
+  amountInDefaultCurrency: number;
+  recurringGroupId: string | null;
+};
 
 // If both rows share a category, suggest that category's name for a new
 // group (e.g. two "Streaming" bills → suggest "Streaming"); otherwise no
 // suggestion — the caller falls back to a translated default ("New group"),
 // kept out of this function so it stays free of i18n.
-export function suggestGroupName(
-  rowA: PaymentRow,
-  rowB: PaymentRow,
+export function suggestGroupName<T extends GroupableItem>(
+  rowA: T,
+  rowB: T,
   categories: WithId<Category>[],
 ): string | null {
   if (rowA.categoryId !== rowB.categoryId) return null;
@@ -23,8 +38,8 @@ export function suggestGroupName(
   return category ? categoryDisplayName(category) : null;
 }
 
-export type DropTarget =
-  | { kind: 'row'; row: PaymentRow }
+export type DropTarget<T extends GroupableItem> =
+  | { kind: 'row'; row: T }
   | { kind: 'groupHeader'; groupId: string }
   | { kind: 'outsideGroup' };
 
@@ -35,8 +50,8 @@ export type DropAction =
   | { type: 'noop' };
 
 // Every action only ever mutates the *dragged* row's own recurringGroupId
-// (a single setExpenseGroupId call, or none) — dropping a grouped row onto
-// an ungrouped one always forms a fresh group with the target rather than
+// (a single store write, or none) — dropping a grouped row onto an
+// ungrouped one always forms a fresh group with the target rather than
 // also reassigning the target's own group, so this never needs to touch
 // more than one document. Matches the drop semantics confirmed with the
 // user:
@@ -47,7 +62,12 @@ export type DropAction =
 // - drop outside any row/group while currently grouped -> leave the group
 //   (clearGroup); outside while already ungrouped, or no target at all,
 //   or dropped back on itself -> noop
-export function resolveDropAction(dragged: PaymentRow, target: DropTarget | null): DropAction {
+//
+// No longer checks anything like "is this row groupable" (e.g. the old
+// expense-vs-income guard) — that's the registration side's job now (only
+// ever register a valid drop target in the first place), so this function
+// can trust whatever DropTarget it's handed.
+export function resolveDropAction<T extends GroupableItem>(dragged: T, target: DropTarget<T> | null): DropAction {
   if (!target) return { type: 'noop' };
 
   if (target.kind === 'outsideGroup') {
@@ -60,10 +80,9 @@ export function resolveDropAction(dragged: PaymentRow, target: DropTarget | null
       : { type: 'assignToGroup', groupId: target.groupId };
   }
 
-  // target.kind === 'row' — grouping is expense-only (data-model.md §11),
-  // and dropping on itself is never meaningful.
+  // target.kind === 'row' — dropping on itself is never meaningful.
   const { row } = target;
-  if (row.id === dragged.id || row.direction !== 'expense') return { type: 'noop' };
+  if (row.id === dragged.id) return { type: 'noop' };
 
   if (row.recurringGroupId) {
     return dragged.recurringGroupId === row.recurringGroupId

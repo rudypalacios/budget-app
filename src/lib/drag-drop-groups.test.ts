@@ -1,7 +1,25 @@
-import { findRowUnderPoint, resolveDropAction, suggestGroupName, type Rect } from './drag-drop-groups';
+import { findRowUnderPoint, resolveDropAction, suggestGroupName, type GroupableItem, type Rect } from './drag-drop-groups';
 import type { PaymentRow } from './payments-dashboard';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type { Category } from '@/types/firestore';
+
+// Minimal RecurringExpense-shaped fixture (not the real RecurringExpense
+// type — just enough to prove resolveDropAction/suggestGroupName work for
+// a second, structurally-different GroupableItem, per the plan's explicit
+// ask to confirm the generic actually holds for more than PaymentRow).
+type RecurringDefinitionGroupable = GroupableItem & { name: string; dueDay: number };
+
+function recurringDefinitionRow(overrides: Partial<RecurringDefinitionGroupable> = {}): RecurringDefinitionGroupable {
+  return {
+    id: 'def-1',
+    name: 'Netflix',
+    categoryId: 'cat-1',
+    amountInDefaultCurrency: 50,
+    recurringGroupId: null,
+    dueDay: 1,
+    ...overrides,
+  };
+}
 
 function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
   return {
@@ -100,11 +118,6 @@ describe('resolveDropAction', () => {
     expect(resolveDropAction(dragged, target)).toEqual({ type: 'noop' });
   });
 
-  it('is a noop when the target row is income (grouping is expense-only)', () => {
-    const target = { kind: 'row' as const, row: paymentRow({ id: 'target', direction: 'income' }) };
-    expect(resolveDropAction(dragged, target)).toEqual({ type: 'noop' });
-  });
-
   it('joins the group directly when dropped on a group header', () => {
     expect(resolveDropAction(dragged, { kind: 'groupHeader', groupId: 'g1' })).toEqual({
       type: 'assignToGroup',
@@ -161,5 +174,40 @@ describe('findRowUnderPoint', () => {
   it('treats the rect edges as inclusive', () => {
     const bounds = new Map<string, Rect>([['a', rect(0, 0, 100, 50)]]);
     expect(findRowUnderPoint({ x: 100, y: 50 }, bounds, 'excluded')).toBe('a');
+  });
+});
+
+// Proves resolveDropAction/suggestGroupName are genuinely generic — not
+// just typed loosely but only ever exercised against PaymentRow — by
+// running the same scenarios against a structurally-different
+// RecurringExpense-shaped item (no paid/date/skipped fields at all).
+describe('generic GroupableItem support (RecurringExpense-shaped rows)', () => {
+  it('suggests the shared category name for two recurring definitions', () => {
+    const rowA = recurringDefinitionRow({ id: 'a', categoryId: 'cat-1' });
+    const rowB = recurringDefinitionRow({ id: 'b', categoryId: 'cat-1' });
+
+    expect(suggestGroupName(rowA, rowB, [category({ id: 'cat-1', name: 'Suscripciones' })])).toBe('Suscripciones');
+  });
+
+  it('creates a new group when one recurring definition is dropped on another ungrouped one', () => {
+    const dragged = recurringDefinitionRow({ id: 'dragged', recurringGroupId: null });
+    const target = { kind: 'row' as const, row: recurringDefinitionRow({ id: 'target', recurringGroupId: null }) };
+
+    expect(resolveDropAction(dragged, target)).toEqual({ type: 'createGroup', otherRowId: 'target' });
+  });
+
+  it('joins a recurring definition to an existing group when dropped on its header', () => {
+    const dragged = recurringDefinitionRow({ id: 'dragged', recurringGroupId: null });
+
+    expect(resolveDropAction(dragged, { kind: 'groupHeader', groupId: 'g1' })).toEqual({
+      type: 'assignToGroup',
+      groupId: 'g1',
+    });
+  });
+
+  it('clears a recurring definition\'s group when dropped outside any group', () => {
+    const dragged = recurringDefinitionRow({ id: 'dragged', recurringGroupId: 'g1' });
+
+    expect(resolveDropAction(dragged, { kind: 'outsideGroup' })).toEqual({ type: 'clearGroup' });
   });
 });

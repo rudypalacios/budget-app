@@ -415,14 +415,17 @@ actually resolved.)_
   sliding feel but is a new dependency (ask first, per the tech-stack table)
   and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
   doesn't need this — the user confirmed swipe only matters on mobile.
-- **Recurring-groups UI doesn't extend to the Expenses/Income tabs or
-  History** (Stage 18 redo) — same scope limitation the abandoned
-  parent/child design had: the "Grupo…" row action and the grouped-header
-  display only exist on the Payments Dashboard
-  (`src/app/(tabs)/index.tsx`). A grouped expense created/edited elsewhere
-  is still fully correct (it's the same document, same `recurringGroupId`
-  field), it just can't be grouped/ungrouped or seen nested from those
-  other screens yet.
+- **Recurring-groups UI doesn't extend to Income or History**
+  (Stage 18 redo; narrowed by the `fix/expenses-tab-grouping` follow-up,
+  which added full grouping — including drag-and-drop — to both Expenses
+  tab sections) — the "Grupo…" row action, grouped-header display, and
+  drag-to-group interaction now exist on the Payments Dashboard and both
+  Expenses tab sections ("Una vez" and "Recurrentes"). Income stays out
+  of grouping entirely, by explicit user decision ("normalmente no se
+  agrupan, si se necesita, lo evaluamos"), and History still has no
+  grouped view. A grouped expense created/edited from History is still
+  fully correct (same document, same `recurringGroupId` field), it just
+  isn't shown grouped there.
 - **Dashboard's paid toggle is back to `Switch`, not `Checkbox`** (Stage 18
   redo) — the abandoned parent/child design's later live-review rounds had
   swapped this to a `Checkbox` (a deliberate visual preference, unrelated
@@ -446,7 +449,10 @@ actually resolved.)_
   gesture on web via mouse pointer events specifically — the exact risk
   the from-scratch-vs-dependency decision was made to manage — has never
   actually been tried. Verify this before relying on it; see this
-  feature's own summary above for the full manual test list.
+  feature's own summary above for the full manual test list. Applies
+  equally to the Expenses tab's now-shared drag-and-drop
+  (`fix/expenses-tab-grouping`) — same underlying gesture/animation code,
+  same unverified status, same missing haptics/reflow.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
@@ -498,11 +504,18 @@ silently denied) plus the recurring-groups admin screen the user asked
 for — see the `fix/recurring-groups-admin-and-rules-bug` summary below.
 Then a UX follow-up: drag-and-drop grouping (drag one expense onto another
 to group them, Android-home-screen style, alongside the existing "Grupo…"
-menu action) — see `fix/drag-and-drop-grouping` below. **Neither the
-admin screen nor the drag-and-drop feature has been manually verified
-end-to-end** — this dev sandbox has no real Firebase credentials to reach
-live data with; do that (see each summary's own test list) before relying
-on either.
+menu action) — see `fix/drag-and-drop-grouping` below. Then a scope
+extension: the same drag-and-drop grouping now also works on the
+Expenses tab's "Una vez" and "Recurrentes" sections, not just the
+Dashboard — the drag/group core (`drag-drop-groups.ts`,
+`use-row-drag-and-drop.ts`, `recurring-groups.ts`) was genericized over a
+new `GroupableItem` structural type to support this without a third
+copy-paste, per this project's own 3+-occurrences DRY convention — see
+`fix/expenses-tab-grouping` below. **None of the admin screen, the
+Dashboard drag-and-drop, or the Expenses-tab drag-and-drop has been
+manually verified end-to-end** — this dev sandbox has no real Firebase
+credentials to reach live data with; do that (see each summary's own test
+list) before relying on any of them.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -1199,3 +1212,155 @@ menu picker (which stays, unchanged, as the non-drag path).
   `react-native-gesture-handler`'s `Pan` gesture is the specific risk this
   whole dependency decision was made to manage, and it has never
   actually been exercised.
+
+### fix/expenses-tab-grouping summary
+
+Extends the same drag-and-drop grouping mechanism to the Expenses tab —
+raised by the user after the Dashboard round shipped ("this is something
+that should also be available for expenses and income, not just for the
+dashboard"). Scope, confirmed via clarifying questions:
+
+- **Income stays out of grouping entirely** ("Omitamos el income por el
+  momento, basado en el punto de que normalmente no se agrupan") — nothing
+  in this round touches `incomes`/`recurringIncomes`.
+- **Both** Expenses-tab sections get full drag-and-drop, not just "Una
+  vez" — the user explicitly rejected a first draft that left
+  "Recurrentes" untouched ("Recurrentes should be able to group too"),
+  then confirmed via a follow-up question: "Drag-and-drop completo, igual
+  que 'Una vez'/Dashboard".
+- **The "does a recurring group replicate each cycle?" concern turned out
+  to already be solved, not a new gap** — confirmed in detail by the
+  user's own explanation: a recurring definition's own `recurringGroupId`
+  (set via its form's "Grupo" field, or now this tab's drag UI) already
+  copies onto every instance `generateExpenseInstancesForDefinition`
+  generates, each cycle, automatically (built in the original Stage 18
+  rebuild). An instance's (or one-time expense's) own `recurringGroupId`,
+  set ad hoc via drag/picker, is a separate, visualization-only override
+  that never writes back to the definition — "el grupo es justamente
+  esto, una utilidad de visualización a nivel de UI." No code change was
+  needed for this part; it already worked as intended.
+
+**Why generalized, not copy-pasted a third time**: a "Recurrentes" row is
+a `RecurringExpense` *definition* — no `paid`/`date`/`skipped` (a
+definition is never itself "paid"; only its generated instances are), so
+it can't reuse the Dashboard's row component as-is, and its group
+subtotal means something different ("this group's combined monthly
+amount," not a per-cycle actual/expected total). But the actual grouping
+*mechanics* — collision detection, drop resolution, subtotal math — only
+ever touch four fields (`id`, `categoryId`, `amountInDefaultCurrency`,
+`recurringGroupId`), identical in shape across `PaymentRow` and a
+definition. With three call sites now needing this (Dashboard, "Una vez",
+"Recurrentes"), this crosses this project's own "don't extract until 3+
+occurrences" DRY line for real.
+
+- **`src/lib/drag-drop-groups.ts`**: introduced `GroupableItem` (the
+  four-field structural type above); `resolveDropAction`/`DropTarget`/
+  `suggestGroupName` are now generic over `T extends GroupableItem`.
+  Dropped the old `row.direction !== 'expense'` guard from
+  `resolveDropAction` — moved to registration time instead (see
+  `DraggableRowContainer` below): a row is only ever registered as a drop
+  target if it's already known to be groupable, so the resolver no longer
+  re-checks. `drag-drop-groups.test.ts` gained a `RecurringExpense`-shaped
+  fixture and four new cases proving the generic holds for a second,
+  structurally different type; the old income-guard test was removed
+  (the behavior it checked moved, and is now covered by registration-time
+  tests instead — see below).
+- **`src/hooks/use-row-drag-and-drop.ts`**: `useRowDragAndDrop<T extends
+  GroupableItem>` — same hook, generic over `T` throughout (bounds
+  registry, dragged-row ref/shared-value, `onDropResolved` callback type).
+  No behavior change for the Dashboard's existing `PaymentRow` usage.
+- **`src/lib/recurring-groups.ts`**: `GroupSection<T>` is now generic;
+  `DashboardBucket`/`buildDashboardSections` stay `PaymentRow`-specific —
+  the three-bucket (overdue/upcoming/completed) concept only makes sense
+  for actual payment rows, not a definition that's never "paid." New
+  `groupRowsIntoSections<T extends GroupableItem>` — the single-list
+  equivalent the Expenses tab's flat sections use — shares its
+  gather-members-by-group-id loop with `buildDashboardSections` via one
+  new internal helper (`gatherMembersByGroupId`) so that part isn't
+  duplicated either.
+- **New `src/components/draggable-row-container.tsx`** —
+  `DraggableRowContainer<T extends GroupableItem>`: the drag-registration/
+  lift-animation/`DragHandle` shell, extracted out of the Dashboard's
+  previously-inline `PaymentRowItem`. Takes a `groupable: boolean` prop
+  (the old `row.direction === 'expense'` condition, generalized) that
+  governs *both* whether the drag handle renders and whether the row
+  registers as a drop target at all — this is where the
+  no-longer-in-`resolveDropAction` guard now lives. `PaymentRowItem`
+  (extracted to `src/components/payment-row-item.tsx`) and
+  `GroupHeaderRow` (extracted to `src/components/group-header-row.tsx`,
+  now generic over `T`) both moved out of `(tabs)/index.tsx` into shared
+  files so the Expenses tab can render identical markup.
+- **New `src/components/recurring-definition-row-item.tsx`** —
+  `RecurringDefinitionRowItem`, the "Recurrentes" row content (name, due
+  day, amount, `BudgetRecommendationBadge`, its existing Edit/Archive/
+  Delete `OverflowMenu` plus a new "Grupo…" item), wrapped in the same
+  `DraggableRowContainer`. Also exports `GroupableRecurringExpense` (a
+  `WithId<RecurringExpense>` plus a computed
+  `amountInDefaultCurrency: amount * exchangeRateToDefault` field — no
+  separate adapter class, just an inline computed field) and
+  `toGroupableRecurringExpense`, both reused by `expenses.tsx`.
+- **New `src/hooks/use-group-drag-orchestration.ts`** —
+  `useGroupDragOrchestration<T extends GroupableItem & { name: string }>`:
+  the drop-resolved → assign/clear-directly-or-open-name-dialog glue,
+  previously wired by hand in `(tabs)/index.tsx`, now shared by all three
+  call sites. Parameterized by two screen-supplied callbacks
+  (`assignGroup(id, groupId)`, `createGroupAndAssign(name, aId, bId)`) so
+  the hook itself never calls a store function directly, matching
+  `use-row-drag-and-drop.ts`'s existing "orchestration knows nothing about
+  Firestore" split.
+- **`(tabs)/index.tsx`**: rewritten to use the new shared
+  `PaymentRowItem`/`GroupHeaderRow`/`useGroupDragOrchestration` instead of
+  its previous local definitions — verified behavior-identical (full
+  tsc/lint/test pass, same drop semantics) before moving on, so the
+  extraction itself carried no functional risk into the two new call
+  sites.
+- **`(tabs)/expenses.tsx`**: both sections rewired.
+  - **"Una vez"**: one-time expenses now go through the new
+    `expenseToPaymentRow` (factored out of `payments-dashboard.ts`'s
+    `buildPaymentRows`, which now calls it too — one mapping, not two) +
+    `groupRowsIntoSections` + its own `useGroupDragOrchestration`
+    (`assignGroup` = `setExpenseGroupId`, `createGroupAndAssign` =
+    `addRecurringGroup` + two `setExpenseGroupId` calls) + a new "Grupo…"
+    `OverflowMenu` item + the existing `GroupPickerDialog`. **Side effect,
+    not separately requested**: reusing `PaymentRowItem` upgrades this
+    section's amount display from plain `formatCurrency` to
+    `formatCurrencyWithConversion` (shows the default-currency equivalent
+    when a row's own currency differs), matching the Dashboard — a
+    natural consequence of sharing the component.
+  - **"Recurrentes"**: each active definition wrapped via
+    `toGroupableRecurringExpense` + `groupRowsIntoSections` + its own
+    `useGroupDragOrchestration` (`assignGroup` = `updateRecurringExpense(id,
+    { recurringGroupId })`, already existed — no new store function;
+    `createGroupAndAssign` = `addRecurringGroup` + two
+    `updateRecurringExpense` calls) + a new "Grupo…" `OverflowMenu` item.
+    Group header's subtotal is the group's combined *monthly amount*
+    (each member's `amount * exchangeRateToDefault`), not a per-cycle
+    actual — a real difference from the Dashboard's group subtotal,
+    documented inline in `recurring-definition-row-item.tsx`.
+  - Both sections' create-group name dialogs and "Grupo…" pickers are
+    fully independent per section (separate `useGroupDragOrchestration`
+    instances) — grouping a one-time expense and grouping a recurring
+    definition are unrelated actions that happen to share a
+    `recurringGroups` collection and UI pattern, not a single combined
+    flow.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 230/230 tests (3 new, in the
+  genericized `drag-drop-groups.test.ts`; no new tests for the
+  Expenses-tab wiring itself or the extracted components, consistent with
+  this project's convention of deferring UI-level coverage to manual
+  verification).
+- **Could not manually verify end-to-end in this session** — same
+  no-real-Firebase-credentials limitation as the prior drag-and-drop
+  round (`.env` only has `.env.example` placeholders). **Do this before
+  merging**, on both the Expenses tab's "Una vez" and "Recurrentes"
+  sections, on both web and native: drag two ungrouped rows together
+  (name dialog → both grouped), drag a third onto the new group's header
+  (joins, no dialog), drag a member out of an expanded group (removed),
+  drag a member from one group onto a different group's header (moved);
+  confirm a "Recurrentes" definition grouped this way shows its
+  next-generated instance already grouped on the Dashboard with no extra
+  step (the "replication" behavior confirmed to already work, per above);
+  confirm the "Grupo…" menu picker still works as the non-drag path on
+  both sections; confirm the Dashboard itself is unchanged after the
+  `PaymentRowItem`/`GroupHeaderRow` extraction (paid toggle, skip, archive/
+  delete, existing drag-and-drop all still behave identically).
