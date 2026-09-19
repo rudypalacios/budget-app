@@ -2,6 +2,7 @@ import { router, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { ConfirmAmountModal } from '@/components/confirm-amount-modal';
 import { GroupHeaderRow } from '@/components/group-header-row';
@@ -9,9 +10,9 @@ import { PaymentRowItem } from '@/components/payment-row-item';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
+import { Fab } from '@/components/ui/fab';
 import { GroupNameDialog } from '@/components/ui/group-name-dialog';
 import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import type { OverflowMenuItem } from '@/components/ui/overflow-menu';
@@ -118,6 +119,7 @@ export default function PaymentsScreen() {
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const uid = useSessionStore((state) => state.uid);
   const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
+  const scrollY = useSharedValue(0);
   // Only recurring instances go through the confirm-amount modal — a
   // one-time row's amount is already exact and not in question, so it keeps
   // the instant one-tap toggle (see togglePaid).
@@ -261,16 +263,20 @@ export default function PaymentsScreen() {
 
   return (
     <>
-      <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
+      <ScreenScroll refreshing={refreshing} onRefresh={onRefresh} scrollOffset={scrollY}>
         <ScreenHeader title={t('payments.title')} />
-
-        <Button label={t('payments.quickExpense')} onPress={() => router.push('/payments/quick-expense')} />
 
         {renderSection(t('payments.overdue'), overdue, t('payments.nothingOverdue'), true)}
         {renderSection(t('payments.upcoming'), upcoming, t('payments.nothingUpcoming'))}
         {(completed.rows.length > 0 || completed.groups.length > 0) &&
           renderSection(t('payments.completedThisCycle'), completed, '')}
       </ScreenScroll>
+      <Fab
+        label={t('payments.quickExpense')}
+        icon={{ ios: 'bolt.fill', android: 'bolt', web: 'bolt' }}
+        onPress={() => router.push('/payments/quick-expense')}
+        scrollOffset={scrollY}
+      />
       {confirmRow && (
         <ConfirmAmountModal
           key={confirmRow.id}

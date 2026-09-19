@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
+import { Fab } from '@/components/ui/fab';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Switch } from '@/components/ui/switch';
@@ -39,6 +40,7 @@ export default function IncomeScreen() {
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
   const uid = useSessionStore((state) => state.uid);
   const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
+  const scrollY = useSharedValue(0);
 
   // Once a one-time income is received it's settled history, not a plan
   // anymore — it stays visible via Payments' "Completed this cycle" and
@@ -77,119 +79,125 @@ export default function IncomeScreen() {
   }
 
   return (
-    <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title={t('income.title')} />
+    <>
+      <ScreenScroll refreshing={refreshing} onRefresh={onRefresh} scrollOffset={scrollY}>
+        <ScreenHeader title={t('income.title')} />
 
-      <Button label={t('income.addIncome')} onPress={() => router.push('/income/new')} />
-
-      <View style={styles.section}>
-        <SectionHeader title={t('income.recurringSection')} />
-        {activeRecurring.length === 0 ? (
-          <ThemedText type="caption">{t('income.noRecurring')}</ThemedText>
-        ) : (
-          <Card style={styles.card}>
-            {activeRecurring.map((definition, index) => (
-              <View key={definition.id}>
-                <View style={styles.row}>
-                  <View style={styles.rowMain}>
-                    <ThemedText type="smallBold">{definition.name}</ThemedText>
-                    <ThemedText type="caption">
-                      {definition.frequency === 'monthly'
-                        ? t('income.frequency.monthlyDay', { day: definition.dayOfMonth })
-                        : definition.frequency === 'biweekly'
-                          ? t('income.frequency.biweekly')
-                          : t('income.frequency.weekly')}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.rowEnd}>
-                    <ThemedText type="smallBold" themeColor="success">
-                      {formatCurrency(definition.amount, definition.currency)}
-                    </ThemedText>
-                    <OverflowMenu
-                      accessibilityLabel={t('common.actionsFor', { name: definition.name })}
-                      items={[
-                        {
-                          label: t('common.edit'),
-                          onPress: () =>
-                            router.push({ pathname: '/recurring-incomes/[id]/edit', params: { id: definition.id } }),
-                        },
-                        {
-                          label: t('common.archive'),
-                          onPress: () => handleArchiveDefinition(definition.id, definition.name),
-                        },
-                        {
-                          label: t('common.delete'),
-                          onPress: () => handleTrashDefinition(definition.id, definition.name),
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-                {index < activeRecurring.length - 1 && <Divider style={styles.divider} />}
-              </View>
-            ))}
-          </Card>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader title={t('income.oneTimeSection')} />
-        {plannedOneTime.length === 0 ? (
-          <ThemedText type="caption">{t('income.noOneTime')}</ThemedText>
-        ) : (
-          <Card style={styles.card}>
-            {plannedOneTime.map((income, index) => {
-              const category = categories.find((c) => c.id === income.categoryId);
-              return (
-                <View key={income.id}>
+        <View style={styles.section}>
+          <SectionHeader title={t('income.recurringSection')} />
+          {activeRecurring.length === 0 ? (
+            <ThemedText type="caption">{t('income.noRecurring')}</ThemedText>
+          ) : (
+            <Card style={styles.card}>
+              {activeRecurring.map((definition, index) => (
+                <View key={definition.id}>
                   <View style={styles.row}>
                     <View style={styles.rowMain}>
-                      <ThemedText type="smallBold">{income.name}</ThemedText>
-                      <ThemedText type="caption">{formatShortDate(income.date.toDate())}</ThemedText>
-                      <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
+                      <ThemedText type="smallBold">{definition.name}</ThemedText>
+                      <ThemedText type="caption">
+                        {definition.frequency === 'monthly'
+                          ? t('income.frequency.monthlyDay', { day: definition.dayOfMonth })
+                          : definition.frequency === 'biweekly'
+                            ? t('income.frequency.biweekly')
+                            : t('income.frequency.weekly')}
+                      </ThemedText>
                     </View>
                     <View style={styles.rowEnd}>
                       <ThemedText type="smallBold" themeColor="success">
-                        {formatCurrency(income.amount, income.currency)}
+                        {formatCurrency(definition.amount, definition.currency)}
                       </ThemedText>
                       <OverflowMenu
-                        accessibilityLabel={t('common.actionsFor', { name: income.name })}
+                        accessibilityLabel={t('common.actionsFor', { name: definition.name })}
                         items={[
                           {
                             label: t('common.edit'),
-                            onPress: () => router.push({ pathname: '/income/[id]/edit', params: { id: income.id } }),
+                            onPress: () =>
+                              router.push({ pathname: '/recurring-incomes/[id]/edit', params: { id: definition.id } }),
                           },
                           {
                             label: t('common.archive'),
-                            onPress: () => handleArchiveIncome(income.id, income.name),
+                            onPress: () => handleArchiveDefinition(definition.id, definition.name),
                           },
                           {
                             label: t('common.delete'),
-                            onPress: () => handleTrashIncome(income.id, income.name),
+                            onPress: () => handleTrashDefinition(definition.id, definition.name),
                           },
                         ]}
                       />
                     </View>
                   </View>
-                  <View style={styles.bottomLine}>
-                    <Chip label={t('payments.status.expected')} tone="warning" />
-                    <Switch
-                      value={false}
-                      onValueChange={() => handleMarkIncomeReceived(income.id)}
-                      accessibilityLabel={t('payments.markAs', {
-                        name: income.name,
-                        state: t('payments.state.received'),
-                      })}
-                    />
-                  </View>
-                  {index < plannedOneTime.length - 1 && <Divider style={styles.divider} />}
+                  {index < activeRecurring.length - 1 && <Divider style={styles.divider} />}
                 </View>
-              );
-            })}
-          </Card>
-        )}
-      </View>
-    </ScreenScroll>
+              ))}
+            </Card>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title={t('income.oneTimeSection')} />
+          {plannedOneTime.length === 0 ? (
+            <ThemedText type="caption">{t('income.noOneTime')}</ThemedText>
+          ) : (
+            <Card style={styles.card}>
+              {plannedOneTime.map((income, index) => {
+                const category = categories.find((c) => c.id === income.categoryId);
+                return (
+                  <View key={income.id}>
+                    <View style={styles.row}>
+                      <View style={styles.rowMain}>
+                        <ThemedText type="smallBold">{income.name}</ThemedText>
+                        <ThemedText type="caption">{formatShortDate(income.date.toDate())}</ThemedText>
+                        <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
+                      </View>
+                      <View style={styles.rowEnd}>
+                        <ThemedText type="smallBold" themeColor="success">
+                          {formatCurrency(income.amount, income.currency)}
+                        </ThemedText>
+                        <OverflowMenu
+                          accessibilityLabel={t('common.actionsFor', { name: income.name })}
+                          items={[
+                            {
+                              label: t('common.edit'),
+                              onPress: () => router.push({ pathname: '/income/[id]/edit', params: { id: income.id } }),
+                            },
+                            {
+                              label: t('common.archive'),
+                              onPress: () => handleArchiveIncome(income.id, income.name),
+                            },
+                            {
+                              label: t('common.delete'),
+                              onPress: () => handleTrashIncome(income.id, income.name),
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.bottomLine}>
+                      <Chip label={t('payments.status.expected')} tone="warning" />
+                      <Switch
+                        value={false}
+                        onValueChange={() => handleMarkIncomeReceived(income.id)}
+                        accessibilityLabel={t('payments.markAs', {
+                          name: income.name,
+                          state: t('payments.state.received'),
+                        })}
+                      />
+                    </View>
+                    {index < plannedOneTime.length - 1 && <Divider style={styles.divider} />}
+                  </View>
+                );
+              })}
+            </Card>
+          )}
+        </View>
+      </ScreenScroll>
+      <Fab
+        label={t('income.addIncome')}
+        icon={{ ios: 'plus', android: 'add', web: 'add' }}
+        onPress={() => router.push('/income/new')}
+        scrollOffset={scrollY}
+      />
+    </>
   );
 }
 
