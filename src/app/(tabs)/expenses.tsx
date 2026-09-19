@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { GroupHeaderRow } from '@/components/group-header-row';
 import { PaymentRowItem } from '@/components/payment-row-item';
@@ -9,9 +10,9 @@ import { RecurringDefinitionRowItem, toGroupableRecurringExpense } from '@/compo
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
+import { Fab } from '@/components/ui/fab';
 import { GroupNameDialog } from '@/components/ui/group-name-dialog';
 import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import type { OverflowMenuItem } from '@/components/ui/overflow-menu';
@@ -72,6 +73,7 @@ export default function ExpensesScreen() {
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
   const uid = useSessionStore((state) => state.uid);
   const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
+  const scrollY = useSharedValue(0);
 
   // data-model.md §9: catches drift missed by a stale cache — e.g. a bulk
   // 'stale' write from another device's defaultCurrency change (Stage 11)
@@ -250,120 +252,128 @@ export default function ExpensesScreen() {
   }
 
   return (
-    <ScreenScroll refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title={t('expenses.title')} />
+    <>
+      <ScreenScroll refreshing={refreshing} onRefresh={onRefresh} scrollOffset={scrollY}>
+        <ScreenHeader title={t('expenses.title')} />
 
-      <Button label={t('expenses.addExpense')} onPress={() => router.push('/expenses/new')} />
+        <View style={styles.section}>
+          <SectionHeader title={t('expenses.recurringSection')} />
+          {recurringRows.length === 0 ? (
+            <ThemedText type="caption">{t('expenses.noRecurring')}</ThemedText>
+          ) : (
+            <>
+              {recurringSections.rows.length > 0 && (
+                <Card style={styles.card}>
+                  {recurringSections.rows.map((definition, index) => (
+                    <View key={definition.id}>
+                      <RecurringDefinitionRowItem
+                        definition={definition}
+                        isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
+                        dragAndDrop={recurringDrag.dragAndDrop}
+                        overflowItems={recurringOverflowItems(definition)}
+                      />
+                      {index < recurringSections.rows.length - 1 && <Divider style={styles.divider} />}
+                    </View>
+                  ))}
+                </Card>
+              )}
+              {renderGroupSections(recurringSections.groups, recurringDrag.dragAndDrop, (definition) => (
+                <RecurringDefinitionRowItem
+                  definition={definition}
+                  isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
+                  dragAndDrop={recurringDrag.dragAndDrop}
+                  overflowItems={recurringOverflowItems(definition)}
+                />
+              ))}
+            </>
+          )}
+        </View>
 
-      <View style={styles.section}>
-        <SectionHeader title={t('expenses.recurringSection')} />
-        {recurringRows.length === 0 ? (
-          <ThemedText type="caption">{t('expenses.noRecurring')}</ThemedText>
-        ) : (
-          <>
-            {recurringSections.rows.length > 0 && (
-              <Card style={styles.card}>
-                {recurringSections.rows.map((definition, index) => (
-                  <View key={definition.id}>
-                    <RecurringDefinitionRowItem
-                      definition={definition}
-                      isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
-                      dragAndDrop={recurringDrag.dragAndDrop}
-                      overflowItems={recurringOverflowItems(definition)}
-                    />
-                    {index < recurringSections.rows.length - 1 && <Divider style={styles.divider} />}
-                  </View>
-                ))}
-              </Card>
-            )}
-            {renderGroupSections(recurringSections.groups, recurringDrag.dragAndDrop, (definition) => (
-              <RecurringDefinitionRowItem
-                definition={definition}
-                isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
-                dragAndDrop={recurringDrag.dragAndDrop}
-                overflowItems={recurringOverflowItems(definition)}
-              />
-            ))}
-          </>
-        )}
-      </View>
+        <View style={styles.section}>
+          <SectionHeader title={t('expenses.oneTimeSection')} />
+          {oneTimeRows.length === 0 ? (
+            <ThemedText type="caption">{t('expenses.noOneTime')}</ThemedText>
+          ) : (
+            <>
+              {oneTimeSections.rows.length > 0 && (
+                <Card style={styles.card}>
+                  {oneTimeSections.rows.map((row, index) => (
+                    <View key={row.id}>
+                      <PaymentRowItem
+                        row={row}
+                        isOverdue={false}
+                        isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
+                        dragAndDrop={oneTimeDrag.dragAndDrop}
+                        categories={categories}
+                        defaultCurrency={defaultCurrency}
+                        onTogglePaid={handleMarkExpensePaid}
+                        overflowItems={oneTimeOverflowItems(row)}
+                      />
+                      {index < oneTimeSections.rows.length - 1 && <Divider style={styles.divider} />}
+                    </View>
+                  ))}
+                </Card>
+              )}
+              {renderGroupSections(oneTimeSections.groups, oneTimeDrag.dragAndDrop, (row) => (
+                <PaymentRowItem
+                  row={row}
+                  isOverdue={false}
+                  isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
+                  dragAndDrop={oneTimeDrag.dragAndDrop}
+                  categories={categories}
+                  defaultCurrency={defaultCurrency}
+                  onTogglePaid={handleMarkExpensePaid}
+                  overflowItems={oneTimeOverflowItems(row)}
+                />
+              ))}
+            </>
+          )}
+        </View>
 
-      <View style={styles.section}>
-        <SectionHeader title={t('expenses.oneTimeSection')} />
-        {oneTimeRows.length === 0 ? (
-          <ThemedText type="caption">{t('expenses.noOneTime')}</ThemedText>
-        ) : (
-          <>
-            {oneTimeSections.rows.length > 0 && (
-              <Card style={styles.card}>
-                {oneTimeSections.rows.map((row, index) => (
-                  <View key={row.id}>
-                    <PaymentRowItem
-                      row={row}
-                      isOverdue={false}
-                      isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
-                      dragAndDrop={oneTimeDrag.dragAndDrop}
-                      categories={categories}
-                      defaultCurrency={defaultCurrency}
-                      onTogglePaid={handleMarkExpensePaid}
-                      overflowItems={oneTimeOverflowItems(row)}
-                    />
-                    {index < oneTimeSections.rows.length - 1 && <Divider style={styles.divider} />}
-                  </View>
-                ))}
-              </Card>
-            )}
-            {renderGroupSections(oneTimeSections.groups, oneTimeDrag.dragAndDrop, (row) => (
-              <PaymentRowItem
-                row={row}
-                isOverdue={false}
-                isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
-                dragAndDrop={oneTimeDrag.dragAndDrop}
-                categories={categories}
-                defaultCurrency={defaultCurrency}
-                onTogglePaid={handleMarkExpensePaid}
-                overflowItems={oneTimeOverflowItems(row)}
-              />
-            ))}
-          </>
-        )}
-      </View>
-
-      {groupPickerTarget && (
-        <GroupPickerDialog
-          isOpen
-          onClose={() => setGroupPickerTarget(null)}
-          value={groupPickerTarget.kind === 'oneTime' ? groupPickerTarget.row.recurringGroupId : groupPickerTarget.groupId}
-          onSelect={(recurringGroupId) => {
-            if (groupPickerTarget.kind === 'oneTime') {
-              setExpenseGroupId(groupPickerTarget.row.id, recurringGroupId);
-            } else {
-              assignRecurringGroup(groupPickerTarget.id, recurringGroupId);
+        {groupPickerTarget && (
+          <GroupPickerDialog
+            isOpen
+            onClose={() => setGroupPickerTarget(null)}
+            value={
+              groupPickerTarget.kind === 'oneTime' ? groupPickerTarget.row.recurringGroupId : groupPickerTarget.groupId
             }
-          }}
-        />
-      )}
-      {oneTimeDrag.groupCreatePrompt && (
-        <GroupNameDialog
-          key={`onetime-${oneTimeDrag.groupCreatePrompt.draggedItem.id}-${oneTimeDrag.groupCreatePrompt.otherItem.id}`}
-          isOpen
-          title={t('recurringGroups.createTitle')}
-          initialName={oneTimeDrag.createGroupSuggestedName}
-          onConfirm={oneTimeDrag.handleConfirmCreateGroup}
-          onCancel={oneTimeDrag.handleCancelCreateGroup}
-        />
-      )}
-      {recurringDrag.groupCreatePrompt && (
-        <GroupNameDialog
-          key={`recurring-${recurringDrag.groupCreatePrompt.draggedItem.id}-${recurringDrag.groupCreatePrompt.otherItem.id}`}
-          isOpen
-          title={t('recurringGroups.createTitle')}
-          initialName={recurringDrag.createGroupSuggestedName}
-          onConfirm={recurringDrag.handleConfirmCreateGroup}
-          onCancel={recurringDrag.handleCancelCreateGroup}
-        />
-      )}
-    </ScreenScroll>
+            onSelect={(recurringGroupId) => {
+              if (groupPickerTarget.kind === 'oneTime') {
+                setExpenseGroupId(groupPickerTarget.row.id, recurringGroupId);
+              } else {
+                assignRecurringGroup(groupPickerTarget.id, recurringGroupId);
+              }
+            }}
+          />
+        )}
+        {oneTimeDrag.groupCreatePrompt && (
+          <GroupNameDialog
+            key={`onetime-${oneTimeDrag.groupCreatePrompt.draggedItem.id}-${oneTimeDrag.groupCreatePrompt.otherItem.id}`}
+            isOpen
+            title={t('recurringGroups.createTitle')}
+            initialName={oneTimeDrag.createGroupSuggestedName}
+            onConfirm={oneTimeDrag.handleConfirmCreateGroup}
+            onCancel={oneTimeDrag.handleCancelCreateGroup}
+          />
+        )}
+        {recurringDrag.groupCreatePrompt && (
+          <GroupNameDialog
+            key={`recurring-${recurringDrag.groupCreatePrompt.draggedItem.id}-${recurringDrag.groupCreatePrompt.otherItem.id}`}
+            isOpen
+            title={t('recurringGroups.createTitle')}
+            initialName={recurringDrag.createGroupSuggestedName}
+            onConfirm={recurringDrag.handleConfirmCreateGroup}
+            onCancel={recurringDrag.handleCancelCreateGroup}
+          />
+        )}
+      </ScreenScroll>
+      <Fab
+        label={t('expenses.addExpense')}
+        icon={{ ios: 'plus', android: 'add', web: 'add' }}
+        onPress={() => router.push('/expenses/new')}
+        scrollOffset={scrollY}
+      />
+    </>
   );
 }
 
