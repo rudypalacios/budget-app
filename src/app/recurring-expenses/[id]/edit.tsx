@@ -41,6 +41,7 @@ export default function EditRecurringExpenseScreen() {
       dueDay: Number(values.dueDay),
       currency: values.currency,
       exchangeRateToDefault,
+      recurringGroupId: values.recurringGroupId,
     });
     router.back();
   }
@@ -51,6 +52,7 @@ export default function EditRecurringExpenseScreen() {
     categoryId: definition.categoryId,
     dueDay: String(definition.dueDay),
     currency: definition.currency,
+    recurringGroupId: definition.recurringGroupId,
   };
 
   return (

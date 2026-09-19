@@ -95,6 +95,17 @@ service cloud.firestore {
         allow delete: if isOwner(uid) && resource.data.lifecycleState == 'trashed';
       }
 
+      // Named containers an expense (recurring or one-time) can belong to
+      // (Stage 18 redo, docs/data-model.md §11) — holds no amount/date/paid
+      // state of its own, so no field-locking beyond the standard lifecycle
+      // state machine every other definition-like collection already uses.
+      match /recurringGroups/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidNewLifecycle();
+        allow update: if isOwner(uid) && isValidLifecycleTransition();
+        allow delete: if isOwner(uid) && resource.data.lifecycleState == 'trashed';
+      }
+
       // expenses: one-time expenses + recurring expense instances.
       // currency, exchangeRateToDefault, and budgetedAmount/budgetedCurrency
       // are snapshotted once (generation time or entry time) and must never

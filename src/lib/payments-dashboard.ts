@@ -32,20 +32,18 @@ export type PaymentRow = {
   paidDate: Date | null;
   skipped: boolean;
   skippedAt: Date | null;
+  // Stage 18 redo (FR-21, data-model.md §11) — recurringGroups/{id}
+  // membership. Expenses only; always null on an income row.
+  recurringGroupId: string | null;
 };
 
-export function buildPaymentRows(
-  expenses: WithId<ExpenseRecord>[],
-  incomes: WithId<IncomeRecord>[],
-): PaymentRow[] {
-  // Archived/trashed records are hidden from every normal view (FR-4a) —
-  // filtered here, upstream of the overdue/upcoming/completed grouping
-  // below, so archive/delete removes a row the same way paying/skipping
-  // moves it, without either group needing its own lifecycleState check.
-  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
-  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
-
-  const expenseRows: PaymentRow[] = activeExpenses.map((expense) => ({
+// Factored out of buildPaymentRows so the Expenses tab's "Una vez" section
+// (Expenses-grouping follow-up) can render its one-time expenses as
+// PaymentRow-shaped rows too — reusing PaymentRowItem/the drag-and-drop
+// group core exactly as the Dashboard does — without duplicating this
+// mapping a second time.
+export function expenseToPaymentRow(expense: WithId<ExpenseRecord>): PaymentRow {
+  return {
     id: expense.id,
     direction: 'expense',
     kind: expense.kind,
@@ -58,9 +56,23 @@ export function buildPaymentRows(
     paid: expense.paid,
     paidDate: expense.paidDate ? expense.paidDate.toDate() : null,
     skipped: expense.kind === 'recurringInstance' ? expense.skipped : false,
-    skippedAt:
-      expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
-  }));
+    skippedAt: expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
+    recurringGroupId: expense.recurringGroupId,
+  };
+}
+
+export function buildPaymentRows(
+  expenses: WithId<ExpenseRecord>[],
+  incomes: WithId<IncomeRecord>[],
+): PaymentRow[] {
+  // Archived/trashed records are hidden from every normal view (FR-4a) —
+  // filtered here, upstream of the overdue/upcoming/completed grouping
+  // below, so archive/delete removes a row the same way paying/skipping
+  // moves it, without either group needing its own lifecycleState check.
+  const activeExpenses = expenses.filter((expense) => expense.lifecycleState === 'active');
+  const activeIncomes = incomes.filter((income) => income.lifecycleState === 'active');
+
+  const expenseRows: PaymentRow[] = activeExpenses.map(expenseToPaymentRow);
 
   const incomeRows: PaymentRow[] = activeIncomes.map((income) => ({
     id: income.id,
@@ -76,6 +88,7 @@ export function buildPaymentRows(
     paidDate: income.paidDate ? income.paidDate.toDate() : null,
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,
     skippedAt: income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
+    recurringGroupId: null,
   }));
 
   return [...expenseRows, ...incomeRows];

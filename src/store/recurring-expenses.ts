@@ -31,6 +31,9 @@ export type NewRecurringExpenseInput = {
   exchangeRateToDefault: number;
   dueDay: number;
   startDate: Date;
+  // Stage 18 redo (FR-21, data-model.md §11) — optional recurringGroups/{id}
+  // membership. null/omitted = ungrouped.
+  recurringGroupId?: string | null;
 };
 
 export function addRecurringExpense(input: NewRecurringExpenseInput) {
@@ -45,6 +48,7 @@ export function addRecurringExpense(input: NewRecurringExpenseInput) {
     remindersEnabled: null,
     reminderLeadDays: null,
     budgetRecommendation: EMPTY_BUDGET_RECOMMENDATION,
+    recurringGroupId: input.recurringGroupId ?? null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
@@ -56,7 +60,14 @@ export function addRecurringExpense(input: NewRecurringExpenseInput) {
 
 type EditableRecurringExpenseFields = Pick<
   RecurringExpense,
-  'name' | 'categoryId' | 'amount' | 'currency' | 'exchangeRateToDefault' | 'dueDay' | 'startDate'
+  | 'name'
+  | 'categoryId'
+  | 'amount'
+  | 'currency'
+  | 'exchangeRateToDefault'
+  | 'dueDay'
+  | 'startDate'
+  | 'recurringGroupId'
 >;
 
 // Editing amount changes whether drift holds against the (now-current)

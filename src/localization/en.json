@@ -22,7 +22,8 @@
     "archive": "Archive",
     "delete": "Delete",
     "restore": "Restore",
-    "deletePermanently": "Delete permanently"
+    "deletePermanently": "Delete permanently",
+    "rename": "Rename"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" moved to Archive",
@@ -163,6 +164,12 @@
       "manage": "Manage currencies",
       "count_one": "{{count}} currency added",
       "count_other": "{{count}} currencies added"
+    },
+    "recurringGroups": {
+      "title": "Recurring groups",
+      "manage": "Manage recurring groups",
+      "count_one": "{{count}} group",
+      "count_other": "{{count}} groups"
     },
     "reminders": {
       "title": "Reminders",
@@ -397,5 +404,37 @@
       "save": "Save",
       "discard": "Discard"
     }
+  },
+  "recurringGroups": {
+    "fieldLabel": "Group",
+    "none": "None",
+    "newGroup": "+ New group…",
+    "newGroupName": "Group name",
+    "newGroupNamePlaceholder": "e.g. Subscriptions",
+    "rowAction": "Group…",
+    "pickerTitle": "Assign to group",
+    "memberCount_one": "{{count}} item",
+    "memberCount_other": "{{count}} items",
+    "showMembers": "Show {{name}} group members",
+    "hideMembers": "Hide {{name}} group members",
+    "createFailed": "Couldn't create the group. Please try again.",
+    "dragHandle": "Drag {{name}} to group it",
+    "createTitle": "Create group",
+    "defaultName": "New group",
+    "manageTitle": "Recurring groups",
+    "allGroups": "All groups",
+    "addAction": "+ Add",
+    "empty": "No recurring groups yet.",
+    "active": "Active",
+    "archived": "Archived",
+    "state": {
+      "active": "active",
+      "archived": "archived"
+    },
+    "markAs": "Mark {{name}} as {{state}}",
+    "renameTitle": "Rename group",
+    "confirmDeleteTitle": "Delete group permanently?",
+    "confirmDeleteMessage": "\"{{name}}\" will be permanently deleted. Its members keep their own data and simply stop showing as grouped.",
+    "deleted": "\"{{name}}\" permanently deleted"
   }
 }

@@ -415,48 +415,124 @@ actually resolved.)_
   sliding feel but is a new dependency (ask first, per the tech-stack table)
   and reverses the just-adopted genuine-native-tab-bar choice. Web explicitly
   doesn't need this — the user confirmed swipe only matters on mobile.
+- **Recurring-groups UI doesn't extend to Income or History**
+  (Stage 18 redo; narrowed by the `fix/expenses-tab-grouping` follow-up,
+  which added full grouping — including drag-and-drop — to both Expenses
+  tab sections) — the "Grupo…" row action, grouped-header display, and
+  drag-to-group interaction now exist on the Payments Dashboard and both
+  Expenses tab sections ("Una vez" and "Recurrentes"). Income stays out
+  of grouping entirely, by explicit user decision ("normalmente no se
+  agrupan, si se necesita, lo evaluamos"), and History still has no
+  grouped view. A grouped expense created/edited from History is still
+  fully correct (same document, same `recurringGroupId` field), it just
+  isn't shown grouped there.
+- **Dashboard's paid toggle is back to `Switch`, not `Checkbox`** (Stage 18
+  redo) — the abandoned parent/child design's later live-review rounds had
+  swapped this to a `Checkbox` (a deliberate visual preference, unrelated
+  to the parent/child data model itself) and reworked the row layout
+  around it. The full rollback restored the pre-Stage-18 `Switch`-based row
+  along with everything else; whether to reapply the `Checkbox` swap on
+  top of this redesign wasn't part of what the user asked for this round —
+  flagged here rather than silently deciding either way.
+- **Drag-and-drop grouping has no haptic feedback and is unverified
+  end-to-end** (drag-and-drop grouping follow-up; sibling-reflow half
+  resolved — see below) — `expo-haptics` isn't installed and would be a
+  new dependency, so the drag interaction has no
+  vibration-on-hover the way Android's own folder gesture does; ask first
+  if that's wanted. **Literal sibling-row reflow was deliberately never
+  built, and won't be** — confirmed with the user (SortableJS-pattern
+  visual polish round): this drag never reorders anything (it only
+  changes `recurringGroupId`), so rows visually shifting to "make room"
+  would imply an order change that never happens. Resolved instead with a
+  SortableJS-accurate ghost/floating-clone opacity split (dimmed
+  placeholder left in the vacated slot, translucent floating copy) plus a
+  livelier spring-scale response on the actual drop target — see that
+  round's own summary. More importantly: **this hasn't been exercised
+  against real data at all** — the dev sandbox that built it has no real Firebase credentials
+  to reach a live Dashboard with. `react-native-gesture-handler`'s `Pan`
+  gesture on web via mouse pointer events specifically — the exact risk
+  the from-scratch-vs-dependency decision was made to manage — has never
+  actually been tried. Verify this before relying on it; see this
+  feature's own summary above for the full manual test list. Applies
+  equally to the Expenses tab's now-shared drag-and-drop
+  (`fix/expenses-tab-grouping`) — same underlying gesture/animation code,
+  same unverified status, same missing haptics/reflow.
 
 ## Current stage
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
-Stage: **17 — Trash view & restore screen** (built on branch
-`stage-17-trash-archive`, pending merge — see its own summary below).
-9a-12 are merged to `develop`; 9c remains blocked on Facebook Developer
-console setup — see SRS §11. Stage 12's own section below still documents
-what shipped there.
+`git log` on `develop` confirms Stages 9a–17 (through PR #26), round 3/4 UX
+polish, the post-Stage-13 review, and the Budget tab's summary-card
+restructure (PRs #27/#28) are all merged. 9c (Facebook sign-in) remains
+blocked on Facebook Developer console setup — see SRS §11. This section's
+older prose speculating about several of these being "pending merge" was
+stale by the time Stage 18 started and is not reproduced here — see git
+history directly if the exact PR-by-PR order ever matters.
 
-Stage 13 is built and verified on branch `stage-13-budget-recommendations`
-(off `develop`), pending merge — see its own summary below for what
-shipped. A round of user review against that branch surfaced seven
-smaller product/UX gaps spanning several already-shipped stages (date
-labels, a recurring-generation edge case, Dashboard naming, mark-paid
-placement, income-aware budgeting) — fixed on branch
-`fix/post-stage-13-review`, stacked on top of `stage-13-budget-recommendations`
-per the user's explicit direction to keep this work separate. See its own
-summary below.
+**Stage 18 (Recurring groups) — first design abandoned, rebuilt from
+scratch (2026-09-08).** Originally built as "one expense doubles as the
+group parent" (`parentExpenseId`/`defaultParentRecurringExpenseId`, a
+tri-state paid cascade, archive/trash cascade-or-detach) — went through
+many rounds of live-review fixes and even briefly landed on `develop` via
+a squash-merged PR #29 (whose title, "docs: plan Stage 18...", undersold
+what it actually contained — the full implementation, not just docs).
+The user then decided the whole concept didn't match how they think about
+grouping ("no me gusta, hagamos revert") and asked for a real named
+**recurring group** container instead — Netflix/Disney+/etc. as members
+of e.g. "Suscripciones", not one bill secretly standing in for the group.
 
-Two further rounds of live-review UX polish followed, both still pending
-merge: **round 3** (`fix/ux-polish-round-3`, commit `3ce04b2`) — input
-trimming, category emoji icons, categories-admin list counts, and
-cross-screen display consistency; see that commit's message for the full
-breakdown, not duplicated here. **round 4** (`fix/ux-polish-round-4`) —
-see its own summary below.
+Handled as a full rollback, not a patch: the abandoned work is preserved
+at branch `claude/stage-18-parent-child-abandoned` (tip `1511d98`) for
+reference; `develop` itself got a revert commit (`44ee62a`, undoing
+`f2ad444`/PR #29) since that squash-merge had put the abandoned code there
+too, not just on the feature branch; this branch was then reset onto the
+now-genuinely-clean `develop`. See `docs/data-model.md` §11's changelog
+(v1.6/v1.7) for the schema-level before/after.
 
-**Note found while starting Stage 17 (2026-08-07):** `git log` on
-`develop` shows Stage 13, round 3, and round 4 above are actually already
-merged (PRs #19–#24), plus two more merged branches this section never
-got a paragraph for — `fix/dashboard-category-ux-review` (PR #22) and
-`fix/google-signin-account-picker` (PR #21). This section's prose above
-was never updated after those merges landed and is stale; left as-is here
-rather than silently rewritten, since reconstructing exactly what each
-merged PR contained isn't something to guess at — flag for the user to
-confirm/rewrite this section's history whenever convenient.
+The replacement — a `recurringGroups/{id}` container holding no
+amount/date/paid state of its own, with the Payments Dashboard deriving a
+combined total and overdue/upcoming/completed placement from its current
+members — is built and verified (`tsc`/lint/tests) on branch
+`stage-18-recurring-groups` (re-pushed there from
+`claude/expense-grouping-categories-bxu05n` once that branch name turned
+out to still be associated with the closed/reverted PR #29 — see its own
+summary below for why). **PR #30** is open from this branch into
+`develop`, not merged — that's the user's call, per the standing
+convention.
 
-Stage 17 — Trash view & restore screen — is built and verified
-(`tsc`/lint/tests, not yet live-verified in a browser/device) on branch
-`stage-17-trash-archive` (off `develop`), commit `a1ce047`, pending merge.
-See its own summary below.
+Two follow-up rounds landed on the same branch/PR after the user's first
+live test: a real bug fix (`firestore.rules` had no block for the new
+`recurringGroups` collection at all, so every group-create attempt was
+silently denied) plus the recurring-groups admin screen the user asked
+for — see the `fix/recurring-groups-admin-and-rules-bug` summary below.
+Then a UX follow-up: drag-and-drop grouping (drag one expense onto another
+to group them, Android-home-screen style, alongside the existing "Grupo…"
+menu action) — see `fix/drag-and-drop-grouping` below. Then a scope
+extension: the same drag-and-drop grouping now also works on the
+Expenses tab's "Una vez" and "Recurrentes" sections, not just the
+Dashboard — the drag/group core (`drag-drop-groups.ts`,
+`use-row-drag-and-drop.ts`, `recurring-groups.ts`) was genericized over a
+new `GroupableItem` structural type to support this without a third
+copy-paste, per this project's own 3+-occurrences DRY convention — see
+`fix/expenses-tab-grouping` below. Then a visual polish round — a
+border-bottom drop indicator (fixing a case where it silently didn't
+render at all on "Recurrentes" rows) and a grip-icon/cursor swap on the
+drag handle — see `fix/drag-drop-visual-polish` below. Then a code-quality
+cleanup pass over the whole branch (dead code, a duplicated string
+convention, duplicated JSX, two missing tests) — see the "Code-quality
+cleanup pass summary" below; tsc/lint/tests clean throughout, no behavior
+change intended or observed. Then a SortableJS-pattern visual polish
+round — researched SortableJS's own source (not just docs) to close the
+sibling-reflow Known Issue with a faithful ghost/floating-clone opacity
+split plus a livelier spring-scale drop-target response, since a literal
+sibling-shift doesn't apply to a drag that never reorders anything — see
+the "SortableJS-pattern visual polish summary" below. **None of the admin
+screen, the Dashboard
+drag-and-drop, or the Expenses-tab drag-and-drop has been manually
+verified end-to-end** — this dev sandbox has no real Firebase credentials
+to reach live data with; do that (see each summary's own test
+list) before relying on any of them.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
@@ -929,3 +1005,587 @@ same keep-each-review-round-separate convention as
 - Committed to branch `stage-17-trash-archive` (off `develop`), commit
   `a1ce047`, clean tree. Not merged — per the standing convention, that's
   the user's call.
+
+### Stage 18 summary — Recurring groups (rebuilt design)
+
+Second attempt at Stage 18, from scratch on a genuinely clean base — see
+"Current stage" above for why the first design (one expense as group
+parent) was abandoned and how the rollback was done (a real `git revert`
+on `develop` itself, not just a reset of this feature branch, since the
+abandoned design had briefly landed on `develop` via a squash-merged PR).
+
+- **Schema**: new `users/{uid}/recurringGroups/{id}` collection
+  (`src/types/firestore.ts`'s `RecurringGroup`) — `name` + the standard
+  `TrashableLifecycle` fields only, no amount/date/paid state of its own
+  (`docs/data-model.md` §11). `RecurringExpense` gained
+  `recurringGroupId: string | null` (persistent default, inherited by
+  every instance generated from it); `ExpenseRecordShared` (both
+  `OneTimeExpense` and `RecurringExpenseInstance`) gained the same field
+  directly, so a one-time expense or an already-generated instance can
+  also be assigned/reassigned/cleared independently of its definition's
+  default. No `firestore.rules` change — neither field is locked.
+- **Store**: new `src/store/recurring-groups.ts` — plain CRUD + the same
+  archive/trash/restore/purge lifecycle every other definition-like
+  collection has, modeled directly on `recurring-incomes.ts` (the
+  simplest existing example). No cascade logic anywhere — a group holds
+  no state to cascade, which is the whole point of this redesign versus
+  the abandoned parent/child model. New `setExpenseGroupId` in
+  `expenses.ts` — a plain field update usable on either expense `kind`,
+  since `recurringGroupId` is common to the `ExpenseRecord` union (unlike
+  `skipped`/`skippedAt`, no cast needed).
+- **Pure logic**: new `src/lib/recurring-groups.ts` —
+  `computeGroupSubtotal` (sum of members' `amountInDefaultCurrency`),
+  `groupBucket` (`'completed'` once every member is paid/skipped, else
+  `'overdue'`/`'upcoming'` from its still-unpaid members — a partial
+  payment leaves the group open, carrying its full membership rather than
+  just the unpaid remainder), and `buildDashboardSections`, which runs
+  after `payments-dashboard.ts`'s existing three-bucket grouping and folds
+  each active group's members (gathered across all three buckets, since a
+  partially-settled group can have members in more than one) into a
+  single header entry. Unit tested in `recurring-groups.test.ts`.
+- **Recurring generation**: `generateExpenseInstancesForDefinition` copies
+  `recurringGroupId` straight from the definition onto each new instance —
+  a direct copy, not the ID-synthesis trick the abandoned design needed
+  (that existed only because its "parent" was itself a per-cycle
+  instance; a `RecurringGroup` has one stable id forever).
+- **UI**: `(tabs)/index.tsx`'s Dashboard renders one `Card` per group
+  (name, member count, combined total, chevron-accordion revealing
+  members — same expand/collapse idiom `category-budget-card.tsx` already
+  established) alongside the existing plain-row cards for ungrouped
+  entries; group members render with the exact same row markup as any
+  other row (no visual nesting/connector work needed, since they're
+  already contained inside the header's own accordion body). New shared
+  `src/components/recurring-group-field.tsx` (a `Select` over active
+  groups + inline "create new group" — used by `ExpenseForm`,
+  `RecurringExpenseForm`, and a new `GroupPickerDialog` for the
+  Dashboard's row-level "Grupo…" action) so the create-inline flow isn't
+  built three times. Unlike the abandoned design, the group picker is
+  wired into recurring-expense **creation**, not just edit
+  (`ExpenseForm`'s `isRecurring` branch), since nothing about this model
+  makes that harder.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (the one
+  pre-existing, unrelated `@/global.css` error, confirmed present on
+  `develop` before this work), `npm run lint` clean, `npm test` 26/26
+  suites, 207/207 tests (17 new, across `recurring-groups.test.ts` in both
+  `src/lib/` and `src/store/`).
+- Deliberately deferred, not silently dropped: no dedicated
+  recurring-groups admin screen (rename/archive a group outside the
+  create-inline flow) — see Known Issues. The Switch→Checkbox swap from
+  the abandoned design's later live-review rounds was **not** carried
+  forward (this rebuild restored the plain `Switch` from before that
+  round) — flagged for the user to say whether they still want it
+  reapplied on top of this redesign.
+- **Not yet manually verified end-to-end on a device/browser** — do that
+  before merging: create a group, add a recurring and a one-time expense
+  to it, confirm the header's combined total and expand/collapse; mark
+  one member paid (partial — header stays open) then the rest (header
+  moves to completed); reassign/clear a member's group via "Grupo…";
+  archive a member directly (no cascade prompt, unlike the abandoned
+  design); confirm creating a new recurring expense with a group already
+  shows it grouped on the Dashboard immediately.
+- Committed to branch `claude/expense-grouping-categories-bxu05n` (off the
+  reverted `develop`), clean tree — see git log for the commit hash.
+  Re-pushed to a fresh branch, `stage-18-recurring-groups`, once the
+  original branch name turned out to still be associated with PR #29
+  (closed/merged, then reverted) — GitHub was showing that stale
+  association, confusing for opening a new PR. **PR #30** opened from
+  `stage-18-recurring-groups` into `develop`. Not merged — per the
+  standing convention, that's the user's call.
+
+### fix/recurring-groups-admin-and-rules-bug summary
+
+Two items from the user's first live test of the branch above, both fixed
+on the same `stage-18-recurring-groups` branch (pushed as a follow-up
+commit to PR #30, not a separate branch):
+
+- **Real bug found: `firestore.rules` had no block for the new
+  `recurringGroups` collection at all** — every other collection
+  (`recurringExpenses`, `currencies`, etc.) has one, but it was missed
+  when this stage was built. Firestore denies reads/writes by default with
+  no matching rule, so `addRecurringGroup` was throwing
+  `permission-denied` on every attempt — this is what the user hit
+  ("wasn't able to save the groups... didn't close"). Added a
+  `recurringGroups/{id}` block mirroring `recurringExpenses`'s exactly
+  (owner-only + the same `isValidNewLifecycle`/`isValidLifecycleTransition`
+  state-machine checks) — no new validation logic needed, since
+  `RecurringGroup` has no snapshot fields to lock the way `expenses`/
+  `incomes` do. **Not yet deployed** to the live `lighthouse-budget-app`
+  project — same as every prior rules change in this repo's history, that
+  deploy (`firebase deploy --only firestore:rules`) is a manual step for
+  the user to run, no `firebase` CLI available in this dev environment.
+- **Real gap found alongside it: `RecurringGroupField`'s inline
+  "create new group" flow had no error handling** — `handleCreate` awaited
+  `addRecurringGroup` with no try/catch, so a rejected promise (this
+  permission error, or any future failure) left `isCreating` stuck `true`
+  forever with zero feedback — exactly the "didn't close" symptom, and it
+  would have silently done the same for any other write failure even
+  after the rules fix. Now wrapped in try/catch with a toast
+  (`recurringGroups.createFailed`) and an `isSaving` guard disabling both
+  buttons mid-request.
+- **The actual "where do I manage groups" ask**: new
+  `src/app/recurring-groups/index.tsx` — same active/archived-toggle +
+  permanent-delete-confirm-`Dialog` pattern `categories/index.tsx` already
+  established, plus inline rename via a second `Dialog`. `RecurringGroup`
+  carries a real `'trashed'` state (unlike `Category`), but this screen
+  deliberately doesn't expose it as its own step — "Delete permanently"
+  calls `trashRecurringGroup` then `purgeRecurringGroup` in one action,
+  since `firestore.rules` only allows purge from `'trashed'`; from the
+  user's side it's a single confirm. Deleting a group never touches its
+  members' own `recurringGroupId` — a member pointing at a since-deleted
+  group id simply isn't in `buildDashboardSections`' `activeGroups` list,
+  so it silently renders as a plain ungrouped row, same as an
+  archived/trashed group's members already do (`src/lib/recurring-groups.ts`).
+  Reached from a new "Recurring groups" section in Settings, same
+  `Pressable`→`Card` row as Categories/Currencies.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (the one
+  pre-existing, unrelated `@/global.css` error), `npm run lint` clean,
+  `npm test` 26/26 suites, 208/208 tests (unchanged — no new tests this
+  round; the admin screen follows the existing convention of deferring
+  UI-level coverage to manual verification, matching every other
+  `*/index.tsx` admin screen in this codebase, none of which have a test
+  file).
+- **Still not manually verified end-to-end in a browser** — the rules fix
+  in particular can't be confirmed working from `tsc`/`jest` alone, since
+  it's Firestore's own server-side enforcement; needs the rules deploy
+  above plus an actual create-a-group attempt against the live project.
+
+### fix/drag-and-drop-grouping summary
+
+Android-home-screen-style shortcut for the same grouping feature: drag one
+expense row onto another to group them, instead of only via the "Grupo…"
+menu picker (which stays, unchanged, as the non-drag path).
+
+- **Dependency decision, researched not guessed**: SortableJS is DOM-only
+  (no RN native support) — rejected outright, would only ever cover web.
+  Searched current RN drag-and-drop options; the closest fit
+  (`react-native-reanimated-dnd`, has real drop-to-merge collision
+  detection) has no confirmed `react-native-web` support in its docs — a
+  real risk for an app that must behave the same on both. **Built from
+  scratch on `react-native-gesture-handler` + `react-native-reanimated`
+  instead — zero new dependencies** (both were already in `package.json`
+  but, confirmed via `grep`, genuinely unused anywhere until this round;
+  `src/app/_layout.tsx` now wraps the navigator in
+  `GestureHandlerRootView` for the first time, required for gestures to
+  register at all, especially on Android).
+- **Pure logic, unit-tested**: new `src/lib/drag-drop-groups.ts` —
+  `resolveDropAction` (drop-target → what happens: `createGroup`,
+  `assignToGroup`, `clearGroup`, or `noop`; simplified during design so
+  every action only ever mutates the *dragged* row's own
+  `recurringGroupId`, never the target's — dragging a grouped row onto an
+  ungrouped one always forms a fresh group with the target rather than
+  also reassigning the target), `suggestGroupName` (shared category name,
+  or `null` for the caller's translated fallback), `findRowUnderPoint`
+  (plain point-in-rect collision, no gesture library needed to test it).
+- **Gesture orchestration**: new `src/hooks/use-row-drag-and-drop.ts` owns
+  the bounds registry (every draggable row/group-header registers its
+  measured on-screen rect via `onLayout`/`measureInWindow`, same idiom
+  `Select`'s `FloatingPanel` anchoring already used) and the dragged row's
+  shared values — but never calls a store function itself; it hands the
+  resolved `DropAction` back to the Dashboard screen, which owns the
+  actual `setExpenseGroupId`/`addRecurringGroup` calls and the
+  create-group name-confirmation dialog. New `src/components/ui/drag-handle.tsx`
+  (small grip icon + its own `Gesture.Pan()`) is the confirmed-with-the-user
+  UX choice — an explicit handle on **both** web and native, not
+  long-press-anywhere like Android's icons, since mouse long-press fights
+  with text-selection/scroll on web.
+- **`(tabs)/index.tsx`'s rows became real components** (`PaymentRowItem`,
+  `GroupHeaderRow`), extracted out of the previous plain render-function
+  closures — required, not optional: `useAnimatedStyle`/`useSharedValue`
+  can't be called from inside a `.map()` callback (Rules of Hooks). Drop
+  semantics confirmed with the user: drop on an ungrouped row → new group,
+  name confirmed via a dialog first (new shared
+  `src/components/ui/group-name-dialog.tsx`, also used to refactor
+  `recurring-groups/index.tsx`'s existing rename dialog onto the same
+  component — same shape, now its 2nd/3rd occurrence); drop on any grouped
+  row or a group's header → joins directly, no dialog; drop outside any
+  target while already grouped → leaves the group; everything else is a
+  no-op. No live reflow of sibling rows while dragging, and no haptics
+  (`expo-haptics` isn't installed and would be a new dependency) —
+  deliberately scoped out of this first pass, not silently dropped; see
+  Known Issues.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean (the one
+  pre-existing, unrelated `@/global.css` error), `npm run lint` clean,
+  `npm test` 27/27 suites, 227/227 tests (19 new, all in
+  `drag-drop-groups.test.ts` — the pure logic; the gesture/animation code
+  itself has no automated coverage, consistent with this project's
+  established convention).
+- **Could not manually verify end-to-end in this session** — attempted via
+  `npm run web` + a Playwright driver script; the dev server bundled this
+  code successfully with zero Metro/bundler errors (1556+ modules,
+  confirming no syntax/import/type issue reaches runtime), but this dev
+  environment has no real Firebase project credentials (`.env` only has
+  `.env.example`'s placeholders), so the app can't get past
+  `auth/invalid-api-key` to reach real synced data to actually drag. Real
+  verification needs to happen against a deployed preview or a local dev
+  environment with real credentials, same as this project's standing
+  practice for every prior UI-heavy stage. **Do this before merging** —
+  drag an ungrouped expense onto another (name dialog appears, confirm →
+  both grouped), drag a third onto the new group's header (joins, no
+  dialog), drag a member out of an expanded group onto the plain list
+  (removed), drag a member from one group onto a different group's header
+  (moved), and confirm a normal (non-drag) interaction — toggling a row's
+  paid `Switch` — still works with no regression. Test on **both** web and
+  native if at all possible: web pointer-event behavior for
+  `react-native-gesture-handler`'s `Pan` gesture is the specific risk this
+  whole dependency decision was made to manage, and it has never
+  actually been exercised.
+
+### fix/expenses-tab-grouping summary
+
+Extends the same drag-and-drop grouping mechanism to the Expenses tab —
+raised by the user after the Dashboard round shipped ("this is something
+that should also be available for expenses and income, not just for the
+dashboard"). Scope, confirmed via clarifying questions:
+
+- **Income stays out of grouping entirely** ("Omitamos el income por el
+  momento, basado en el punto de que normalmente no se agrupan") — nothing
+  in this round touches `incomes`/`recurringIncomes`.
+- **Both** Expenses-tab sections get full drag-and-drop, not just "Una
+  vez" — the user explicitly rejected a first draft that left
+  "Recurrentes" untouched ("Recurrentes should be able to group too"),
+  then confirmed via a follow-up question: "Drag-and-drop completo, igual
+  que 'Una vez'/Dashboard".
+- **The "does a recurring group replicate each cycle?" concern turned out
+  to already be solved, not a new gap** — confirmed in detail by the
+  user's own explanation: a recurring definition's own `recurringGroupId`
+  (set via its form's "Grupo" field, or now this tab's drag UI) already
+  copies onto every instance `generateExpenseInstancesForDefinition`
+  generates, each cycle, automatically (built in the original Stage 18
+  rebuild). An instance's (or one-time expense's) own `recurringGroupId`,
+  set ad hoc via drag/picker, is a separate, visualization-only override
+  that never writes back to the definition — "el grupo es justamente
+  esto, una utilidad de visualización a nivel de UI." No code change was
+  needed for this part; it already worked as intended.
+
+**Why generalized, not copy-pasted a third time**: a "Recurrentes" row is
+a `RecurringExpense` *definition* — no `paid`/`date`/`skipped` (a
+definition is never itself "paid"; only its generated instances are), so
+it can't reuse the Dashboard's row component as-is, and its group
+subtotal means something different ("this group's combined monthly
+amount," not a per-cycle actual/expected total). But the actual grouping
+*mechanics* — collision detection, drop resolution, subtotal math — only
+ever touch four fields (`id`, `categoryId`, `amountInDefaultCurrency`,
+`recurringGroupId`), identical in shape across `PaymentRow` and a
+definition. With three call sites now needing this (Dashboard, "Una vez",
+"Recurrentes"), this crosses this project's own "don't extract until 3+
+occurrences" DRY line for real.
+
+- **`src/lib/drag-drop-groups.ts`**: introduced `GroupableItem` (the
+  four-field structural type above); `resolveDropAction`/`DropTarget`/
+  `suggestGroupName` are now generic over `T extends GroupableItem`.
+  Dropped the old `row.direction !== 'expense'` guard from
+  `resolveDropAction` — moved to registration time instead (see
+  `DraggableRowContainer` below): a row is only ever registered as a drop
+  target if it's already known to be groupable, so the resolver no longer
+  re-checks. `drag-drop-groups.test.ts` gained a `RecurringExpense`-shaped
+  fixture and four new cases proving the generic holds for a second,
+  structurally different type; the old income-guard test was removed
+  (the behavior it checked moved, and is now covered by registration-time
+  tests instead — see below).
+- **`src/hooks/use-row-drag-and-drop.ts`**: `useRowDragAndDrop<T extends
+  GroupableItem>` — same hook, generic over `T` throughout (bounds
+  registry, dragged-row ref/shared-value, `onDropResolved` callback type).
+  No behavior change for the Dashboard's existing `PaymentRow` usage.
+- **`src/lib/recurring-groups.ts`**: `GroupSection<T>` is now generic;
+  `DashboardBucket`/`buildDashboardSections` stay `PaymentRow`-specific —
+  the three-bucket (overdue/upcoming/completed) concept only makes sense
+  for actual payment rows, not a definition that's never "paid." New
+  `groupRowsIntoSections<T extends GroupableItem>` — the single-list
+  equivalent the Expenses tab's flat sections use — shares its
+  gather-members-by-group-id loop with `buildDashboardSections` via one
+  new internal helper (`gatherMembersByGroupId`) so that part isn't
+  duplicated either.
+- **New `src/components/draggable-row-container.tsx`** —
+  `DraggableRowContainer<T extends GroupableItem>`: the drag-registration/
+  lift-animation/`DragHandle` shell, extracted out of the Dashboard's
+  previously-inline `PaymentRowItem`. Takes a `groupable: boolean` prop
+  (the old `row.direction === 'expense'` condition, generalized) that
+  governs *both* whether the drag handle renders and whether the row
+  registers as a drop target at all — this is where the
+  no-longer-in-`resolveDropAction` guard now lives. `PaymentRowItem`
+  (extracted to `src/components/payment-row-item.tsx`) and
+  `GroupHeaderRow` (extracted to `src/components/group-header-row.tsx`,
+  now generic over `T`) both moved out of `(tabs)/index.tsx` into shared
+  files so the Expenses tab can render identical markup.
+- **New `src/components/recurring-definition-row-item.tsx`** —
+  `RecurringDefinitionRowItem`, the "Recurrentes" row content (name, due
+  day, amount, `BudgetRecommendationBadge`, its existing Edit/Archive/
+  Delete `OverflowMenu` plus a new "Grupo…" item), wrapped in the same
+  `DraggableRowContainer`. Also exports `GroupableRecurringExpense` (a
+  `WithId<RecurringExpense>` plus a computed
+  `amountInDefaultCurrency: amount * exchangeRateToDefault` field — no
+  separate adapter class, just an inline computed field) and
+  `toGroupableRecurringExpense`, both reused by `expenses.tsx`.
+- **New `src/hooks/use-group-drag-orchestration.ts`** —
+  `useGroupDragOrchestration<T extends GroupableItem & { name: string }>`:
+  the drop-resolved → assign/clear-directly-or-open-name-dialog glue,
+  previously wired by hand in `(tabs)/index.tsx`, now shared by all three
+  call sites. Parameterized by two screen-supplied callbacks
+  (`assignGroup(id, groupId)`, `createGroupAndAssign(name, aId, bId)`) so
+  the hook itself never calls a store function directly, matching
+  `use-row-drag-and-drop.ts`'s existing "orchestration knows nothing about
+  Firestore" split.
+- **`(tabs)/index.tsx`**: rewritten to use the new shared
+  `PaymentRowItem`/`GroupHeaderRow`/`useGroupDragOrchestration` instead of
+  its previous local definitions — verified behavior-identical (full
+  tsc/lint/test pass, same drop semantics) before moving on, so the
+  extraction itself carried no functional risk into the two new call
+  sites.
+- **`(tabs)/expenses.tsx`**: both sections rewired.
+  - **"Una vez"**: one-time expenses now go through the new
+    `expenseToPaymentRow` (factored out of `payments-dashboard.ts`'s
+    `buildPaymentRows`, which now calls it too — one mapping, not two) +
+    `groupRowsIntoSections` + its own `useGroupDragOrchestration`
+    (`assignGroup` = `setExpenseGroupId`, `createGroupAndAssign` =
+    `addRecurringGroup` + two `setExpenseGroupId` calls) + a new "Grupo…"
+    `OverflowMenu` item + the existing `GroupPickerDialog`. **Side effect,
+    not separately requested**: reusing `PaymentRowItem` upgrades this
+    section's amount display from plain `formatCurrency` to
+    `formatCurrencyWithConversion` (shows the default-currency equivalent
+    when a row's own currency differs), matching the Dashboard — a
+    natural consequence of sharing the component.
+  - **"Recurrentes"**: each active definition wrapped via
+    `toGroupableRecurringExpense` + `groupRowsIntoSections` + its own
+    `useGroupDragOrchestration` (`assignGroup` = `updateRecurringExpense(id,
+    { recurringGroupId })`, already existed — no new store function;
+    `createGroupAndAssign` = `addRecurringGroup` + two
+    `updateRecurringExpense` calls) + a new "Grupo…" `OverflowMenu` item.
+    Group header's subtotal is the group's combined *monthly amount*
+    (each member's `amount * exchangeRateToDefault`), not a per-cycle
+    actual — a real difference from the Dashboard's group subtotal,
+    documented inline in `recurring-definition-row-item.tsx`.
+  - Both sections' create-group name dialogs and "Grupo…" pickers are
+    fully independent per section (separate `useGroupDragOrchestration`
+    instances) — grouping a one-time expense and grouping a recurring
+    definition are unrelated actions that happen to share a
+    `recurringGroups` collection and UI pattern, not a single combined
+    flow.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 230/230 tests (3 new, in the
+  genericized `drag-drop-groups.test.ts`; no new tests for the
+  Expenses-tab wiring itself or the extracted components, consistent with
+  this project's convention of deferring UI-level coverage to manual
+  verification).
+- **Could not manually verify end-to-end in this session** — same
+  no-real-Firebase-credentials limitation as the prior drag-and-drop
+  round (`.env` only has `.env.example` placeholders). **Do this before
+  merging**, on both the Expenses tab's "Una vez" and "Recurrentes"
+  sections, on both web and native: drag two ungrouped rows together
+  (name dialog → both grouped), drag a third onto the new group's header
+  (joins, no dialog), drag a member out of an expanded group (removed),
+  drag a member from one group onto a different group's header (moved);
+  confirm a "Recurrentes" definition grouped this way shows its
+  next-generated instance already grouped on the Dashboard with no extra
+  step (the "replication" behavior confirmed to already work, per above);
+  confirm the "Grupo…" menu picker still works as the non-drag path on
+  both sections; confirm the Dashboard itself is unchanged after the
+  `PaymentRowItem`/`GroupHeaderRow` extraction (paid toggle, skip, archive/
+  delete, existing drag-and-drop all still behave identically).
+
+### fix/drag-drop-visual-polish summary
+
+Two visual/UX fixes to the drag-and-drop grouping interaction, raised
+after live review of the Expenses-tab-grouping round:
+
+- **Border-bottom drop indicator** — `isDropTarget`'s highlight
+  previously relied on `borderColor: theme.tint` layered on top of
+  whatever `borderWidth` a row's own base style happened to set, which
+  worked for `PaymentRowItem` (has `borderWidth: 1`) but was a silent
+  no-op for `RecurringDefinitionRowItem` (no border at all in its base
+  style) — a real inconsistency, not just weak styling. Fixed in the one
+  place both route through: `DraggableRowContainer`'s `isDropTarget`
+  style now also sets `borderBottomWidth: 3, borderBottomColor:
+  theme.tint` directly, independent of the row's own style, so every row
+  type gets a visible marker; `GroupHeaderRow` (a drop target that's
+  never itself draggable, so it doesn't route through
+  `DraggableRowContainer`) got the identical treatment applied directly.
+  Confirmed with the user: layered with the existing translucent
+  `theme.tint` background wash, not a replacement for it — closer to
+  SortableJS's combined ghost/chosen visual language than either style
+  alone.
+- **Grip icon + grab/grabbing cursor** — `DragHandle` previously showed
+  `line.3.horizontal`/`drag_handle` (a 3-line hamburger glyph, matching
+  iOS's own native reordering convention) and no cursor change on hover.
+  Replaced with the actual Google Material Symbols `drag_indicator` glyph
+  (the 2×3 six-dot grip near-universal in web/Android sortable-list UIs,
+  and the specific icon the user linked from fonts.google.com), rendered
+  via `react-native-svg`'s `Svg`/`Path` (already a project dependency,
+  Stage 5's `line-chart.tsx`) rather than a per-platform `SymbolView`
+  name — SF Symbols has no equivalent 6-dot grip glyph, and this
+  feature's confirmed UX decision was one consistent handle look across
+  web *and* native, so a platform-symbol lookup couldn't give the same
+  result on iOS anyway. Path data pulled verbatim from Google's
+  `material-design-icons` GitHub source
+  (`symbols/web/drag_indicator/materialsymbolsoutlined/drag_indicator_24px.svg`).
+  `DragHandle` also now tracks local `isDragging` state (set in the
+  existing `Gesture.Pan()`'s `onStart`/`onEnd`, alongside the unchanged
+  `onDragStart`/`onDragEnd` callbacks) to drive `cursor: 'grab'` at rest /
+  `'grabbing'` while dragging. **One narrow, commented type-cast was
+  unavoidable**: RN core's `CursorValue` type
+  (`StyleSheetTypes.d.ts`) is only `'auto' | 'pointer'`, even though
+  `react-native-web` passes the value straight through to real CSS
+  `cursor` (which supports the full keyword set) at runtime — the style
+  object is cast `as unknown as ViewStyle` with a comment explaining the
+  gap, the only such cast in this change. `cursor` is a no-op on native
+  (no mouse pointer there), so this half is effectively web-only polish.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 230/230 tests (unchanged — pure
+  presentation, no pure-logic changes, consistent with this project's
+  convention of not writing tests for gesture/animation/styling code).
+- **Not manually verified end-to-end** — same no-real-Firebase-credentials
+  sandbox limitation as every prior drag-and-drop round. Verify before
+  merging: the border-bottom marker shows on **every** row type
+  (Dashboard payment rows, group headers, and — the specific
+  previously-broken case — Expenses tab "Recurrentes" rows) while
+  hovering a valid drop target; the grip icon renders identically on
+  iOS, Android, and web; the cursor shows a grab hand at rest over the
+  handle and a grabbing hand while dragging, on web.
+
+### Code-quality cleanup pass summary
+
+The user asked for a code review over this whole branch (`stage-18-recurring-groups`
+vs. `origin/develop`, 42 files/~3,900 lines at the time) to cut duplication,
+dead code, and over-engineering. Ran three parallel read-only audits (core
+drag/group logic, screen-level UI wiring, store/lib/types + i18n), each
+grepping real call sites rather than assuming. Verdict: the branch was
+unusually disciplined already — most extractions were already justified by
+genuine 3+ call sites with inline reasoning, and several things that looked
+suspicious turned out to be self-documented as intentional. What survived
+scrutiny, all applied:
+
+- **`src/hooks/use-row-drag-and-drop.ts`**: removed two dead exports —
+  `unregisterTarget` (defined + returned, zero call sites anywhere; its own
+  neighboring code already explains unregistration is deliberately not
+  done) and the plain `draggedRowId`/`setDraggedRowId` state (only the
+  worklet-safe `draggedRowIdShared` is ever read).
+- **`src/hooks/use-group-drag-orchestration.ts`**: narrowed
+  `useGroupDragOrchestration<T extends GroupableItem & { name: string }>`
+  to `T extends GroupableItem` — nothing in the hook body reads `item.name`
+  (a leftover constraint from an earlier iteration).
+- **`src/store/expenses.ts`**: removed dead `recurringGroupId` type
+  surface from `NewExpenseInput`/`EditableExpenseFields` — confirmed via
+  grep that no call site (`expenses/new.tsx`, `quick-expense.tsx`,
+  `expenses/[id]/edit.tsx`) ever populates it; `setExpenseGroupId` is the
+  only real path, and the old `EditableExpenseFields` Pick let a future
+  `updateExpense` caller silently bypass that single-writer intent.
+  `addExpense` now hardcodes `recurringGroupId: null` at creation.
+- **New `groupDropTargetId(groupId)` helper in `drag-drop-groups.ts`** —
+  the `` `group:${groupId}` `` bounds-registry convention was hand-spelled
+  4 times (`group-header-row.tsx`, `(tabs)/index.tsx`, `(tabs)/expenses.tsx`
+  ×2) with no type safety against a typo silently breaking the drop
+  highlight; all 4 now call the one helper.
+- **`src/lib/recurring-groups.ts`**: folded `gatherMembersByGroupId`'s
+  two-pass `groupedRowIds` computation (a separate
+  flatten-then-map after the main loop) into the same loop that already
+  visits every grouped row once.
+- **`src/app/(tabs)/expenses.tsx`**: extracted a local
+  `renderGroupSections` helper, mirroring `(tabs)/index.tsx`'s existing
+  `renderGroupSection` pattern — the "Recurrentes" and "Una vez" sections'
+  group-rendering JSX (Card → GroupHeaderRow → expand → Divider → row) was
+  structurally identical, differing only in which drag object and row
+  component get plugged in. Removed ~25 lines of duplication; verified the
+  diff is behavior-preserving (same props reach the same components, just
+  through the shared function).
+- **Closed two real test gaps**: `groupRowsIntoSections` (used by both
+  Expenses-tab sections) had zero direct tests despite
+  `buildDashboardSections`/`computeGroupSubtotal`/`groupBucket` all being
+  covered — added a `describe` block mirroring the existing fold/filter/
+  empty-group cases. `setExpenseGroupId` (a new store action) had no test
+  at all, unlike every sibling store action in this feature — added one.
+- **Explicitly left alone** (considered, not worth the churn): the two
+  near-identical `GroupNameDialog` create-prompt blocks in `expenses.tsx`
+  (genuinely independent orchestration instances, ~10 lines each); the
+  three separate "type a name, Save/Cancel" UIs across `GroupNameDialog`/
+  `RecurringGroupField`'s inline creator/the admin screen's inline
+  creator (plausibly a deliberate modal-vs-inline UX distinction, not
+  confirmed either way — unifying them risks a real UX change, not a pure
+  cleanup); `expenses/[id]/edit.tsx`'s `recurringGroupId` in
+  `initialValues` (already self-documented as intentionally kept for a
+  future edit-path change).
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 236/236 tests (6 new: 4 for
+  `groupRowsIntoSections`, 2 for `setExpenseGroupId`; zero regressions,
+  as expected since every change is either dead-code removal, a pure
+  refactor, or a type-level narrowing of fields nothing populated).
+
+### SortableJS-pattern visual polish summary
+
+Follow-up to a live research pass on SortableJS itself (fetched its
+actual GitHub source — `Sortable.js`, its README, and its own official
+demo's `theme.css` — not just skimmed docs) to answer two asks together:
+close the "no live sibling-row reflow while dragging" Known Issue, and
+apply the same visual pattern SortableJS uses.
+
+- **What the research found** (sourced, not guessed): SortableJS
+  separates three roles during a drag — the **chosen** element (original
+  item, stays in the list), the **ghost/placeholder** (the original DOM
+  node restyled in place; README's own example: `opacity: 0.4`), and a
+  separate **floating drag clone** in fallback mode (`sortable-fallback`/
+  `sortable-drag`, hardcoded in its source at `opacity: 0.8`,
+  `position: absolute`, `pointerEvents: none`). It ships **zero default
+  colors** for any of this — confirmed by fetching its own official demo's
+  `theme.css`, which defines nothing for `.sortable-ghost`/
+  `.sortable-chosen`. The real "pattern" is the opacity split (dim the
+  original slot, float a translucent clone) plus a live animated feel —
+  not a color scheme, which this project already owns via `theme.tint`.
+- **Sibling reflow, reinterpreted, confirmed with the user**: SortableJS's
+  "neighbors shift out of the way" effect only exists because it's
+  literally reordering a list. This project's drag never reorders
+  anything — it only changes `recurringGroupId`; a row's position never
+  changes. A literal neighbor-nudge would be pure decoration implying an
+  order change that won't happen (and was already flagged as the
+  highest-risk/most-janky-prone part of the original design, which is why
+  it stayed deferred). **Chosen instead**: a livelier animated response
+  on the actual drop target itself, not a reorder simulation.
+- **`src/components/draggable-row-container.tsx`**: added a second,
+  always-mounted `Animated.View` behind the existing floating row —
+  `StyleSheet.absoluteFill` + the row's own `style`, so it's
+  pixel-identical to the real row's reserved slot — rendering the same
+  `children` (and drag handle, for layout-width fidelity; its gesture
+  handler is unreachable once `pointerEvents="none"` is set) at
+  `opacity: 0.4` while this row is the one being dragged, `0` otherwise.
+  Driven by the same `dragAndDrop.draggedRowIdShared` shared value the
+  existing transform already reads — deliberately does **not** resurrect
+  the plain `draggedRowId` JS state removed in the prior cleanup pass;
+  stays fully worklet-driven. Marked `pointerEvents="none"` +
+  `accessibilityElementsHidden` + `importantForAccessibility="no-hide-descendants"`
+  — purely decorative. The real floating row gained one more animated
+  property: `opacity: isDragging ? 0.8 : 1`, matching SortableJS's own
+  hardcoded fallback-clone value exactly.
+- **Livelier drop-target response**: both `draggable-row-container.tsx`
+  and `group-header-row.tsx` already showed a static tint+border-bottom
+  on `isDropTarget` (unchanged — an instant snap is fine there). Added a
+  small spring-animated scale bump (`1.02`) on top of it in both files —
+  a `useSharedValue(1)` + `useEffect` reacting to the `isDropTarget` prop
+  with `withSpring(isDropTarget ? 1.02 : 1)` (default spring config,
+  matching the existing `withSpring(0)` calls already in
+  `use-row-drag-and-drop.ts` — no new tuned config invented).
+  `group-header-row.tsx` needed its `Pressable` wrapped as
+  `Animated.createAnimatedComponent(Pressable)` (module-level
+  `AnimatedPressable`) to animate it. In `draggable-row-container.tsx`
+  this scale folds into the existing transform alongside the
+  dragging-scale (1.03) — the two are mutually exclusive by construction
+  (a row can never simultaneously be the one being dragged and a drop
+  target for itself, since `findRowUnderPoint`/`resolveDropAction`
+  already exclude the dragged row from its own target detection).
+  **Deliberately left duplicated across the two files** (not extracted
+  into a shared hook) — only 2 occurrences of this ~3-line snippet, under
+  this project's own "don't extract until 3+ times" convention.
+- No changes needed to `PaymentRowItem`, `RecurringDefinitionRowItem`,
+  `use-row-drag-and-drop.ts`, or `drag-drop-groups.ts` — entirely
+  contained in the two shared drag-visual components.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 236/236 tests (unchanged — pure
+  presentation, consistent with this project's convention of not
+  unit-testing gesture/animation code). Also ran a production web bundle
+  (`expo export --platform web`) to confirm no syntax/import error
+  reaches runtime — bundled clean (1627 modules); the only failure past
+  that point is the same expected `auth/invalid-api-key` every prior
+  round hits, since this sandbox has no real Firebase credentials.
+- **Not manually verified end-to-end** — same sandbox limitation as every
+  prior drag-and-drop round. Verify before merging: the vacated slot
+  shows a dimmed (not blank) copy of the row while dragging; the floating
+  copy reads slightly translucent; hovering a valid row or group-header
+  target visibly "pops" (spring scale) in addition to the existing
+  tint/border, and settles back smoothly when the pointer moves off; the
+  ghost is never tappable and a screen reader never announces it.

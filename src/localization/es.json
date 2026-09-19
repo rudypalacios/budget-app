@@ -22,7 +22,8 @@
     "archive": "Archivar",
     "delete": "Eliminar",
     "restore": "Restaurar",
-    "deletePermanently": "Eliminar permanentemente"
+    "deletePermanently": "Eliminar permanentemente",
+    "rename": "Renombrar"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" se movió al archivo",
@@ -163,6 +164,12 @@
       "manage": "Administrar monedas",
       "count_one": "{{count}} moneda agregada",
       "count_other": "{{count}} monedas agregadas"
+    },
+    "recurringGroups": {
+      "title": "Grupos recurrentes",
+      "manage": "Administrar grupos recurrentes",
+      "count_one": "{{count}} grupo",
+      "count_other": "{{count}} grupos"
     },
     "reminders": {
       "title": "Recordatorios",
@@ -397,5 +404,37 @@
       "save": "Guardar",
       "discard": "Descartar"
     }
+  },
+  "recurringGroups": {
+    "fieldLabel": "Grupo",
+    "none": "Ninguno",
+    "newGroup": "+ Nuevo grupo…",
+    "newGroupName": "Nombre del grupo",
+    "newGroupNamePlaceholder": "ej. Suscripciones",
+    "rowAction": "Grupo…",
+    "pickerTitle": "Asignar a grupo",
+    "memberCount_one": "{{count}} elemento",
+    "memberCount_other": "{{count}} elementos",
+    "showMembers": "Mostrar los elementos del grupo {{name}}",
+    "hideMembers": "Ocultar los elementos del grupo {{name}}",
+    "createFailed": "No se pudo crear el grupo. Inténtalo de nuevo.",
+    "dragHandle": "Arrastra {{name}} para agruparlo",
+    "createTitle": "Crear grupo",
+    "defaultName": "Nuevo grupo",
+    "manageTitle": "Grupos recurrentes",
+    "allGroups": "Todos los grupos",
+    "addAction": "+ Agregar",
+    "empty": "Todavía no hay grupos recurrentes.",
+    "active": "Activo",
+    "archived": "Archivado",
+    "state": {
+      "active": "activo",
+      "archived": "archivado"
+    },
+    "markAs": "Marcar {{name}} como {{state}}",
+    "renameTitle": "Renombrar grupo",
+    "confirmDeleteTitle": "¿Eliminar el grupo permanentemente?",
+    "confirmDeleteMessage": "\"{{name}}\" se eliminará permanentemente. Sus elementos conservan sus propios datos y simplemente dejan de mostrarse agrupados.",
+    "deleted": "\"{{name}}\" eliminado permanentemente"
   }
 }

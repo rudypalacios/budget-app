@@ -48,6 +48,11 @@ export default function EditExpenseScreen() {
     paid: expense.paid,
     date: expense.date.toDate(),
     currency: expense.currency,
+    // Unused here — the group picker only renders when creating a brand-new
+    // recurring definition (see ExpenseForm's render condition); this
+    // screen's disableRecurringToggle always hides it. Kept accurate anyway
+    // rather than hardcoding null, in case a future edit-path change needs it.
+    recurringGroupId: expense.recurringGroupId,
   };
 
   return (

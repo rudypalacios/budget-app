@@ -1,46 +1,73 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { BudgetRecommendationBadge } from '@/components/budget-recommendation-badge';
+import { GroupHeaderRow } from '@/components/group-header-row';
+import { PaymentRowItem } from '@/components/payment-row-item';
+import { RecurringDefinitionRowItem, toGroupableRecurringExpense } from '@/components/recurring-definition-row-item';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Chip } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
-import { OverflowMenu } from '@/components/ui/overflow-menu';
+import { GroupNameDialog } from '@/components/ui/group-name-dialog';
+import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
+import type { OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
+import { useGroupDragOrchestration } from '@/hooks/use-group-drag-orchestration';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { categoryDisplayName } from '@/lib/category-display';
-import { formatShortDate } from '@/lib/format-date';
-import { formatCurrency } from '@/lib/format-currency';
+import type { RowDragAndDrop } from '@/hooks/use-row-drag-and-drop';
+import { groupDropTargetId, type GroupableItem } from '@/lib/drag-drop-groups';
+import { expenseToPaymentRow, type PaymentRow } from '@/lib/payments-dashboard';
+import { groupRowsIntoSections, type GroupSection } from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
-import { archiveExpense, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
+import { archiveExpense, setExpenseGroupId, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import {
   archiveRecurringExpense,
   recomputeStaleBudgetRecommendations,
   trashRecurringExpense,
+  updateRecurringExpense,
   useRecurringExpensesStore,
 } from '@/store/recurring-expenses';
+import { addRecurringGroup, useRecurringGroupsStore } from '@/store/recurring-groups';
 import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
+import { useUserSettingsStore } from '@/store/user-settings';
 
 // Primarily for planning/config (creating/editing one-time expenses and
 // recurring templates), with a quick paid toggle on one-time rows below —
 // full paid/unpaid/skipped triage across both expenses and income, plus the
 // overdue tag, still lives on the Dashboard tab (src/app/(tabs)/index.tsx,
 // Stage 8), which unifies both kinds in one prioritized view.
+//
+// Expenses-grouping follow-up — both sections below now support the same
+// drag-and-drop grouping as the Dashboard: "Una vez" reuses PaymentRowItem
+// directly (its rows are the same PaymentRow shape, via expenseToPaymentRow);
+// "Recurrentes" reuses the shared drag/group core over a definition's own
+// GroupableRecurringExpense shape (no paid/date/skipped — a definition is
+// never itself "paid"). The two sections' groups are entirely independent
+// drag interactions, each with its own useGroupDragOrchestration instance —
+// a definition's own recurringGroupId (set here) is what a newly-generated
+// instance inherits each cycle (recurring-generation.ts); an instance's own
+// recurringGroupId (set via the Dashboard's or this screen's "Una vez"
+// drag) is a separate, ad hoc override that never writes back to the
+// definition.
 export default function ExpensesScreen() {
   const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
   const recurringDefinitions = useRecurringExpensesStore((state) => state.items);
+  const recurringGroups = useRecurringGroupsStore((state) => state.items);
+  const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
+
+  const activeGroups = useMemo(
+    () => recurringGroups.filter((group) => group.lifecycleState === 'active'),
+    [recurringGroups],
+  );
 
   const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
   const uid = useSessionStore((state) => state.uid);
@@ -62,6 +89,67 @@ export default function ExpensesScreen() {
       (expense) => expense.kind === 'oneTime' && !expense.paid && expense.lifecycleState === 'active',
     ),
   ].sort((a, b) => b.date.toMillis() - a.date.toMillis());
+
+  const oneTimeRows = useMemo(() => plannedOneTime.map(expenseToPaymentRow), [plannedOneTime]);
+  const oneTimeSections = useMemo(
+    () => groupRowsIntoSections(oneTimeRows, activeGroups),
+    [oneTimeRows, activeGroups],
+  );
+
+  const recurringRows = useMemo(() => activeRecurring.map(toGroupableRecurringExpense), [activeRecurring]);
+  const recurringSections = useMemo(
+    () => groupRowsIntoSections(recurringRows, activeGroups),
+    [recurringRows, activeGroups],
+  );
+
+  // Which group headers are expanded — collapsed by default, same
+  // reasoning as the Dashboard's own accordion. One shared set works for
+  // both sections since their group ids never collide with each other
+  // (both come from the one recurringGroups collection).
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
+  function toggleGroupExpanded(groupId: string) {
+    setExpandedGroupIds((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }
+
+  async function createOneTimeGroupAndAssign(name: string, draggedId: string, otherId: string) {
+    const groupId = await addRecurringGroup(name);
+    await Promise.all([setExpenseGroupId(draggedId, groupId), setExpenseGroupId(otherId, groupId)]);
+  }
+
+  const oneTimeDrag = useGroupDragOrchestration(oneTimeRows, categories, setExpenseGroupId, createOneTimeGroupAndAssign);
+
+  function assignRecurringGroup(id: string, groupId: string | null) {
+    return updateRecurringExpense(id, { recurringGroupId: groupId });
+  }
+
+  async function createRecurringGroupAndAssign(name: string, draggedId: string, otherId: string) {
+    const groupId = await addRecurringGroup(name);
+    await Promise.all([
+      updateRecurringExpense(draggedId, { recurringGroupId: groupId }),
+      updateRecurringExpense(otherId, { recurringGroupId: groupId }),
+    ]);
+  }
+
+  const recurringDrag = useGroupDragOrchestration(
+    recurringRows,
+    categories,
+    assignRecurringGroup,
+    createRecurringGroupAndAssign,
+  );
+
+  // Stage 18 redo (FR-21) — the "Grupo…" row action's picker, one instance
+  // shared by both sections (only one can ever be open at a time).
+  const [groupPickerTarget, setGroupPickerTarget] = useState<
+    { kind: 'oneTime'; row: PaymentRow } | { kind: 'recurring'; id: string; groupId: string | null } | null
+  >(null);
 
   function handleArchiveDefinition(id: string, name: string) {
     archiveRecurringExpense(id);
@@ -87,8 +175,78 @@ export default function ExpensesScreen() {
   // plannedOneTime's filter above) — marking it paid here just removes it
   // from this list on the next render, same reasoning as the Payments
   // dashboard's own toggle, which this calls directly.
-  function handleMarkExpensePaid(id: string) {
-    setExpensePaid(id, true);
+  function handleMarkExpensePaid(row: PaymentRow) {
+    setExpensePaid(row.id, true);
+  }
+
+  function oneTimeOverflowItems(row: PaymentRow): OverflowMenuItem[] {
+    return [
+      { label: t('common.edit'), onPress: () => router.push({ pathname: '/expenses/[id]/edit', params: { id: row.id } }) },
+      { label: t('recurringGroups.rowAction'), onPress: () => setGroupPickerTarget({ kind: 'oneTime', row }) },
+      {
+        label: t('common.archive'),
+        onPress: () => handleArchiveExpense(row.id, row.name),
+      },
+      {
+        label: t('common.delete'),
+        onPress: () => handleTrashExpense(row.id, row.name),
+      },
+    ];
+  }
+
+  function recurringOverflowItems(definition: { id: string; name: string; recurringGroupId: string | null }): OverflowMenuItem[] {
+    return [
+      {
+        label: t('common.edit'),
+        onPress: () => router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
+      },
+      {
+        label: t('recurringGroups.rowAction'),
+        onPress: () => setGroupPickerTarget({ kind: 'recurring', id: definition.id, groupId: definition.recurringGroupId }),
+      },
+      {
+        label: t('common.archive'),
+        onPress: () => handleArchiveDefinition(definition.id, definition.name),
+      },
+      {
+        label: t('common.delete'),
+        onPress: () => handleTrashDefinition(definition.id, definition.name),
+      },
+    ];
+  }
+
+  // Both sections' grouped rows render identically (Card → GroupHeaderRow →
+  // expand-conditional member list), differing only in which drag object
+  // and which row component are plugged in — extracted once so the two
+  // sections don't duplicate this JSX, mirroring how (tabs)/index.tsx
+  // already solved the same problem for its own single section.
+  function renderGroupSections<T extends GroupableItem>(
+    groups: GroupSection<T>[],
+    drag: RowDragAndDrop<T>,
+    renderRow: (item: T) => ReactNode,
+  ) {
+    return groups.map((section) => {
+      const expanded = expandedGroupIds.has(section.groupId);
+      return (
+        <Card key={section.groupId} style={styles.card}>
+          <GroupHeaderRow
+            section={section}
+            expanded={expanded}
+            isDropTarget={drag.hoveredTargetId === groupDropTargetId(section.groupId)}
+            dragAndDrop={drag}
+            onToggleExpanded={toggleGroupExpanded}
+            defaultCurrency={defaultCurrency}
+          />
+          {expanded &&
+            section.members.map((item) => (
+              <View key={item.id}>
+                <Divider style={styles.divider} />
+                {renderRow(item)}
+              </View>
+            ))}
+        </Card>
+      );
+    });
   }
 
   return (
@@ -99,106 +257,112 @@ export default function ExpensesScreen() {
 
       <View style={styles.section}>
         <SectionHeader title={t('expenses.recurringSection')} />
-        {activeRecurring.length === 0 ? (
+        {recurringRows.length === 0 ? (
           <ThemedText type="caption">{t('expenses.noRecurring')}</ThemedText>
         ) : (
-          <Card style={styles.card}>
-            {activeRecurring.map((definition, index) => (
-              <View key={definition.id}>
-                <View style={styles.row}>
-                  <View style={styles.rowMain}>
-                    <ThemedText type="smallBold">{definition.name}</ThemedText>
-                    <ThemedText type="caption">{t('expenses.dueDay', { day: definition.dueDay })}</ThemedText>
-                  </View>
-                  <View style={styles.rowEnd}>
-                    <ThemedText type="smallBold" themeColor="danger">
-                      {formatCurrency(definition.amount, definition.currency)}
-                    </ThemedText>
-                    <OverflowMenu
-                      accessibilityLabel={t('common.actionsFor', { name: definition.name })}
-                      items={[
-                        {
-                          label: t('common.edit'),
-                          onPress: () =>
-                            router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
-                        },
-                        {
-                          label: t('common.archive'),
-                          onPress: () => handleArchiveDefinition(definition.id, definition.name),
-                        },
-                        {
-                          label: t('common.delete'),
-                          onPress: () => handleTrashDefinition(definition.id, definition.name),
-                        },
-                      ]}
+          <>
+            {recurringSections.rows.length > 0 && (
+              <Card style={styles.card}>
+                {recurringSections.rows.map((definition, index) => (
+                  <View key={definition.id}>
+                    <RecurringDefinitionRowItem
+                      definition={definition}
+                      isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
+                      dragAndDrop={recurringDrag.dragAndDrop}
+                      overflowItems={recurringOverflowItems(definition)}
                     />
+                    {index < recurringSections.rows.length - 1 && <Divider style={styles.divider} />}
                   </View>
-                </View>
-                <BudgetRecommendationBadge definition={definition} />
-                {index < activeRecurring.length - 1 && <Divider style={styles.divider} />}
-              </View>
+                ))}
+              </Card>
+            )}
+            {renderGroupSections(recurringSections.groups, recurringDrag.dragAndDrop, (definition) => (
+              <RecurringDefinitionRowItem
+                definition={definition}
+                isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
+                dragAndDrop={recurringDrag.dragAndDrop}
+                overflowItems={recurringOverflowItems(definition)}
+              />
             ))}
-          </Card>
+          </>
         )}
       </View>
 
       <View style={styles.section}>
         <SectionHeader title={t('expenses.oneTimeSection')} />
-        {plannedOneTime.length === 0 ? (
+        {oneTimeRows.length === 0 ? (
           <ThemedText type="caption">{t('expenses.noOneTime')}</ThemedText>
         ) : (
-          <Card style={styles.card}>
-            {plannedOneTime.map((expense, index) => {
-              const category = categories.find((c) => c.id === expense.categoryId);
-              return (
-                <View key={expense.id}>
-                  <View style={styles.row}>
-                    <View style={styles.rowMain}>
-                      <ThemedText type="smallBold">{expense.name}</ThemedText>
-                      <ThemedText type="caption">{formatShortDate(expense.date.toDate())}</ThemedText>
-                      <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
-                    </View>
-                    <View style={styles.rowEnd}>
-                      <ThemedText type="smallBold" themeColor="danger">
-                        {formatCurrency(expense.amount ?? 0, expense.currency)}
-                      </ThemedText>
-                      <OverflowMenu
-                        accessibilityLabel={t('common.actionsFor', { name: expense.name })}
-                        items={[
-                          {
-                            label: t('common.edit'),
-                            onPress: () => router.push({ pathname: '/expenses/[id]/edit', params: { id: expense.id } }),
-                          },
-                          {
-                            label: t('common.archive'),
-                            onPress: () => handleArchiveExpense(expense.id, expense.name),
-                          },
-                          {
-                            label: t('common.delete'),
-                            onPress: () => handleTrashExpense(expense.id, expense.name),
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.bottomLine}>
-                    <Chip label={t('payments.status.unpaid')} tone="warning" />
-                    <Switch
-                      value={false}
-                      onValueChange={() => handleMarkExpensePaid(expense.id)}
-                      accessibilityLabel={t('payments.markAs', {
-                        name: expense.name,
-                        state: t('payments.state.paid'),
-                      })}
+          <>
+            {oneTimeSections.rows.length > 0 && (
+              <Card style={styles.card}>
+                {oneTimeSections.rows.map((row, index) => (
+                  <View key={row.id}>
+                    <PaymentRowItem
+                      row={row}
+                      isOverdue={false}
+                      isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
+                      dragAndDrop={oneTimeDrag.dragAndDrop}
+                      categories={categories}
+                      defaultCurrency={defaultCurrency}
+                      onTogglePaid={handleMarkExpensePaid}
+                      overflowItems={oneTimeOverflowItems(row)}
                     />
+                    {index < oneTimeSections.rows.length - 1 && <Divider style={styles.divider} />}
                   </View>
-                  {index < plannedOneTime.length - 1 && <Divider style={styles.divider} />}
-                </View>
-              );
-            })}
-          </Card>
+                ))}
+              </Card>
+            )}
+            {renderGroupSections(oneTimeSections.groups, oneTimeDrag.dragAndDrop, (row) => (
+              <PaymentRowItem
+                row={row}
+                isOverdue={false}
+                isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
+                dragAndDrop={oneTimeDrag.dragAndDrop}
+                categories={categories}
+                defaultCurrency={defaultCurrency}
+                onTogglePaid={handleMarkExpensePaid}
+                overflowItems={oneTimeOverflowItems(row)}
+              />
+            ))}
+          </>
         )}
       </View>
+
+      {groupPickerTarget && (
+        <GroupPickerDialog
+          isOpen
+          onClose={() => setGroupPickerTarget(null)}
+          value={groupPickerTarget.kind === 'oneTime' ? groupPickerTarget.row.recurringGroupId : groupPickerTarget.groupId}
+          onSelect={(recurringGroupId) => {
+            if (groupPickerTarget.kind === 'oneTime') {
+              setExpenseGroupId(groupPickerTarget.row.id, recurringGroupId);
+            } else {
+              assignRecurringGroup(groupPickerTarget.id, recurringGroupId);
+            }
+          }}
+        />
+      )}
+      {oneTimeDrag.groupCreatePrompt && (
+        <GroupNameDialog
+          key={`onetime-${oneTimeDrag.groupCreatePrompt.draggedItem.id}-${oneTimeDrag.groupCreatePrompt.otherItem.id}`}
+          isOpen
+          title={t('recurringGroups.createTitle')}
+          initialName={oneTimeDrag.createGroupSuggestedName}
+          onConfirm={oneTimeDrag.handleConfirmCreateGroup}
+          onCancel={oneTimeDrag.handleCancelCreateGroup}
+        />
+      )}
+      {recurringDrag.groupCreatePrompt && (
+        <GroupNameDialog
+          key={`recurring-${recurringDrag.groupCreatePrompt.draggedItem.id}-${recurringDrag.groupCreatePrompt.otherItem.id}`}
+          isOpen
+          title={t('recurringGroups.createTitle')}
+          initialName={recurringDrag.createGroupSuggestedName}
+          onConfirm={recurringDrag.handleConfirmCreateGroup}
+          onCancel={recurringDrag.handleCancelCreateGroup}
+        />
+      )}
     </ScreenScroll>
   );
 }
@@ -209,27 +373,6 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: Spacing.two,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
-    gap: Spacing.two,
-  },
-  rowMain: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  rowEnd: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  bottomLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingBottom: Spacing.two,
   },
   divider: {
     marginVertical: Spacing.one,

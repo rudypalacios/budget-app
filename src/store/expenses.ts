@@ -79,6 +79,10 @@ export function addExpense(input: NewExpenseInput) {
     // setExpensePaid below, where "now" is correct: that's a live
     // "marking this paid right now" action, not a backdated log.
     paidDate: paid ? toTimestamp(input.date) : null,
+    // Stage 18 redo (FR-21, data-model.md §11) — a one-time expense always
+    // starts ungrouped; group (re)assignment only ever happens afterward,
+    // through setExpenseGroupId below (no creation-time UI path exists).
+    recurringGroupId: null,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,
@@ -95,6 +99,9 @@ type EditableExpenseFields = Pick<
 
 // exchangeRateToDefault/budgetedAmount/budgetedCurrency/kind/recurringExpenseId
 // are deliberately excluded — firestore.rules locks them after creation (FR-16).
+// recurringGroupId is deliberately excluded too — setExpenseGroupId below is
+// the one sanctioned path for changing it, so this type doesn't let a future
+// updateExpense call bypass that.
 export async function updateExpense(id: string, patch: Partial<EditableExpenseFields>) {
   const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
   if (trimmedPatch.amount === undefined) {
@@ -136,6 +143,16 @@ export async function setExpensePaid(id: string, paid: boolean, amount?: number)
   await recomputeIfRecurringInstance(id);
 }
 
+// Stage 18 redo (FR-21, data-model.md §11) — reassigns/clears an expense's
+// recurringGroups/{id} membership. Unlike updateExpense's EditableExpenseFields
+// (one-time-only), recurringGroupId is common to both OneTimeExpense and
+// RecurringExpenseInstance (it lives on their shared base type), so this
+// works for either kind with no cast needed — the Dashboard's "Grupo…"
+// action calls this directly rather than going through updateExpense.
+export function setExpenseGroupId(id: string, recurringGroupId: string | null) {
+  return store.update(id, { recurringGroupId });
+}
+
 // Recurring-instance only (Stage 8, Payments Dashboard) — see
 // RecurringExpenseInstance.skipped in src/types/firestore.ts and
 // data-model.md §12. Callers are responsible for not offering this on a
@@ -167,6 +184,10 @@ export type ExpenseInstanceInput = {
   exchangeRateToDefault: number;
   budgetedAmount: number;
   budgetedCurrency: CurrencyCode;
+  // Stage 18 redo (FR-21, data-model.md §11) — copied verbatim from the
+  // definition's own recurringGroupId by recurring-generation.ts. null =
+  // ungrouped.
+  recurringGroupId: string | null;
 };
 
 // Deterministic-ID write for recurring-instance generation (Stage 6b) — see
@@ -194,6 +215,7 @@ export function setExpenseInstanceAt(id: string, input: ExpenseInstanceInput) {
     paidDate: null,
     skipped: false,
     skippedAt: null,
+    recurringGroupId: input.recurringGroupId,
     lifecycleState: 'active',
     trashedFromState: null,
     archivedAt: null,

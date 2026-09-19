@@ -21,6 +21,7 @@ import { useCurrenciesStore } from '@/store/currencies';
 import { useExpensesStore } from '@/store/expenses';
 import { useIncomesStore } from '@/store/incomes';
 import { useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { useRecurringGroupsStore } from '@/store/recurring-groups';
 import { useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { signOutAndRestartAnonymous, useSessionStore } from '@/store/session';
 import { updateUserSettings, useUserSettingsStore } from '@/store/user-settings';
@@ -72,6 +73,9 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
   const incomes = useIncomesStore((state) => state.items);
   const recurringExpenses = useRecurringExpensesStore((state) => state.items);
   const recurringIncomes = useRecurringIncomesStore((state) => state.items);
+  const recurringGroups = useRecurringGroupsStore((state) => state.items).filter(
+    (group) => group.lifecycleState !== 'trashed',
+  );
   const email = useSessionStore((state) => state.email);
   const isAnonymous = useSessionStore((state) => state.isAnonymous);
 
@@ -183,6 +187,27 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
               <ThemedText type="smallBold">{t('settings.currencies.manage')}</ThemedText>
               <ThemedText type="caption">
                 {t('settings.currencies.count', { count: addedCurrencies.length })}
+              </ThemedText>
+            </View>
+            <ThemedText themeColor="textSecondary">›</ThemedText>
+          </Card>
+        </Pressable>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader title={t('settings.recurringGroups.title')} />
+        <Pressable
+          // Same expo-router typed-routes workaround as the Categories/
+          // Currencies manage rows above.
+          onPress={() => router.push('/recurring-groups' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.recurringGroups.manage')}
+        >
+          <Card style={styles.manageRow}>
+            <View>
+              <ThemedText type="smallBold">{t('settings.recurringGroups.manage')}</ThemedText>
+              <ThemedText type="caption">
+                {t('settings.recurringGroups.count', { count: recurringGroups.length })}
               </ThemedText>
             </View>
             <ThemedText themeColor="textSecondary">›</ThemedText>

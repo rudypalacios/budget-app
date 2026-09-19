@@ -38,6 +38,7 @@ export default function NewExpenseScreen() {
         exchangeRateToDefault,
         dueDay,
         startDate,
+        recurringGroupId: values.recurringGroupId,
       });
       // Generate this period's instance immediately rather than waiting for
       // the next catch-up scan (src/app/_layout.tsx runs one on launch,
@@ -51,7 +52,17 @@ export default function NewExpenseScreen() {
       if (isOnline) {
         await generateExpenseInstancesForDefinition(
           uid,
-          { id, categoryId, name: values.name, currency, exchangeRateToDefault, amount, dueDay, startDate },
+          {
+            id,
+            categoryId,
+            name: values.name,
+            currency,
+            exchangeRateToDefault,
+            amount,
+            dueDay,
+            startDate,
+            recurringGroupId: values.recurringGroupId,
+          },
           new Date(),
         );
       }

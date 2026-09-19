@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { AmountCurrencyField } from '@/components/amount-currency-field';
+import { RecurringGroupField } from '@/components/recurring-group-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -27,6 +28,11 @@ export type ExpenseFormValues = {
   paid: boolean;
   date: Date | null;
   currency: CurrencyCode;
+  // Only editable here when creating a brand-new recurring definition (see
+  // the field's render condition below) — an already-generated instance's
+  // membership is changed via the Payments Dashboard's "Add to group…"
+  // action instead, and a one-time expense's the same way.
+  recurringGroupId: string | null;
 };
 
 export type ExpenseFormProps = {
@@ -80,6 +86,7 @@ export function ExpenseForm({
       paid: false,
       date: null,
       currency: defaultCurrency,
+      recurringGroupId: null,
     },
   );
 
@@ -161,6 +168,13 @@ export function ExpenseForm({
           value={values.dueDay}
           onChangeText={(dueDay) => setValues((current) => ({ ...current, dueDay }))}
           keyboardType="number-pad"
+        />
+      )}
+
+      {values.isRecurring && !disableRecurringToggle && (
+        <RecurringGroupField
+          value={values.recurringGroupId}
+          onChange={(recurringGroupId) => setValues((current) => ({ ...current, recurringGroupId }))}
         />
       )}
 
