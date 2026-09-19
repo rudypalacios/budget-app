@@ -1,7 +1,8 @@
 import { SymbolView } from 'expo-symbols';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -10,6 +11,10 @@ import { formatCurrency } from '@/lib/format-currency';
 import { groupDropTargetId, type GroupableItem } from '@/lib/drag-drop-groups';
 import type { GroupSection } from '@/lib/recurring-groups';
 import { Spacing } from '@/constants/theme';
+
+// Reanimated needs its own wrapper to animate a Pressable's style — created
+// once at module scope, not per-render.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type GroupHeaderProps<T extends GroupableItem> = {
   section: GroupSection<T>;
@@ -46,9 +51,22 @@ export function GroupHeaderRow<T extends GroupableItem>({
     });
   }
 
+  // Same livelier-drop-target-response treatment as DraggableRowContainer
+  // — a group header is never itself draggable, so there's no competing
+  // "isDragging" scale to reconcile with here. This ~3-line
+  // useSharedValue/useEffect/withSpring snippet is duplicated rather than
+  // shared with draggable-row-container.tsx's own copy — only 2
+  // occurrences, under this project's "don't extract until 3+ times"
+  // convention.
+  const dropTargetScale = useSharedValue(1);
+  useEffect(() => {
+    dropTargetScale.value = withSpring(isDropTarget ? 1.02 : 1);
+  }, [isDropTarget, dropTargetScale]);
+  const dropTargetAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: dropTargetScale.value }] }));
+
   return (
     <View ref={outerRef} onLayout={handleLayout}>
-      <Pressable
+      <AnimatedPressable
         onPress={() => onToggleExpanded(section.groupId)}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
@@ -62,6 +80,7 @@ export function GroupHeaderRow<T extends GroupableItem>({
             borderBottomWidth: 3,
             borderBottomColor: theme.tint,
           },
+          dropTargetAnimatedStyle,
         ]}
       >
         <View style={styles.groupHeaderMain}>
@@ -80,7 +99,7 @@ export function GroupHeaderRow<T extends GroupableItem>({
             style={{ transform: [{ rotate: expanded ? '-90deg' : '90deg' }] }}
           />
         </View>
-      </Pressable>
+      </AnimatedPressable>
     </View>
   );
 }

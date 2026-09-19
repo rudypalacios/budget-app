@@ -434,17 +434,21 @@ actually resolved.)_
   along with everything else; whether to reapply the `Checkbox` swap on
   top of this redesign wasn't part of what the user asked for this round —
   flagged here rather than silently deciding either way.
-- **Drag-and-drop grouping has no haptic feedback, no live sibling-row
-  reflow while dragging, and is unverified end-to-end** (drag-and-drop
-  grouping follow-up) — `expo-haptics` isn't installed and would be a new
-  dependency, so the drag interaction is visual-only for now (highlight +
-  lift + spring-back), not the vibration-on-hover Android's own folder
-  gesture has; ask first if that's wanted. Sibling rows don't animate out
-  of the way while something is being dragged over them — deliberately
-  scoped out as the highest-effort/highest-risk-of-feeling-janky part of
-  the original gesture description, to ship the core interaction first.
-  More importantly: **this hasn't been exercised against real data at
-  all** — the dev sandbox that built it has no real Firebase credentials
+- **Drag-and-drop grouping has no haptic feedback and is unverified
+  end-to-end** (drag-and-drop grouping follow-up; sibling-reflow half
+  resolved — see below) — `expo-haptics` isn't installed and would be a
+  new dependency, so the drag interaction has no
+  vibration-on-hover the way Android's own folder gesture does; ask first
+  if that's wanted. **Literal sibling-row reflow was deliberately never
+  built, and won't be** — confirmed with the user (SortableJS-pattern
+  visual polish round): this drag never reorders anything (it only
+  changes `recurringGroupId`), so rows visually shifting to "make room"
+  would imply an order change that never happens. Resolved instead with a
+  SortableJS-accurate ghost/floating-clone opacity split (dimmed
+  placeholder left in the vacated slot, translucent floating copy) plus a
+  livelier spring-scale response on the actual drop target — see that
+  round's own summary. More importantly: **this hasn't been exercised
+  against real data at all** — the dev sandbox that built it has no real Firebase credentials
   to reach a live Dashboard with. `react-native-gesture-handler`'s `Pan`
   gesture on web via mouse pointer events specifically — the exact risk
   the from-scratch-vs-dependency decision was made to manage — has never
@@ -518,7 +522,13 @@ drag handle — see `fix/drag-drop-visual-polish` below. Then a code-quality
 cleanup pass over the whole branch (dead code, a duplicated string
 convention, duplicated JSX, two missing tests) — see the "Code-quality
 cleanup pass summary" below; tsc/lint/tests clean throughout, no behavior
-change intended or observed. **None of the admin screen, the Dashboard
+change intended or observed. Then a SortableJS-pattern visual polish
+round — researched SortableJS's own source (not just docs) to close the
+sibling-reflow Known Issue with a faithful ghost/floating-clone opacity
+split plus a livelier spring-scale drop-target response, since a literal
+sibling-shift doesn't apply to a drag that never reorders anything — see
+the "SortableJS-pattern visual polish summary" below. **None of the admin
+screen, the Dashboard
 drag-and-drop, or the Expenses-tab drag-and-drop has been manually
 verified end-to-end** — this dev sandbox has no real Firebase credentials
 to reach live data with; do that (see each summary's own test
@@ -1497,3 +1507,85 @@ scrutiny, all applied:
   `groupRowsIntoSections`, 2 for `setExpenseGroupId`; zero regressions,
   as expected since every change is either dead-code removal, a pure
   refactor, or a type-level narrowing of fields nothing populated).
+
+### SortableJS-pattern visual polish summary
+
+Follow-up to a live research pass on SortableJS itself (fetched its
+actual GitHub source — `Sortable.js`, its README, and its own official
+demo's `theme.css` — not just skimmed docs) to answer two asks together:
+close the "no live sibling-row reflow while dragging" Known Issue, and
+apply the same visual pattern SortableJS uses.
+
+- **What the research found** (sourced, not guessed): SortableJS
+  separates three roles during a drag — the **chosen** element (original
+  item, stays in the list), the **ghost/placeholder** (the original DOM
+  node restyled in place; README's own example: `opacity: 0.4`), and a
+  separate **floating drag clone** in fallback mode (`sortable-fallback`/
+  `sortable-drag`, hardcoded in its source at `opacity: 0.8`,
+  `position: absolute`, `pointerEvents: none`). It ships **zero default
+  colors** for any of this — confirmed by fetching its own official demo's
+  `theme.css`, which defines nothing for `.sortable-ghost`/
+  `.sortable-chosen`. The real "pattern" is the opacity split (dim the
+  original slot, float a translucent clone) plus a live animated feel —
+  not a color scheme, which this project already owns via `theme.tint`.
+- **Sibling reflow, reinterpreted, confirmed with the user**: SortableJS's
+  "neighbors shift out of the way" effect only exists because it's
+  literally reordering a list. This project's drag never reorders
+  anything — it only changes `recurringGroupId`; a row's position never
+  changes. A literal neighbor-nudge would be pure decoration implying an
+  order change that won't happen (and was already flagged as the
+  highest-risk/most-janky-prone part of the original design, which is why
+  it stayed deferred). **Chosen instead**: a livelier animated response
+  on the actual drop target itself, not a reorder simulation.
+- **`src/components/draggable-row-container.tsx`**: added a second,
+  always-mounted `Animated.View` behind the existing floating row —
+  `StyleSheet.absoluteFill` + the row's own `style`, so it's
+  pixel-identical to the real row's reserved slot — rendering the same
+  `children` (and drag handle, for layout-width fidelity; its gesture
+  handler is unreachable once `pointerEvents="none"` is set) at
+  `opacity: 0.4` while this row is the one being dragged, `0` otherwise.
+  Driven by the same `dragAndDrop.draggedRowIdShared` shared value the
+  existing transform already reads — deliberately does **not** resurrect
+  the plain `draggedRowId` JS state removed in the prior cleanup pass;
+  stays fully worklet-driven. Marked `pointerEvents="none"` +
+  `accessibilityElementsHidden` + `importantForAccessibility="no-hide-descendants"`
+  — purely decorative. The real floating row gained one more animated
+  property: `opacity: isDragging ? 0.8 : 1`, matching SortableJS's own
+  hardcoded fallback-clone value exactly.
+- **Livelier drop-target response**: both `draggable-row-container.tsx`
+  and `group-header-row.tsx` already showed a static tint+border-bottom
+  on `isDropTarget` (unchanged — an instant snap is fine there). Added a
+  small spring-animated scale bump (`1.02`) on top of it in both files —
+  a `useSharedValue(1)` + `useEffect` reacting to the `isDropTarget` prop
+  with `withSpring(isDropTarget ? 1.02 : 1)` (default spring config,
+  matching the existing `withSpring(0)` calls already in
+  `use-row-drag-and-drop.ts` — no new tuned config invented).
+  `group-header-row.tsx` needed its `Pressable` wrapped as
+  `Animated.createAnimatedComponent(Pressable)` (module-level
+  `AnimatedPressable`) to animate it. In `draggable-row-container.tsx`
+  this scale folds into the existing transform alongside the
+  dragging-scale (1.03) — the two are mutually exclusive by construction
+  (a row can never simultaneously be the one being dragged and a drop
+  target for itself, since `findRowUnderPoint`/`resolveDropAction`
+  already exclude the dragged row from its own target detection).
+  **Deliberately left duplicated across the two files** (not extracted
+  into a shared hook) — only 2 occurrences of this ~3-line snippet, under
+  this project's own "don't extract until 3+ times" convention.
+- No changes needed to `PaymentRowItem`, `RecurringDefinitionRowItem`,
+  `use-row-drag-and-drop.ts`, or `drag-drop-groups.ts` — entirely
+  contained in the two shared drag-visual components.
+- **tsc/lint/tests**: all clean — `npx tsc --noEmit` clean, `npm run
+  lint` clean, `npm test` 27/27 suites, 236/236 tests (unchanged — pure
+  presentation, consistent with this project's convention of not
+  unit-testing gesture/animation code). Also ran a production web bundle
+  (`expo export --platform web`) to confirm no syntax/import error
+  reaches runtime — bundled clean (1627 modules); the only failure past
+  that point is the same expected `auth/invalid-api-key` every prior
+  round hits, since this sandbox has no real Firebase credentials.
+- **Not manually verified end-to-end** — same sandbox limitation as every
+  prior drag-and-drop round. Verify before merging: the vacated slot
+  shows a dimmed (not blank) copy of the row while dragging; the floating
+  copy reads slightly translucent; hovering a valid row or group-header
+  target visibly "pops" (spring scale) in addition to the existing
+  tint/border, and settles back smoothly when the pointer moves off; the
+  ghost is never tappable and a screen reader never announces it.
