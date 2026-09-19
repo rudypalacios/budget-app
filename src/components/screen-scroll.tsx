@@ -1,7 +1,16 @@
 import { type PropsWithChildren } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-import { BottomTabInset, MaxContentWidth, Spacing, TopBarInset } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Spacing, TopBarInset, WebBottomNavHeight } from '@/constants/theme';
+import { useIsCompactWebNav } from '@/hooks/use-nav-layout';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ScreenScrollProps = PropsWithChildren<{
@@ -21,6 +30,16 @@ export type ScreenScrollProps = PropsWithChildren<{
 // showing through on either side on wide viewports.
 export function ScreenScroll({ children, contentStyle, refreshing, onRefresh }: ScreenScrollProps) {
   const theme = useTheme();
+  const isCompactWebNav = useIsCompactWebNav();
+  // Web has no top pill in compact nav (WebBottomTabBar replaces it, same as
+  // native never having one) but does need bottom clearance for that new bar,
+  // which wide-viewport web doesn't have — the inverse of TopBarInset/
+  // BottomTabInset's native split. See app-tabs.web.tsx.
+  const insetStyle = {
+    paddingTop: Spacing.four + (isCompactWebNav ? 0 : TopBarInset),
+    paddingBottom:
+      Spacing.four + (Platform.OS === 'web' ? (isCompactWebNav ? WebBottomNavHeight : 0) : BottomTabInset),
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -33,7 +52,7 @@ export function ScreenScroll({ children, contentStyle, refreshing, onRefresh }: 
           ) : undefined
         }
       >
-        <View style={[styles.content, contentStyle]}>{children}</View>
+        <View style={[styles.content, insetStyle, contentStyle]}>{children}</View>
       </ScrollView>
     </View>
   );
@@ -51,8 +70,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     padding: Spacing.four,
-    paddingTop: Spacing.four + TopBarInset,
-    paddingBottom: Spacing.four + BottomTabInset,
     gap: Spacing.four,
   },
 });
