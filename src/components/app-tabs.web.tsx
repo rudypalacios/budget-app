@@ -1,77 +1,95 @@
-import {
-  Tabs,
-  TabList,
-  TabTrigger,
-  TabSlot,
-  TabTriggerSlotProps,
-  TabListProps,
-} from 'expo-router/ui';
-import { useState } from 'react';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { Tabs, TabList, TabTrigger, TabSlot, TabListProps, TabTriggerSlotProps } from 'expo-router/ui';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 
-import { Drawer } from './ui/drawer';
-import { IconButton } from './ui/icon-button';
 import { SyncStatusIndicator } from './sync-status-indicator';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { MaxContentWidth, NavBreakpoint, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, WebBottomNavHeight } from '@/constants/theme';
+import { useIsCompactWebNav } from '@/hooks/use-nav-layout';
+import { useTheme } from '@/hooks/use-theme';
 
 // Kept in sync by hand with app-tabs.tsx's NativeTabs.Trigger list (native
 // iOS/Android) — see the comment there. A new tab needs an entry here too.
 // labelKey is a nav.* translation key, resolved at render time (below) since
 // this array lives outside the component, where the t() hook isn't available.
+// icon.web reuses the same Material Symbols name as icon.android (md) — the
+// same convention already used by IconButton callers elsewhere in this file
+// (e.g. the back button's { android: 'arrow_back', web: 'arrow_back' }).
 const TAB_ITEMS = [
-  { name: 'index', href: '/', labelKey: 'nav.payments' },
-  { name: 'expenses', href: '/expenses', labelKey: 'nav.expenses' },
-  { name: 'income', href: '/income', labelKey: 'nav.income' },
-  { name: 'budget', href: '/budget', labelKey: 'nav.budget' },
-  { name: 'history', href: '/history', labelKey: 'nav.history' },
-  { name: 'settings', href: '/settings', labelKey: 'nav.settings' },
-] as const;
+  {
+    name: 'index',
+    href: '/',
+    labelKey: 'nav.payments',
+    icon: { ios: 'house', android: 'home', web: 'home' },
+  },
+  {
+    name: 'expenses',
+    href: '/expenses',
+    labelKey: 'nav.expenses',
+    icon: { ios: 'creditcard', android: 'credit_card', web: 'credit_card' },
+  },
+  {
+    name: 'income',
+    href: '/income',
+    labelKey: 'nav.income',
+    icon: { ios: 'dollarsign.circle', android: 'attach_money', web: 'attach_money' },
+  },
+  {
+    name: 'budget',
+    href: '/budget',
+    labelKey: 'nav.budget',
+    icon: { ios: 'chart.pie', android: 'pie_chart', web: 'pie_chart' },
+  },
+  {
+    name: 'history',
+    href: '/history',
+    labelKey: 'nav.history',
+    icon: { ios: 'clock.arrow.circlepath', android: 'history', web: 'history' },
+  },
+  {
+    name: 'settings',
+    href: '/settings',
+    labelKey: 'nav.settings',
+    icon: { ios: 'gearshape', android: 'settings', web: 'settings' },
+  },
+] as const satisfies readonly {
+  name: string;
+  href: string;
+  labelKey: string;
+  icon: SymbolViewProps['name'];
+}[];
 
 export default function AppTabs() {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
-  const isCompact = width < NavBreakpoint;
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const closeDrawer = () => setIsDrawerOpen(false);
+  const isCompact = useIsCompactWebNav();
 
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
-      <TabList asChild>
-        <CustomTabList isCompact={isCompact} onMenuPress={() => setIsDrawerOpen(true)}>
-          {TAB_ITEMS.map((tab) => (
-            <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-              <TabButton>{t(tab.labelKey)}</TabButton>
-            </TabTrigger>
-          ))}
-        </CustomTabList>
-      </TabList>
-
-      {/* Same tab destinations, rendered a second time for the drawer — see
-          app-tabs.web.tsx's CustomTabList for the pill version. expo-router/ui's
-          TabTrigger is a plain "link to this tab" primitive, not tied to a
-          single TabList, so the same `name` can be triggered from more than
-          one place in the tree and still resolve/highlight consistently. */}
-      <Drawer isOpen={isDrawerOpen} onClose={closeDrawer}>
-        <View style={styles.drawerHeader}>
-          <ThemedText type="smallBold">{t('common.appName')}</ThemedText>
-          <IconButton
-            name={{ ios: 'xmark', android: 'close', web: 'close' }}
-            accessibilityLabel={t('common.closeMenu')}
-            onPress={closeDrawer}
-            size={16}
-          />
-        </View>
-        {TAB_ITEMS.map((tab) => (
-          <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-            <DrawerLink onNavigate={closeDrawer}>{t(tab.labelKey)}</DrawerLink>
-          </TabTrigger>
-        ))}
-      </Drawer>
+      {isCompact ? (
+        <TabList asChild>
+          <WebBottomTabBar>
+            {TAB_ITEMS.map((tab) => (
+              <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
+                <WebBottomTabButton icon={tab.icon}>{t(tab.labelKey)}</WebBottomTabButton>
+              </TabTrigger>
+            ))}
+          </WebBottomTabBar>
+        </TabList>
+      ) : (
+        <TabList asChild>
+          <CustomTabList>
+            {TAB_ITEMS.map((tab) => (
+              <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
+                <TabButton>{t(tab.labelKey)}</TabButton>
+              </TabTrigger>
+            ))}
+          </CustomTabList>
+        </TabList>
+      )}
     </Tabs>
   );
 }
@@ -91,34 +109,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   );
 }
 
-function DrawerLink({
-  children,
-  isFocused,
-  onPress,
-  onNavigate,
-  ...props
-}: TabTriggerSlotProps & { onNavigate: () => void }) {
-  return (
-    <Pressable
-      {...props}
-      onPress={(event) => {
-        onPress?.(event);
-        onNavigate();
-      }}
-      style={({ pressed }) => [styles.drawerLink, pressed && styles.pressed]}
-    >
-      <ThemedText type="default" themeColor={isFocused ? 'tint' : 'text'}>
-        {children}
-      </ThemedText>
-    </Pressable>
-  );
-}
-
-export function CustomTabList({
-  isCompact,
-  onMenuPress,
-  ...props
-}: TabListProps & { isCompact: boolean; onMenuPress: () => void }) {
+export function CustomTabList(props: TabListProps) {
   const { t } = useTranslation();
   return (
     <View {...props} style={styles.tabListContainer}>
@@ -129,18 +120,45 @@ export function CustomTabList({
 
         <SyncStatusIndicator style={styles.syncStatus} />
 
-        {isCompact ? (
-          <IconButton
-            name={{ ios: 'line.3.horizontal', android: 'menu', web: 'menu' }}
-            accessibilityLabel={t('common.openMenu')}
-            onPress={onMenuPress}
-            size={18}
-          />
-        ) : (
-          props.children
-        )}
+        {props.children}
       </ThemedView>
     </View>
+  );
+}
+
+// The compact-viewport replacement for the old hamburger + slide-in drawer —
+// a fixed bottom bar with one icon+label button per tab, mirroring
+// app-tabs.tsx's native NativeTabs bar as closely as a web nav can (see that
+// file's comment: NativeTabs renders the real OS tab bar controller, which
+// has no web equivalent to literally reuse).
+function WebBottomTabBar(props: TabListProps) {
+  const theme = useTheme();
+  return (
+    <View
+      {...props}
+      style={[styles.bottomBarContainer, { backgroundColor: theme.background, borderTopColor: theme.border }]}
+    >
+      <View style={styles.bottomBarInner}>{props.children}</View>
+    </View>
+  );
+}
+
+function WebBottomTabButton({
+  icon,
+  children,
+  isFocused,
+  ...props
+}: TabTriggerSlotProps & { icon: SymbolViewProps['name'] }) {
+  const theme = useTheme();
+  return (
+    <Pressable {...props} style={({ pressed }) => [styles.bottomTabButton, pressed && styles.pressed]}>
+      <View style={[styles.bottomTabIcon, isFocused && { backgroundColor: theme.backgroundSelected }]}>
+        <SymbolView name={icon} size={22} tintColor={isFocused ? theme.text : theme.textSecondary} />
+      </View>
+      <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'} style={styles.bottomTabLabel}>
+        {children}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -177,13 +195,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
   },
-  drawerLink: {
-    paddingVertical: Spacing.three,
+  bottomBarContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: WebBottomNavHeight,
+    borderTopWidth: 1,
   },
-  drawerHeader: {
+  bottomBarInner: {
+    flex: 1,
     flexDirection: 'row',
+  },
+  bottomTabButton: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.three,
+    justifyContent: 'center',
+    gap: Spacing.half,
+  },
+  bottomTabIcon: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.half,
+    borderRadius: Spacing.three,
+  },
+  bottomTabLabel: {
+    fontSize: 11,
+    lineHeight: 14,
   },
 });

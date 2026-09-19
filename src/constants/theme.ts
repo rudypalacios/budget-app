@@ -77,19 +77,26 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-// Web's tab bar (app-tabs.web.tsx) is an absolutely-positioned floating
-// pill that overlays the top of the content instead of reserving its own
-// layout space (unlike native's NativeTabs, a real native container) — screen
-// content needs matching top clearance so titles don't render underneath it.
+// Web's wide-viewport tab bar (app-tabs.web.tsx's floating pill, shown
+// above NavBreakpoint) is an absolutely-positioned overlay that doesn't
+// reserve its own layout space (unlike native's NativeTabs, a real native
+// container) — screen content needs matching top clearance so titles don't
+// render underneath it. Below NavBreakpoint the pill isn't shown at all
+// (see WebBottomNavHeight instead), so this only matters on wide web.
 export const TopBarInset = Platform.select({ web: 72 }) ?? 0;
 export const MaxContentWidth = 800;
 
 // Below this viewport width, app-tabs.web.tsx's floating pill nav can't fit
 // brand + sync indicator + 5 tab pills on one line (no flexWrap/overflow
-// handling by design — a real hamburger + drawer collapse reads better at
-// phone widths than a wrapped or scrolling pill) and switches to a hamburger
-// + slide-in drawer instead.
+// handling by design) and switches to WebBottomNavHeight's fixed bottom tab
+// bar instead — the mobile-web equivalent of native's NativeTabs bar.
 export const NavBreakpoint = 800;
+
+// Height reserved for WebBottomTabBar (app-tabs.web.tsx's compact-viewport
+// bottom tab bar, shown below NavBreakpoint) — mirrors BottomTabInset's
+// role, but for web's own bottom nav bar instead of native's real tab bar
+// controller.
+export const WebBottomNavHeight = 64;
 
 // Below this viewport width, AmountCurrencyField (Stage 11 redesign)
 // stacks its amount field and currency picker into a column instead of a
