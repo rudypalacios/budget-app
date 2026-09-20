@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -13,21 +13,17 @@ import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
 import { Fab } from '@/components/ui/fab';
-import { GroupNameDialog } from '@/components/ui/group-name-dialog';
 import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import type { OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
 import { usePaymentsDashboard } from '@/hooks/use-payments-dashboard';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { useGroupDragOrchestration } from '@/hooks/use-group-drag-orchestration';
-import { groupDropTargetId } from '@/lib/drag-drop-groups';
 import type { PaymentRow } from '@/lib/payments-dashboard';
-import type { DashboardBucket, DashboardSections, GroupSection } from '@/lib/recurring-groups';
+import type { DashboardBucket, GroupSection } from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, setExpenseGroupId, setExpensePaid, setExpenseSkipped, trashExpense } from '@/store/expenses';
 import { archiveIncome, setIncomeReceived, setIncomeSkipped, trashIncome } from '@/store/incomes';
-import { addRecurringGroup } from '@/store/recurring-groups';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
@@ -94,23 +90,6 @@ function trashRow(row: PaymentRow) {
   }
 }
 
-// Every row/group-header the drop math needs to resolve against lives
-// across three buckets and, within each, a plain-rows list plus however
-// many groups' member lists — flattened once per render so a drag's
-// otherRowId (Step: create a new group) can be resolved back to a real
-// PaymentRow regardless of which bucket/group it's currently rendered
-// under. bucket.rows and each group's members are already disjoint
-// (buildDashboardSections filters grouped rows out of bucket.rows), so
-// this never double-counts a row.
-function flattenAllRows(sections: DashboardSections): PaymentRow[] {
-  const all: PaymentRow[] = [];
-  for (const bucket of [sections.overdue, sections.upcoming, sections.completed]) {
-    all.push(...bucket.rows);
-    for (const group of bucket.groups) all.push(...group.members);
-  }
-  return all;
-}
-
 export default function PaymentsScreen() {
   const { t } = useTranslation();
   const dashboard = usePaymentsDashboard();
@@ -130,16 +109,6 @@ export default function PaymentsScreen() {
   // group doesn't push the rest of the list down before the user asks for
   // it, same reasoning as category-budget-card.tsx's per-category accordion.
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
-
-  const allRows = useMemo(() => flattenAllRows(dashboard), [dashboard]);
-
-  async function createGroupAndAssign(name: string, draggedId: string, otherId: string) {
-    const groupId = await addRecurringGroup(name);
-    await Promise.all([setExpenseGroupId(draggedId, groupId), setExpenseGroupId(otherId, groupId)]);
-  }
-
-  const { dragAndDrop, groupCreatePrompt, createGroupSuggestedName, handleConfirmCreateGroup, handleCancelCreateGroup } =
-    useGroupDragOrchestration(allRows, categories, setExpenseGroupId, createGroupAndAssign);
 
   function toggleGroupExpanded(groupId: string) {
     setExpandedGroupIds((current) => {
@@ -202,8 +171,6 @@ export default function PaymentsScreen() {
         key={row.id}
         row={row}
         isOverdue={isOverdue}
-        isDropTarget={dragAndDrop.hoveredTargetId === row.id}
-        dragAndDrop={dragAndDrop}
         categories={categories}
         defaultCurrency={defaultCurrency}
         onTogglePaid={handleTogglePaid}
@@ -219,8 +186,6 @@ export default function PaymentsScreen() {
         <GroupHeaderRow
           section={section}
           expanded={expanded}
-          isDropTarget={dragAndDrop.hoveredTargetId === groupDropTargetId(section.groupId)}
-          dragAndDrop={dragAndDrop}
           onToggleExpanded={toggleGroupExpanded}
           defaultCurrency={defaultCurrency}
         />
@@ -297,16 +262,6 @@ export default function PaymentsScreen() {
           onClose={() => setGroupPickerRow(null)}
           value={groupPickerRow.recurringGroupId}
           onSelect={(recurringGroupId) => setExpenseGroupId(groupPickerRow.id, recurringGroupId)}
-        />
-      )}
-      {groupCreatePrompt && (
-        <GroupNameDialog
-          key={`${groupCreatePrompt.draggedItem.id}-${groupCreatePrompt.otherItem.id}`}
-          isOpen
-          title={t('recurringGroups.createTitle')}
-          initialName={createGroupSuggestedName}
-          onConfirm={handleConfirmCreateGroup}
-          onCancel={handleCancelCreateGroup}
         />
       )}
     </>

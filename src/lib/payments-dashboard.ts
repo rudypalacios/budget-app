@@ -39,9 +39,9 @@ export type PaymentRow = {
 
 // Factored out of buildPaymentRows so the Expenses tab's "Una vez" section
 // (Expenses-grouping follow-up) can render its one-time expenses as
-// PaymentRow-shaped rows too — reusing PaymentRowItem/the drag-and-drop
-// group core exactly as the Dashboard does — without duplicating this
-// mapping a second time.
+// PaymentRow-shaped rows too — reusing PaymentRowItem/the shared group core
+// exactly as the Dashboard does — without duplicating this mapping a second
+// time.
 export function expenseToPaymentRow(expense: WithId<ExpenseRecord>): PaymentRow {
   return {
     id: expense.id,

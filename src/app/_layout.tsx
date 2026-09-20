@@ -1,8 +1,7 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
-import { AppState, StyleSheet } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AppState } from 'react-native';
 
 import { Toast } from '@/components/ui/toast';
 import { useNetworkStatus } from '@/hooks/use-network-status';
@@ -140,48 +139,35 @@ export default function RootLayout() {
   }, []);
 
   return (
-    // Required by react-native-gesture-handler v2 for any gesture (the
-    // Payments Dashboard's drag-to-group handle, Stage 18 follow-up) to
-    // register correctly, especially on Android — must wrap the whole
-    // navigator, not just the screen that uses gestures. First real use of
-    // this dependency in the codebase (previously installed but unused).
-    <GestureHandlerRootView style={styles.root}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="categories/index" />
-          <Stack.Screen name="expenses/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="expenses/[id]/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="income/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="income/[id]/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="payments/quick-expense" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="categories/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="currencies/index" />
-          <Stack.Screen name="currencies/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="currencies/[code]/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="archive/index" />
-          <Stack.Screen name="trash/index" />
-          <Stack.Screen name="recurring-groups/index" />
-          {/* Excludes the login screen from the navigator entirely (not just a
-              post-mount redirect) once already signed in for real, so it can
-              never render even for a single frame — reached while already
-              signed in for real, the router bounces to the anchor/home route
-              automatically before this screen is ever mounted. */}
-          <Stack.Protected guard={isAnonymous}>
-            <Stack.Screen name="(auth)/login" options={{ presentation: 'modal' }} />
-          </Stack.Protected>
-        </Stack>
-        <Toast />
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="categories/index" />
+        <Stack.Screen name="expenses/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="expenses/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="income/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="income/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="payments/quick-expense" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="categories/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="categories/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="currencies/index" />
+        <Stack.Screen name="currencies/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="currencies/[code]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="archive/index" />
+        <Stack.Screen name="trash/index" />
+        <Stack.Screen name="recurring-groups/index" />
+        {/* Excludes the login screen from the navigator entirely (not just a
+            post-mount redirect) once already signed in for real, so it can
+            never render even for a single frame — reached while already
+            signed in for real, the router bounces to the anchor/home route
+            automatically before this screen is ever mounted. */}
+        <Stack.Protected guard={isAnonymous}>
+          <Stack.Screen name="(auth)/login" options={{ presentation: 'modal' }} />
+        </Stack.Protected>
+      </Stack>
+      <Toast />
+    </ThemeProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-});

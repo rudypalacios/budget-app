@@ -1,4 +1,3 @@
-import type { GroupableItem } from './drag-drop-groups';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type { PaymentRow, PaymentRowGroups } from './payments-dashboard';
 import type { RecurringGroup } from '@/types/firestore';
@@ -8,10 +7,18 @@ import type { RecurringGroup } from '@/types/firestore';
 // document holds no amount/date/paid state of its own; everything shown
 // next to its name is always derived here from its current members.
 //
-// Generic over GroupableItem (Expenses-grouping follow-up) — reused by the
-// Payments Dashboard (PaymentRow members, via buildDashboardSections) and
-// the Expenses tab's "Una vez" (PaymentRow) and "Recurrentes"
-// (RecurringExpense-definition-shaped) sections, via groupRowsIntoSections.
+// Generic over GroupableItem — reused by the Payments Dashboard (PaymentRow
+// members, via buildDashboardSections) and the Expenses tab's "Una vez"
+// (PaymentRow) and "Recurrentes" (RecurringExpense-definition-shaped)
+// sections, via groupRowsIntoSections. Both PaymentRow and a RecurringExpense
+// (plus a computed amountInDefaultCurrency) satisfy this structurally, with
+// no adapter classes needed.
+export type GroupableItem = {
+  id: string;
+  categoryId: string;
+  amountInDefaultCurrency: number;
+  recurringGroupId: string | null;
+};
 
 export function computeGroupSubtotal<T extends GroupableItem>(members: T[]): number {
   return members.reduce((sum, member) => sum + member.amountInDefaultCurrency, 0);

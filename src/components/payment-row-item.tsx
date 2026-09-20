@@ -1,14 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { DraggableRowContainer } from '@/components/draggable-row-container';
 import { ThemedText } from '@/components/themed-text';
 import { Chip } from '@/components/ui/chip';
 import { OverflowMenu, type OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { Switch } from '@/components/ui/switch';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { RowDragAndDrop } from '@/hooks/use-row-drag-and-drop';
 import { categoryDisplayName } from '@/lib/category-display';
 import { formatCurrencyWithConversion } from '@/lib/format-currency';
 import { formatShortDate } from '@/lib/format-date';
@@ -19,27 +17,19 @@ import type { Category } from '@/types/firestore';
 type PaymentRowItemProps = {
   row: PaymentRow;
   isOverdue: boolean;
-  isDropTarget: boolean;
-  dragAndDrop: RowDragAndDrop<PaymentRow>;
   categories: WithId<Category>[];
   defaultCurrency: string;
   onTogglePaid: (row: PaymentRow) => void;
   overflowItems: OverflowMenuItem[];
 };
 
-// Stage 18 follow-up (drag-and-drop grouping); extracted out of
-// (tabs)/index.tsx into a shared component (Expenses-grouping follow-up)
-// so the Expenses tab's "Una vez" section can render its rows identically
-// to the Dashboard's — same row markup, same drag-to-group behavior.
-// Grouping stays expense-only (row.direction === 'expense') even here,
-// since PaymentRowItem is still reused by the Dashboard, which mixes
-// expense and income rows in one list; the Expenses tab only ever passes
-// expense rows, so `groupable` is always true there.
+// Extracted out of (tabs)/index.tsx into a shared component (Expenses-
+// grouping follow-up) so the Expenses tab's "Una vez" section can render
+// its rows identically to the Dashboard's — same row markup, reused
+// wherever grouping needs to render a member row.
 export function PaymentRowItem({
   row,
   isOverdue,
-  isDropTarget,
-  dragAndDrop,
   categories,
   defaultCurrency,
   onTogglePaid,
@@ -60,12 +50,7 @@ export function PaymentRowItem({
         : t('payments.status.unpaid');
 
   return (
-    <DraggableRowContainer
-      item={row}
-      dragAndDrop={dragAndDrop}
-      groupable={row.direction === 'expense'}
-      dragHandleAccessibilityLabel={t('recurringGroups.dragHandle', { name: row.name })}
-      isDropTarget={isDropTarget}
+    <View
       style={[
         styles.row,
         // Overdue rows get a full-row danger tint (same translucent-wash
@@ -139,7 +124,7 @@ export function PaymentRowItem({
           />
         </View>
       </View>
-    </DraggableRowContainer>
+    </View>
   );
 }
 
@@ -154,8 +139,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.two,
     borderRadius: Spacing.two,
-    borderWidth: 1,
-    borderColor: 'transparent',
     gap: Spacing.two,
   },
   rowMain: {
