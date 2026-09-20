@@ -13,17 +13,13 @@ import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
 import { Fab } from '@/components/ui/fab';
-import { GroupNameDialog } from '@/components/ui/group-name-dialog';
 import { GroupPickerDialog } from '@/components/ui/group-picker-dialog';
 import type { OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
-import { useGroupDragOrchestration } from '@/hooks/use-group-drag-orchestration';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import type { RowDragAndDrop } from '@/hooks/use-row-drag-and-drop';
-import { groupDropTargetId, type GroupableItem } from '@/lib/drag-drop-groups';
 import { expenseToPaymentRow, type PaymentRow } from '@/lib/payments-dashboard';
-import { groupRowsIntoSections, type GroupSection } from '@/lib/recurring-groups';
+import { groupRowsIntoSections, type GroupableItem, type GroupSection } from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveExpense, setExpenseGroupId, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
 import { runRecurringGeneration } from '@/store/recurring-generation';
@@ -34,7 +30,7 @@ import {
   updateRecurringExpense,
   useRecurringExpensesStore,
 } from '@/store/recurring-expenses';
-import { addRecurringGroup, useRecurringGroupsStore } from '@/store/recurring-groups';
+import { useRecurringGroupsStore } from '@/store/recurring-groups';
 import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
 import { useUserSettingsStore } from '@/store/user-settings';
@@ -45,18 +41,17 @@ import { useUserSettingsStore } from '@/store/user-settings';
 // overdue tag, still lives on the Dashboard tab (src/app/(tabs)/index.tsx,
 // Stage 8), which unifies both kinds in one prioritized view.
 //
-// Expenses-grouping follow-up — both sections below now support the same
-// drag-and-drop grouping as the Dashboard: "Una vez" reuses PaymentRowItem
+// Expenses-grouping follow-up — both sections below support the same
+// "Grupo…" grouping action as the Dashboard: "Una vez" reuses PaymentRowItem
 // directly (its rows are the same PaymentRow shape, via expenseToPaymentRow);
-// "Recurrentes" reuses the shared drag/group core over a definition's own
+// "Recurrentes" reuses the shared group core over a definition's own
 // GroupableRecurringExpense shape (no paid/date/skipped — a definition is
-// never itself "paid"). The two sections' groups are entirely independent
-// drag interactions, each with its own useGroupDragOrchestration instance —
+// never itself "paid"). The two sections' groups are entirely independent —
 // a definition's own recurringGroupId (set here) is what a newly-generated
 // instance inherits each cycle (recurring-generation.ts); an instance's own
 // recurringGroupId (set via the Dashboard's or this screen's "Una vez"
-// drag) is a separate, ad hoc override that never writes back to the
-// definition.
+// "Grupo…" picker) is a separate, ad hoc override that never writes back to
+// the definition.
 export default function ExpensesScreen() {
   const { t } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
@@ -121,31 +116,9 @@ export default function ExpensesScreen() {
     });
   }
 
-  async function createOneTimeGroupAndAssign(name: string, draggedId: string, otherId: string) {
-    const groupId = await addRecurringGroup(name);
-    await Promise.all([setExpenseGroupId(draggedId, groupId), setExpenseGroupId(otherId, groupId)]);
-  }
-
-  const oneTimeDrag = useGroupDragOrchestration(oneTimeRows, categories, setExpenseGroupId, createOneTimeGroupAndAssign);
-
   function assignRecurringGroup(id: string, groupId: string | null) {
     return updateRecurringExpense(id, { recurringGroupId: groupId });
   }
-
-  async function createRecurringGroupAndAssign(name: string, draggedId: string, otherId: string) {
-    const groupId = await addRecurringGroup(name);
-    await Promise.all([
-      updateRecurringExpense(draggedId, { recurringGroupId: groupId }),
-      updateRecurringExpense(otherId, { recurringGroupId: groupId }),
-    ]);
-  }
-
-  const recurringDrag = useGroupDragOrchestration(
-    recurringRows,
-    categories,
-    assignRecurringGroup,
-    createRecurringGroupAndAssign,
-  );
 
   // Stage 18 redo (FR-21) — the "Grupo…" row action's picker, one instance
   // shared by both sections (only one can ever be open at a time).
@@ -218,15 +191,11 @@ export default function ExpensesScreen() {
   }
 
   // Both sections' grouped rows render identically (Card → GroupHeaderRow →
-  // expand-conditional member list), differing only in which drag object
-  // and which row component are plugged in — extracted once so the two
-  // sections don't duplicate this JSX, mirroring how (tabs)/index.tsx
-  // already solved the same problem for its own single section.
-  function renderGroupSections<T extends GroupableItem>(
-    groups: GroupSection<T>[],
-    drag: RowDragAndDrop<T>,
-    renderRow: (item: T) => ReactNode,
-  ) {
+  // expand-conditional member list), differing only in which row component
+  // is plugged in — extracted once so the two sections don't duplicate this
+  // JSX, mirroring how (tabs)/index.tsx already solved the same problem for
+  // its own single section.
+  function renderGroupSections<T extends GroupableItem>(groups: GroupSection<T>[], renderRow: (item: T) => ReactNode) {
     return groups.map((section) => {
       const expanded = expandedGroupIds.has(section.groupId);
       return (
@@ -234,8 +203,6 @@ export default function ExpensesScreen() {
           <GroupHeaderRow
             section={section}
             expanded={expanded}
-            isDropTarget={drag.hoveredTargetId === groupDropTargetId(section.groupId)}
-            dragAndDrop={drag}
             onToggleExpanded={toggleGroupExpanded}
             defaultCurrency={defaultCurrency}
           />
@@ -266,24 +233,14 @@ export default function ExpensesScreen() {
                 <Card style={styles.card}>
                   {recurringSections.rows.map((definition, index) => (
                     <View key={definition.id}>
-                      <RecurringDefinitionRowItem
-                        definition={definition}
-                        isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
-                        dragAndDrop={recurringDrag.dragAndDrop}
-                        overflowItems={recurringOverflowItems(definition)}
-                      />
+                      <RecurringDefinitionRowItem definition={definition} overflowItems={recurringOverflowItems(definition)} />
                       {index < recurringSections.rows.length - 1 && <Divider style={styles.divider} />}
                     </View>
                   ))}
                 </Card>
               )}
-              {renderGroupSections(recurringSections.groups, recurringDrag.dragAndDrop, (definition) => (
-                <RecurringDefinitionRowItem
-                  definition={definition}
-                  isDropTarget={recurringDrag.dragAndDrop.hoveredTargetId === definition.id}
-                  dragAndDrop={recurringDrag.dragAndDrop}
-                  overflowItems={recurringOverflowItems(definition)}
-                />
+              {renderGroupSections(recurringSections.groups, (definition) => (
+                <RecurringDefinitionRowItem definition={definition} overflowItems={recurringOverflowItems(definition)} />
               ))}
             </>
           )}
@@ -302,8 +259,6 @@ export default function ExpensesScreen() {
                       <PaymentRowItem
                         row={row}
                         isOverdue={false}
-                        isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
-                        dragAndDrop={oneTimeDrag.dragAndDrop}
                         categories={categories}
                         defaultCurrency={defaultCurrency}
                         onTogglePaid={handleMarkExpensePaid}
@@ -314,12 +269,10 @@ export default function ExpensesScreen() {
                   ))}
                 </Card>
               )}
-              {renderGroupSections(oneTimeSections.groups, oneTimeDrag.dragAndDrop, (row) => (
+              {renderGroupSections(oneTimeSections.groups, (row) => (
                 <PaymentRowItem
                   row={row}
                   isOverdue={false}
-                  isDropTarget={oneTimeDrag.dragAndDrop.hoveredTargetId === row.id}
-                  dragAndDrop={oneTimeDrag.dragAndDrop}
                   categories={categories}
                   defaultCurrency={defaultCurrency}
                   onTogglePaid={handleMarkExpensePaid}
@@ -344,26 +297,6 @@ export default function ExpensesScreen() {
                 assignRecurringGroup(groupPickerTarget.id, recurringGroupId);
               }
             }}
-          />
-        )}
-        {oneTimeDrag.groupCreatePrompt && (
-          <GroupNameDialog
-            key={`onetime-${oneTimeDrag.groupCreatePrompt.draggedItem.id}-${oneTimeDrag.groupCreatePrompt.otherItem.id}`}
-            isOpen
-            title={t('recurringGroups.createTitle')}
-            initialName={oneTimeDrag.createGroupSuggestedName}
-            onConfirm={oneTimeDrag.handleConfirmCreateGroup}
-            onCancel={oneTimeDrag.handleCancelCreateGroup}
-          />
-        )}
-        {recurringDrag.groupCreatePrompt && (
-          <GroupNameDialog
-            key={`recurring-${recurringDrag.groupCreatePrompt.draggedItem.id}-${recurringDrag.groupCreatePrompt.otherItem.id}`}
-            isOpen
-            title={t('recurringGroups.createTitle')}
-            initialName={recurringDrag.createGroupSuggestedName}
-            onConfirm={recurringDrag.handleConfirmCreateGroup}
-            onCancel={recurringDrag.handleCancelCreateGroup}
           />
         )}
       </ScreenScroll>

@@ -16,11 +16,9 @@ export type GroupNameDialogProps = {
 };
 
 // Shared "type a name, Save/Cancel" shell for a recurringGroups/{id}
-// document — used by the Dashboard's drag-to-create-group flow and by the
-// recurring-groups admin screen's rename dialog (src/app/recurring-groups/
-// index.tsx), the same shape as both, extracted once it hit its 2nd/3rd
-// occurrence per this project's DRY convention. `initialName` is re-read
-// into local state via `key` on the caller's side (same convention
+// document — used by the recurring-groups admin screen's rename dialog
+// (src/app/recurring-groups/index.tsx). `initialName` is re-read into
+// local state via `key` on the caller's side (same convention
 // ConfirmAmountModal already uses) — this component doesn't try to
 // resync mid-session if the prop changes under it.
 export function GroupNameDialog({ isOpen, title, initialName, onConfirm, onCancel }: GroupNameDialogProps) {
