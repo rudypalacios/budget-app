@@ -6,6 +6,7 @@ import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { suggestCategoryMonthlyBudget } from '@/lib/budget-recommendation';
+import { normalizeMonthlyBudget } from '@/lib/budget-status';
 import { parseAmountInput } from '@/lib/currency-input';
 import { updateCategory, useCategoriesStore } from '@/store/categories';
 import { useRecurringExpensesStore } from '@/store/recurring-expenses';
@@ -32,7 +33,8 @@ export default function EditCategoryScreen() {
     updateCategory(id, {
       name: values.name,
       type: values.type,
-      monthlyBudget: values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+      // D1: 0, blank, or non-numeric all normalize to "no budget" (null).
+      monthlyBudget: normalizeMonthlyBudget(values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget)),
       icon: values.icon,
     });
     router.back();

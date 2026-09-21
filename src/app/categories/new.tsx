@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CategoryForm, type CategoryFormValues } from '@/components/category-form';
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
+import { normalizeMonthlyBudget } from '@/lib/budget-status';
 import { parseAmountInput } from '@/lib/currency-input';
 import { addCategory } from '@/store/categories';
 import { useUserSettingsStore } from '@/store/user-settings';
@@ -16,7 +17,8 @@ export default function NewCategoryScreen() {
     addCategory({
       name: values.name,
       type: values.type,
-      monthlyBudget: values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+      // D1: 0, blank, or non-numeric all normalize to "no budget" (null).
+      monthlyBudget: normalizeMonthlyBudget(values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget)),
       icon: values.icon,
     });
     router.back();

@@ -9,7 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
 import { Spacing } from '@/constants/theme';
-import { getCurrentCycleRange, isWithinCycle } from '@/lib/cycle';
+import { actualByCategory, computeBudgetSummary, normalizeMonthlyBudget } from '@/lib/budget-status';
+import { getCurrentCycleRange } from '@/lib/cycle';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
@@ -37,26 +38,8 @@ export default function BudgetScreen() {
   // for a 3-month-old bill belongs to *this* cycle, not the cycle it was
   // originally due in").
   const cycleRange = getCurrentCycleRange();
-
-  // Sums each record's amountInDefaultCurrency (not the raw, possibly
-  // foreign-currency amount) — records in the same category can carry
-  // different currencies (FR-15/FR-18), so summing raw `amount` would mix
-  // currencies together. Includes one-time expenses alongside recurring
-  // instances (FR-6) — a category's real spend isn't just what its recurring
-  // bills say it should be. Scoped to the current month (paidDate is
-  // guaranteed non-null once paid is true) so "this month" totals actually
-  // mean that, rather than an all-time sum.
-  function actualForCategory(categoryId: string) {
-    return expenses
-      .filter(
-        (expense) =>
-          expense.categoryId === categoryId &&
-          expense.paid &&
-          expense.lifecycleState === 'active' &&
-          isWithinCycle(expense.paidDate!.toDate(), cycleRange),
-      )
-      .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
-  }
+  const actualTotals = actualByCategory(expenses, cycleRange);
+  const summary = computeBudgetSummary({ expenses, incomes, cycleRange });
 
   const activeExpenseCategories = categories.filter(
     (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
@@ -65,71 +48,11 @@ export default function BudgetScreen() {
 
   // Skips categories with no activity and no budget set, to avoid clutter
   // from unused categories — a category only needs to appear once it's
-  // either being spent in or has an explicit target.
-  // != null (not !== null) deliberately catches both null and undefined —
-  // a category document created before Stage 13 has no monthlyBudget field
-  // at all, which reads back as undefined rather than null.
+  // either being spent in or has an explicit target. A budget of 0 no
+  // longer counts as "budgeted" here (D1, normalizeMonthlyBudget).
   const categoriesWithActivity = activeExpenseCategories.filter(
-    (category) => category.monthlyBudget != null || actualForCategory(category.id) > 0,
+    (category) => normalizeMonthlyBudget(category.monthlyBudget) !== null || (actualTotals.get(category.id) ?? 0) > 0,
   );
-
-  // Total realistic spend across every active category, not just ones with a
-  // budget set — the point is seeing total actual spend versus what's
-  // expected, not silently excluding categories the user hasn't budgeted yet.
-  const totalActual = expenses
-    .filter((expense) => expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange))
-    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
-
-  // FR-6/income relation: money actually received this month, not expected/
-  // upcoming income — answers "do I literally have this much right now,"
-  // which is what "already on red numbers" is really asking.
-  const totalIncomeReceived = incomes
-    .filter((income) => income.paid && income.lifecycleState === 'active' && isWithinCycle(income.paidDate!.toDate(), cycleRange))
-    .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
-  const netCashPosition = totalIncomeReceived - totalActual;
-
-  // All-time, no cycle filter — the closest thing to a real balance the app
-  // can derive without a dedicated starting-balance field.
-  const allTimeIncomeReceived = incomes
-    .filter((income) => income.paid && income.lifecycleState === 'active')
-    .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
-  const allTimeExpensesPaid = expenses
-    .filter((expense) => expense.paid && expense.lifecycleState === 'active')
-    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
-  const allTimeBalance = allTimeIncomeReceived - allTimeExpensesPaid;
-
-  // Unpaid, non-skipped expenses due within the current calendar month —
-  // scoped by due date (`date`), not `paidDate` (unpaid records have none
-  // yet) — matches this screen's existing this-month-only convention rather
-  // than the Payments Dashboard's all-time "pending" definition.
-  const stillToPayThisMonth = expenses
-    .filter(
-      (expense) =>
-        !expense.paid &&
-        !(expense.kind === 'recurringInstance' && expense.skipped) &&
-        expense.lifecycleState === 'active' &&
-        isWithinCycle(expense.date.toDate(), cycleRange),
-    )
-    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
-
-  // Mirrors stillToPayThisMonth's filter but on the income side — unpaid,
-  // non-skipped income due within the current calendar month.
-  const pendingIncomeThisMonth = incomes
-    .filter(
-      (income) =>
-        !income.paid &&
-        !(income.kind === 'recurringInstance' && income.skipped) &&
-        income.lifecycleState === 'active' &&
-        isWithinCycle(income.date.toDate(), cycleRange),
-    )
-    .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
-
-  // Carries this month's already-settled net (netCashPosition) forward,
-  // rather than only netting row 2's own pending amounts — otherwise a
-  // month that's already deep in the red from bills already paid could
-  // show a misleadingly green projection just because nothing more is
-  // currently pending.
-  const projectedEndOfMonthBalance = netCashPosition + pendingIncomeThisMonth - stillToPayThisMonth;
 
   return (
     <ScreenScroll>
@@ -140,7 +63,7 @@ export default function BudgetScreen() {
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.received')}</ThemedText>
             <ThemedText type="smallBold" themeColor="success">
-              {formatCurrency(totalIncomeReceived, defaultCurrency)}
+              {formatCurrency(summary.received, defaultCurrency)}
             </ThemedText>
           </View>
 
@@ -149,7 +72,7 @@ export default function BudgetScreen() {
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.paid')}</ThemedText>
             <ThemedText type="smallBold" themeColor="danger">
-              {formatCurrency(totalActual, defaultCurrency)}
+              {formatCurrency(summary.paid, defaultCurrency)}
             </ThemedText>
           </View>
 
@@ -157,8 +80,8 @@ export default function BudgetScreen() {
 
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.settledBalance')}</ThemedText>
-            <ThemedText type="smallBold" themeColor={netCashPosition >= 0 ? 'success' : 'danger'}>
-              {formatCurrency(netCashPosition, defaultCurrency)}
+            <ThemedText type="smallBold" themeColor={summary.settled >= 0 ? 'success' : 'danger'}>
+              {formatCurrency(summary.settled, defaultCurrency)}
             </ThemedText>
           </View>
         </View>
@@ -168,8 +91,8 @@ export default function BudgetScreen() {
         <View style={styles.gridRow}>
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.pending')}</ThemedText>
-            <ThemedText type="smallBold" themeColor={stillToPayThisMonth > 0 ? 'danger' : 'success'}>
-              {formatCurrency(stillToPayThisMonth, defaultCurrency)}
+            <ThemedText type="smallBold" themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}>
+              {formatCurrency(summary.stillToPay, defaultCurrency)}
             </ThemedText>
           </View>
 
@@ -178,7 +101,7 @@ export default function BudgetScreen() {
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.incomePending')}</ThemedText>
             <ThemedText type="smallBold" themeColor="success">
-              {formatCurrency(pendingIncomeThisMonth, defaultCurrency)}
+              {formatCurrency(summary.incomePending, defaultCurrency)}
             </ThemedText>
           </View>
 
@@ -186,8 +109,8 @@ export default function BudgetScreen() {
 
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.projectedBalance')}</ThemedText>
-            <ThemedText type="smallBold" themeColor={projectedEndOfMonthBalance >= 0 ? 'success' : 'danger'}>
-              {formatCurrency(projectedEndOfMonthBalance, defaultCurrency)}
+            <ThemedText type="smallBold" themeColor={summary.projected >= 0 ? 'success' : 'danger'}>
+              {formatCurrency(summary.projected, defaultCurrency)}
             </ThemedText>
           </View>
         </View>
@@ -196,8 +119,8 @@ export default function BudgetScreen() {
 
         <View style={styles.footerRow}>
           <ThemedText type="caption">{t('budget.summary.overallBalance')}</ThemedText>
-          <ThemedText type="subtitle" themeColor={allTimeBalance >= 0 ? 'success' : 'danger'}>
-            {formatCurrency(allTimeBalance, defaultCurrency)}
+          <ThemedText type="subtitle" themeColor={summary.overall >= 0 ? 'success' : 'danger'}>
+            {formatCurrency(summary.overall, defaultCurrency)}
           </ThemedText>
         </View>
       </Card>
@@ -207,7 +130,7 @@ export default function BudgetScreen() {
           <CategoryBudgetCard
             key={category.id}
             category={category}
-            actual={actualForCategory(category.id)}
+            actual={actualTotals.get(category.id) ?? 0}
             defaultCurrency={defaultCurrency}
             recurringExpensesInCategory={activeRecurringExpenses.filter(
               (definition) => definition.categoryId === category.id,
