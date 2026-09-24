@@ -2,6 +2,7 @@ import {
   actualByCategory,
   attentionCount,
   budgetPercent,
+  categoryMovements,
   computeBudgetSummary,
   getBudgetStatus,
   isPendingInCycle,
@@ -340,6 +341,44 @@ describe('actualByCategory / pendingByCategory', () => {
     expect(totals.get('ser')).toBe(335);
     expect(totals.get('pro')).toBe(107.85);
     expect(totals.has('viv')).toBe(false);
+  });
+});
+
+describe('categoryMovements (D9)', () => {
+  const EARLY = new Date(2026, 6, 3);
+  const LATE = new Date(2026, 6, 20);
+  const expenses: WithId<ExpenseRecord>[] = [
+    oneTimeExpense({ id: 'paid-late', categoryId: 'ser', amountInDefaultCurrency: 300, paid: true, paidDate: fakeTimestamp(LATE) }),
+    oneTimeExpense({ id: 'paid-early', categoryId: 'ser', amountInDefaultCurrency: 250, paid: true, paidDate: fakeTimestamp(EARLY) }),
+    recurringExpenseInstance({ id: 'pending-late', categoryId: 'ser', amountInDefaultCurrency: 85, date: fakeTimestamp(LATE) }),
+    oneTimeExpense({ id: 'pending-early', categoryId: 'ser', amountInDefaultCurrency: 250, date: fakeTimestamp(EARLY) }),
+    // None of these should appear:
+    recurringExpenseInstance({ id: 'skipped', categoryId: 'ser', amountInDefaultCurrency: 999, skipped: true }),
+    oneTimeExpense({ id: 'archived', categoryId: 'ser', amountInDefaultCurrency: 999, lifecycleState: 'archived' }),
+    oneTimeExpense({ id: 'trashed', categoryId: 'ser', amountInDefaultCurrency: 999, lifecycleState: 'trashed' }),
+    oneTimeExpense({ id: 'other-cycle', categoryId: 'ser', amountInDefaultCurrency: 999, date: fakeTimestamp(PREVIOUS_CYCLE_DATE) }),
+    oneTimeExpense({ id: 'other-category', categoryId: 'viv', amountInDefaultCurrency: 999 }),
+  ];
+
+  it('lists pending by due date and paid by paid date, oldest first', () => {
+    const { pending, paid } = categoryMovements(expenses, 'ser', CYCLE_RANGE);
+    expect(pending.map((e) => e.id)).toEqual(['pending-early', 'pending-late']);
+    expect(paid.map((e) => e.id)).toEqual(['paid-early', 'paid-late']);
+  });
+
+  it('excludes skipped, archived, trashed, other-cycle and other-category records', () => {
+    const { pending, paid } = categoryMovements(expenses, 'ser', CYCLE_RANGE);
+    const ids = [...pending, ...paid].map((e) => e.id);
+    for (const excluded of ['skipped', 'archived', 'trashed', 'other-cycle', 'other-category']) {
+      expect(ids).not.toContain(excluded);
+    }
+  });
+
+  it('sums exactly to the card totals (actualByCategory / pendingByCategory)', () => {
+    const { pending, paid } = categoryMovements(expenses, 'ser', CYCLE_RANGE);
+    const sum = (list: WithId<ExpenseRecord>[]) => list.reduce((total, e) => total + e.amountInDefaultCurrency, 0);
+    expect(sum(pending)).toBe(pendingByCategory(expenses, CYCLE_RANGE).get('ser'));
+    expect(sum(paid)).toBe(actualByCategory(expenses, CYCLE_RANGE).get('ser'));
   });
 });
 

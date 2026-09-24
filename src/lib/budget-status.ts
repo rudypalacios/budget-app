@@ -24,6 +24,14 @@ export function isPendingInCycle(expense: ExpenseRecord, cycleRange: CycleRange)
   );
 }
 
+// The paid-side counterpart of isPendingInCycle: what counts as "spent this
+// cycle" (keyed by paidDate — a bill settled today belongs to this cycle
+// even if it was due months ago). Shared by actualByCategory, the summary's
+// paid total and categoryMovements so all three always agree.
+export function isPaidInCycle(expense: ExpenseRecord, cycleRange: CycleRange): boolean {
+  return expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange);
+}
+
 function sumByCategory(expenses: ExpenseRecord[], predicate: (expense: ExpenseRecord) => boolean): Map<string, number> {
   const totals = new Map<string, number>();
   for (const expense of expenses) {
@@ -34,14 +42,36 @@ function sumByCategory(expenses: ExpenseRecord[], predicate: (expense: ExpenseRe
 }
 
 export function actualByCategory(expenses: ExpenseRecord[], cycleRange: CycleRange): Map<string, number> {
-  return sumByCategory(
-    expenses,
-    (expense) => expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange),
-  );
+  return sumByCategory(expenses, (expense) => isPaidInCycle(expense, cycleRange));
 }
 
 export function pendingByCategory(expenses: ExpenseRecord[], cycleRange: CycleRange): Map<string, number> {
   return sumByCategory(expenses, (expense) => isPendingInCycle(expense, cycleRange));
+}
+
+export type CategoryMovements<T extends ExpenseRecord> = {
+  pending: T[];
+  paid: T[];
+};
+
+// D9: every expense behind a category card's figures this cycle — pending
+// (sums to its `pending`) then paid (sums to its `actual`). Built from the
+// same two predicates as those totals, so skipped/archived/trashed records
+// are excluded here exactly as they are there. Pending by due date, paid by
+// paid date, both oldest first.
+export function categoryMovements<T extends ExpenseRecord>(
+  expenses: T[],
+  categoryId: string,
+  cycleRange: CycleRange,
+): CategoryMovements<T> {
+  const inCategory = expenses.filter((expense) => expense.categoryId === categoryId);
+  const pending = inCategory
+    .filter((expense) => isPendingInCycle(expense, cycleRange))
+    .sort((a, b) => a.date.toMillis() - b.date.toMillis());
+  const paid = inCategory
+    .filter((expense) => isPaidInCycle(expense, cycleRange))
+    .sort((a, b) => a.paidDate!.toMillis() - b.paidDate!.toMillis());
+  return { pending, paid };
 }
 
 export type BudgetStatus = 'none' | 'over' | 'mayExceed' | 'exact' | 'ok';
@@ -155,7 +185,7 @@ export function computeBudgetSummary({ expenses, incomes, cycleRange }: BudgetSu
     .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
 
   const paid = expenses
-    .filter((expense) => expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange))
+    .filter((expense) => isPaidInCycle(expense, cycleRange))
     .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
 
   const settled = received - paid;

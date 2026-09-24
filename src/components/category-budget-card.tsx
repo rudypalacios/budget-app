@@ -3,19 +3,22 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { BudgetMovementRow } from '@/components/budget-movement-row';
 import { BudgetRecommendationBadge } from '@/components/budget-recommendation-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { budgetPercent, projectedTotal, type BudgetStatus } from '@/lib/budget-status';
+import { isRecommendationPending } from '@/lib/budget-recommendation';
+import { budgetPercent, projectedTotal, type BudgetStatus, type CategoryMovements } from '@/lib/budget-status';
 import { categoryDisplayName } from '@/lib/category-display';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { formatCurrency } from '@/lib/format-currency';
-import type { Category, CurrencyCode, RecurringExpense } from '@/types/firestore';
+import type { Category, CurrencyCode, ExpenseRecord, RecurringExpense } from '@/types/firestore';
 
 export type CategoryBudgetCardProps = {
   category: WithId<Category>;
@@ -31,6 +34,8 @@ export type CategoryBudgetCardProps = {
   // specific bill actually changed, e.g. "Services" masking that only
   // Electrical drifted). Summary by default; this only renders once expanded.
   recurringExpensesInCategory: WithId<RecurringExpense>[];
+  // D9: this cycle's expenses behind `pending` and `actual` (categoryMovements).
+  movements: CategoryMovements<WithId<ExpenseRecord>>;
 };
 
 const STATUS_CHIP: Partial<Record<BudgetStatus, { labelKey: string; tone: 'danger' | 'warning' }>> = {
@@ -52,13 +57,13 @@ export function CategoryBudgetCard({
   status,
   defaultCurrency,
   recurringExpensesInCategory,
+  movements,
 }: CategoryBudgetCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   const name = categoryDisplayName(category);
-  const hasBreakdown = recurringExpensesInCategory.length > 0;
   const chip = STATUS_CHIP[status];
   const percent = budgetPercent(budgeted, actual);
   const format = (amount: number) => formatCurrency(amount, defaultCurrency);
@@ -114,47 +119,18 @@ export function CategoryBudgetCard({
 
       {expanded && (
         <View style={styles.detail}>
-          <CategoryStatusLines
-            status={status}
-            budgeted={budgeted}
-            actual={actual}
-            pending={pending}
-            percent={percent}
-            format={format}
-          />
-        </View>
-      )}
-
-      {/* Existing per-recurring breakdown, kept as-is until phase 5 reworks
-          the expanded detail (avoids losing it on develop in between). */}
-      {expanded && hasBreakdown && (
-        <View style={styles.breakdown}>
-          {recurringExpensesInCategory.map((definition, index) => (
-            <View key={definition.id}>
-              <View style={styles.breakdownRow}>
-                <ThemedText type="caption">{definition.name}</ThemedText>
-                <View style={styles.breakdownAmounts}>
-                  <ThemedText type="caption">
-                    {t('budget.recurringBudgeted', {
-                      // definition.amount is in the definition's own currency
-                      // — convert before formatting with defaultCurrency's
-                      // convention, same fix as budget-recommendation-badge.tsx.
-                      amount: formatCurrency(definition.amount * definition.exchangeRateToDefault, defaultCurrency),
-                    })}
-                  </ThemedText>
-                  <ThemedText type="caption" themeColor="textSecondary">
-                    {definition.budgetRecommendation.rollingAverageAmount === null
-                      ? t('budget.noHistoryYet')
-                      : t('budget.recurringAverage', {
-                          amount: formatCurrency(definition.budgetRecommendation.rollingAverageAmount, defaultCurrency),
-                        })}
-                  </ThemedText>
-                </View>
-              </View>
-              <BudgetRecommendationBadge definition={definition} />
-              {index < recurringExpensesInCategory.length - 1 && <Divider style={styles.divider} />}
-            </View>
-          ))}
+          <View style={styles.section}>
+            <CategoryStatusLines
+              status={status}
+              budgeted={budgeted}
+              actual={actual}
+              pending={pending}
+              percent={percent}
+              format={format}
+            />
+          </View>
+          <MovementsSection movements={movements} defaultCurrency={defaultCurrency} />
+          <RecurringSection definitions={recurringExpensesInCategory} format={format} />
         </View>
       )}
     </Card>
@@ -217,6 +193,95 @@ function CategoryStatusLines({ status, budgeted, actual, pending, percent, forma
   );
 }
 
+// Enough to see what drives the figures without turning a busy category
+// into an endless card; the rest is one tap away.
+const MOVEMENTS_PREVIEW_COUNT = 10;
+
+type MovementsSectionProps = {
+  movements: CategoryMovements<WithId<ExpenseRecord>>;
+  defaultCurrency: CurrencyCode;
+};
+
+// D9: pending first (what's still coming), then paid.
+function MovementsSection({ movements, defaultCurrency }: MovementsSectionProps) {
+  const { t } = useTranslation();
+  const [showAll, setShowAll] = useState(false);
+
+  const all = [...movements.pending, ...movements.paid];
+  if (all.length === 0) return null;
+
+  const visible = showAll ? all : all.slice(0, MOVEMENTS_PREVIEW_COUNT);
+  const hasMore = all.length > MOVEMENTS_PREVIEW_COUNT;
+
+  return (
+    <View style={styles.section}>
+      <ThemedText type="smallBold">{t('budget.detail.movements')}</ThemedText>
+      {visible.map((expense) => (
+        <BudgetMovementRow key={expense.id} expense={expense} defaultCurrency={defaultCurrency} />
+      ))}
+      {hasMore && (
+        <Button
+          label={showAll ? t('budget.detail.showLess') : t('budget.detail.showAll', { count: all.length })}
+          variant="ghost"
+          onPress={() => setShowAll((value) => !value)}
+        />
+      )}
+    </View>
+  );
+}
+
+type RecurringSectionProps = {
+  definitions: WithId<RecurringExpense>[];
+  format: (amount: number) => string;
+};
+
+// §5.6 point 3: the plan side (each recurring's amount + its 6-month
+// average or recommendation), as opposed to MovementsSection's actuals.
+function RecurringSection({ definitions, format }: RecurringSectionProps) {
+  const { t } = useTranslation();
+
+  if (definitions.length === 0) {
+    return (
+      <View style={styles.section}>
+        <ThemedText type="caption">{t('budget.detail.noRecurring')}</ThemedText>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.section}>
+      <ThemedText type="smallBold">{t('budget.detail.recurring')}</ThemedText>
+      {definitions.map((definition, index) => {
+        const { rollingAverageAmount } = definition.budgetRecommendation;
+        return (
+          <View key={definition.id} style={styles.recurringItem}>
+            <View style={styles.recurringRow}>
+              <View style={styles.recurringMain}>
+                <ThemedText type="small">{definition.name}</ThemedText>
+                {/* A pending recommendation's badge already states the
+                    average, so the plain average line would repeat it. */}
+                {!isRecommendationPending(definition.budgetRecommendation) && (
+                  <ThemedText type="caption">
+                    {rollingAverageAmount === null
+                      ? t('budget.noHistoryYet')
+                      : t('budget.recurringAverage', { amount: format(rollingAverageAmount) })}
+                  </ThemedText>
+                )}
+              </View>
+              {/* definition.amount is in its own currency — convert before
+                  formatting in the default currency (same as the badge). */}
+              <ThemedText type="small">{format(definition.amount * definition.exchangeRateToDefault)}</ThemedText>
+            </View>
+            <BudgetRecommendationBadge definition={definition} />
+            {index < definitions.length - 1 && <Divider />}
+          </View>
+        );
+      })}
+      <ThemedText type="caption">{t('budget.detail.editInExpenses')}</ThemedText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   categoryCard: {
     gap: Spacing.two,
@@ -240,25 +305,24 @@ const styles = StyleSheet.create({
   faceAmounts: {
     alignItems: 'flex-end',
   },
+  // Sections are visually separated by spacing alone; each section's own
+  // `gap` handles the spacing inside it.
   detail: {
-    gap: Spacing.one,
+    gap: Spacing.four,
   },
-  breakdown: {
+  section: {
     gap: Spacing.two,
-    marginTop: Spacing.one,
   },
-  breakdownRow: {
+  recurringItem: {
+    gap: Spacing.two,
+  },
+  recurringRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.one,
+    alignItems: 'flex-start',
     gap: Spacing.two,
   },
-  breakdownAmounts: {
-    alignItems: 'flex-end',
-    gap: Spacing.one,
-  },
-  divider: {
-    marginVertical: Spacing.one,
+  recurringMain: {
+    flex: 1,
+    gap: Spacing.half,
   },
 });

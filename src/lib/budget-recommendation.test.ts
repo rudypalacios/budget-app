@@ -1,4 +1,4 @@
-import { computeBudgetRecommendation, suggestCategoryMonthlyBudget } from './budget-recommendation';
+import { computeBudgetRecommendation, isRecommendationPending, suggestCategoryMonthlyBudget } from './budget-recommendation';
 import type { RecurringExpense, Timestamp } from '@/types/firestore';
 
 function asDate(value: Timestamp | null): Date | null {
@@ -166,5 +166,19 @@ describe('suggestCategoryMonthlyBudget', () => {
 
     const result = suggestCategoryMonthlyBudget('cat-1', definitions, 'GTQ');
     expect(result).toBe(75);
+  });
+});
+
+describe('isRecommendationPending', () => {
+  const base = { rollingAverageAmount: 112, suggestedBudgetedAmount: 112 } as const;
+
+  it('is true only when pending with a suggested amount', () => {
+    expect(isRecommendationPending({ ...base, status: 'pending' } as RecurringExpense['budgetRecommendation'])).toBe(true);
+    expect(
+      isRecommendationPending({ ...base, status: 'pending', suggestedBudgetedAmount: null } as RecurringExpense['budgetRecommendation']),
+    ).toBe(false);
+    for (const status of ['accepted', 'dismissed', 'stale'] as const) {
+      expect(isRecommendationPending({ ...base, status } as RecurringExpense['budgetRecommendation'])).toBe(false);
+    }
   });
 });
