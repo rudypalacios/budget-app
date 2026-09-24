@@ -67,11 +67,15 @@ export default function BudgetScreen() {
   const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
 
   // Skips categories with no activity and no budget set, to avoid clutter
-  // from unused categories — a category only needs to appear once it's
-  // either being spent in or has an explicit target. A budget of 0 no
-  // longer counts as "budgeted" here (D1, normalizeMonthlyBudget).
+  // from unused categories — a category appears once it has an explicit
+  // target, paid spending, or unpaid spending due this cycle (D8: a
+  // no-budget category with only pending bills used to be hidden). A budget
+  // of 0 doesn't count as "budgeted" (D1, normalizeMonthlyBudget).
   const categoriesWithActivity = activeExpenseCategories.filter(
-    (category) => normalizeMonthlyBudget(category.monthlyBudget) !== null || (actualTotals.get(category.id) ?? 0) > 0,
+    (category) =>
+      normalizeMonthlyBudget(category.monthlyBudget) !== null ||
+      (actualTotals.get(category.id) ?? 0) > 0 ||
+      (pendingTotals.get(category.id) ?? 0) > 0,
   );
 
   // Status, order and the attention count all come from budget-status.ts

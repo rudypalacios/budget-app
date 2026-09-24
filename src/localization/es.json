@@ -375,7 +375,8 @@
       "over": "Excedido por {{amount}} · {{percent}} % del presupuesto",
       "exact": "Justo en el presupuesto · 100 %",
       "projection": "Con lo que falta pagar ({{pending}}) llegarías a {{projected}} · {{percent}} %",
-      "noBudget": "Sin presupuesto. Fija una meta mensual para ver cuánto te queda."
+      "noBudget": "Sin presupuesto. Fija una meta mensual para ver cuánto te queda.",
+      "pendingNoBudget": "Falta pagar este mes: {{pending}}"
     },
     "a11y": {
       "card": "{{name}}, {{percent}} % del presupuesto, gastado {{spent}} de {{budgeted}}{{status}}. {{toggle}} detalles",

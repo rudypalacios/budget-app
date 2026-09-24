@@ -375,7 +375,8 @@
       "over": "Over by {{amount}} · {{percent}}% of budget",
       "exact": "Exactly on budget · 100%",
       "projection": "With what is left to pay ({{pending}}) you would reach {{projected}} · {{percent}}%",
-      "noBudget": "No budget set. Set a monthly target to see how much is left."
+      "noBudget": "No budget set. Set a monthly target to see how much is left.",
+      "pendingNoBudget": "Left to pay this month: {{pending}}"
     },
     "a11y": {
       "card": "{{name}}, {{percent}}% of budget, spent {{spent}} of {{budgeted}}{{status}}. {{toggle}} details",

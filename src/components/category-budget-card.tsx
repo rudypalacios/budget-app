@@ -177,7 +177,16 @@ function CategoryStatusLines({ status, budgeted, actual, pending, percent, forma
   const { t } = useTranslation();
 
   if (budgeted === null) {
-    return <ThemedText type="caption">{t('budget.detail.noBudget')}</ThemedText>;
+    return (
+      <>
+        <ThemedText type="caption">{t('budget.detail.noBudget')}</ThemedText>
+        {pending > 0 && (
+          <ThemedText type="caption" themeColor="textSecondary">
+            {t('budget.detail.pendingNoBudget', { pending: format(pending) })}
+          </ThemedText>
+        )}
+      </>
+    );
   }
 
   const projected = projectedTotal(actual, pending);
