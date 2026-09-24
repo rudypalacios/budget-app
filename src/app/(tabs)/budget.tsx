@@ -80,7 +80,7 @@ export default function BudgetScreen() {
             <ThemedText type="caption" style={styles.cellLabel}>
               {t('budget.summary.received')}
             </ThemedText>
-            <ThemedText type="smallBold" themeColor="success">
+            <ThemedText type="smallBold" style={styles.figure} themeColor="success">
               {formatCurrency(summary.received, defaultCurrency)}
             </ThemedText>
           </View>
@@ -91,7 +91,7 @@ export default function BudgetScreen() {
             <ThemedText type="caption" style={styles.cellLabel}>
               {t('budget.summary.paid')}
             </ThemedText>
-            <ThemedText type="smallBold" themeColor="danger">
+            <ThemedText type="smallBold" style={styles.figure} themeColor="danger">
               {formatCurrency(summary.paid, defaultCurrency)}
             </ThemedText>
           </View>
@@ -117,7 +117,7 @@ export default function BudgetScreen() {
             <ThemedText type="caption" style={styles.cellLabel}>
               {t('budget.summary.pending')}
             </ThemedText>
-            <ThemedText type="smallBold" themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}>
+            <ThemedText type="smallBold" style={styles.figure} themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}>
               {formatCurrency(summary.stillToPay, defaultCurrency)}
             </ThemedText>
           </View>
@@ -128,7 +128,7 @@ export default function BudgetScreen() {
             <ThemedText type="caption" style={styles.cellLabel}>
               {t('budget.summary.incomePending')}
             </ThemedText>
-            <ThemedText type="smallBold" themeColor="success">
+            <ThemedText type="smallBold" style={styles.figure} themeColor="success">
               {formatCurrency(summary.incomePending, defaultCurrency)}
             </ThemedText>
           </View>
@@ -238,22 +238,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Keeps the full MinTouchTarget tap area while pulling the row back to the
-  // caption's own height, so the icon doesn't make the card taller.
+  // caption's own height, so the icon doesn't make the card taller. The
+  // negative margin lets the button's circle overflow the card's top edge,
+  // so its background is cleared and only the icon shows.
   infoButton: {
     marginVertical: -(MinTouchTarget - 16) / 2,
+    backgroundColor: 'transparent',
   },
   gridRow: {
     flexDirection: 'row',
     gap: Spacing.two,
   },
+  // space-between pins each figure to the bottom of its (row-stretched)
+  // cell, so figures stay aligned even when a label wraps past the two
+  // lines cellLabel reserves (e.g. at large font scales).
   cell: {
     flex: 1,
     gap: Spacing.half,
+    justifyContent: 'space-between',
   },
   // Reserves two caption lines so figures stay aligned across a row even
   // when one label (often in English) wraps.
   cellLabel: {
     minHeight: 32,
+  },
+  // Same line height as resultValue (the `default` type's 24) so the
+  // bottom-pinned figures in a row share a baseline despite column 3's
+  // larger font.
+  figure: {
+    lineHeight: 24,
   },
   resultValue: {
     fontWeight: '700',
