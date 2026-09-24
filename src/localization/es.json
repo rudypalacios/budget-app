@@ -318,7 +318,6 @@
   "budget": {
     "title": "Presupuesto",
     "overBudgetChip": "Sobre presupuesto",
-    "spent": "{{amount}} gastado",
     "ofBudgeted": "de {{amount}}",
     "noBudgetSet": "Sin presupuesto",
     "details": "Detalles",
@@ -364,6 +363,28 @@
       },
       "openPanel": "Ver en el Panel",
       "close": "Entendido"
+    },
+    "categories": "Categorías",
+    "attention_one": "{{count}} requiere atención",
+    "attention_other": "{{count}} requieren atención",
+    "noBudgetSection": "Sin presupuesto · {{count}}",
+    "mayExceedChip": "Podría excederse",
+    "empty": "Aún no hay gasto ni presupuestos este mes. Fija un presupuesto en una categoría para empezar.",
+    "detail": {
+      "remaining": "Te quedan {{amount}} · {{percent}} % usado",
+      "over": "Excedido por {{amount}} · {{percent}} % del presupuesto",
+      "exact": "Justo en el presupuesto · 100 %",
+      "projection": "Con lo que falta pagar ({{pending}}) llegarías a {{projected}} · {{percent}} %",
+      "noBudget": "Sin presupuesto. Fija una meta mensual para ver cuánto te queda."
+    },
+    "a11y": {
+      "card": "{{name}}, {{percent}} % del presupuesto, gastado {{spent}} de {{budgeted}}{{status}}. {{toggle}} detalles",
+      "cardNoBudget": "{{name}}, gastado {{spent}}, sin presupuesto. {{toggle}} detalles",
+      "statusOver": ", sobre presupuesto",
+      "statusMayExceed": ", podría excederse",
+      "statusExact": ", justo en el presupuesto",
+      "show": "Ver",
+      "hide": "Ocultar"
     }
   },
   "history": {
