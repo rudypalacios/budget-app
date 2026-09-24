@@ -363,7 +363,7 @@ En `budget.tsx` (estructura actual se conserva: `Card` + 2 `gridRow` + `footerRo
    `MinTouchTarget` (44) sin agrandar visualmente la fila (usa margen negativo o `hitSlop`).
 2. ~~Encima de la fila 2: `caption` = `budget.summary.remaining`.~~ **Retirado (D6):** la fila 2
    va directamente después del divisor, sin rótulo.
-3. **Etiquetas de celda** (`caption`) con **altura mínima de 2 líneas** (`minHeight: 32`) para
+3. *(Ajustado en D7: sin `minHeight`, cifras ancladas abajo.)* **Etiquetas de celda** (`caption`) con **altura mínima de 2 líneas** (`minHeight: 32`) para
    que las cifras queden alineadas aunque una etiqueta se parta en dos líneas.
 4. **Cifras:** columnas 1 y 2 conservan `ThemedText type="smallBold"` y sus colores actuales
    (`received` success, `paid` danger, `pending` danger si > 0 y success si 0,
@@ -668,6 +668,7 @@ Categorías del ciclo (moneda por defecto, valores en `Q`):
 | D4 | Hoja inferior | **Se crea ahora** (`ActionSheet`, fase 2), porque esta página es su primer uso. Ya no se usa `Dialog` para la ayuda ni para "Fijar presupuesto". |
 | D5 | Texto derecho del encabezado "Categorías" | El diseño lo incluye ("N requieren atención"): **se extiende `SectionHeader` con una prop opcional de texto derecho no interactivo** (p. ej. `trailingText?: string`); no se usa `actionLabel` porque implica un botón. |
 | D6 | Rótulo "Lo que falta" sobre la fila 2 del resumen | **Se retira** (revisión de la fase 3): el divisor ya separa las dos filas y el espacio libre compacta la tarjeta. La clave `budget.summary.remaining` no se crea. |
+| D7 | Separación entre etiquetas y cifras del resumen | **Se reduce** (revisión de la fase 3): se retira el `minHeight: 32` de las etiquetas de celda (paso 3 de la fase 3). Las cifras se anclan abajo de cada celda (`justifyContent: 'space-between'`), así que siguen alineadas cuando una etiqueta se parte, sin reservar una línea vacía. El tamaño de las cifras no cambia, para no forzar más saltos de línea con montos de 6 dígitos. |
 
 **Nota sobre D2 (qué se refactoriza exactamente):** hoy `stillToPayThisMonth` es un filtro
 escrito dentro de `budget.tsx` (no pagado, no omitido si es instancia recurrente, activo, con

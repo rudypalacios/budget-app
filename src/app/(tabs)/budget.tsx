@@ -77,9 +77,7 @@ export default function BudgetScreen() {
 
         <View style={styles.gridRow}>
           <View style={styles.cell}>
-            <ThemedText type="caption" style={styles.cellLabel}>
-              {t('budget.summary.received')}
-            </ThemedText>
+            <ThemedText type="caption">{t('budget.summary.received')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor="success">
               {formatCurrency(summary.received, defaultCurrency)}
             </ThemedText>
@@ -88,9 +86,7 @@ export default function BudgetScreen() {
           <Divider style={styles.verticalDivider} />
 
           <View style={styles.cell}>
-            <ThemedText type="caption" style={styles.cellLabel}>
-              {t('budget.summary.paid')}
-            </ThemedText>
+            <ThemedText type="caption">{t('budget.summary.paid')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor="danger">
               {formatCurrency(summary.paid, defaultCurrency)}
             </ThemedText>
@@ -99,9 +95,7 @@ export default function BudgetScreen() {
           <Divider style={styles.verticalDivider} />
 
           <View style={styles.cell}>
-            <ThemedText type="caption" style={styles.cellLabel}>
-              {t('budget.summary.settledBalance')}
-            </ThemedText>
+            <ThemedText type="caption">{t('budget.summary.settledBalance')}</ThemedText>
             <ThemedText type="default" style={styles.resultValue} themeColor={summary.settled >= 0 ? 'success' : 'danger'}>
               {formatCurrency(summary.settled, defaultCurrency)}
             </ThemedText>
@@ -112,9 +106,7 @@ export default function BudgetScreen() {
 
         <View style={styles.gridRow}>
           <View style={styles.cell}>
-            <ThemedText type="caption" style={styles.cellLabel}>
-              {t('budget.summary.pending')}
-            </ThemedText>
+            <ThemedText type="caption">{t('budget.summary.pending')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}>
               {formatCurrency(summary.stillToPay, defaultCurrency)}
             </ThemedText>
@@ -123,9 +115,7 @@ export default function BudgetScreen() {
           <Divider style={styles.verticalDivider} />
 
           <View style={styles.cell}>
-            <ThemedText type="caption" style={styles.cellLabel}>
-              {t('budget.summary.incomePending')}
-            </ThemedText>
+            <ThemedText type="caption">{t('budget.summary.incomePending')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor="success">
               {formatCurrency(summary.incomePending, defaultCurrency)}
             </ThemedText>
@@ -134,9 +124,7 @@ export default function BudgetScreen() {
           <Divider style={styles.verticalDivider} />
 
           <View style={styles.cell}>
-            <ThemedText type="caption" style={styles.cellLabel}>
-              {t('budget.summary.projectedBalance')}
-            </ThemedText>
+            <ThemedText type="caption">{t('budget.summary.projectedBalance')}</ThemedText>
             <ThemedText type="default" style={styles.resultValue} themeColor={summary.projected >= 0 ? 'success' : 'danger'}>
               {formatCurrency(summary.projected, defaultCurrency)}
             </ThemedText>
@@ -248,17 +236,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   // space-between pins each figure to the bottom of its (row-stretched)
-  // cell, so figures stay aligned even when a label wraps past the two
-  // lines cellLabel reserves (e.g. at large font scales).
+  // cell, so a row's figures stay aligned whenever one label wraps —
+  // which is why labels don't need a fixed two-line minHeight reserved
+  // (that left a visible empty line under every single-line label).
   cell: {
     flex: 1,
-    gap: Spacing.half,
+    gap: Spacing.one,
     justifyContent: 'space-between',
-  },
-  // Reserves two caption lines so figures stay aligned across a row even
-  // when one label (often in English) wraps.
-  cellLabel: {
-    minHeight: 32,
   },
   // Same line height as resultValue (the `default` type's 24) so the
   // bottom-pinned figures in a row share a baseline despite column 3's
