@@ -47,6 +47,20 @@
    hardcodeados que existan como token).
 10. Textos: todo string visible sale de `src/localization/es.json` y `en.json`
     (mismas claves en ambos). Plurales con el convenio existente `_one` / `_other` + `count`.
+11. **El prototipo es solo el cuerpo de la página.** Está dibujado a ~400 px, sin menú ni
+    barra de pestañas, y su contenedor (`.app{max-width:480px}`) es solo el marco de la
+    maqueta. El rediseño cambia **únicamente lo que va dentro** de `ScreenScroll` /
+    `ScreenHeader` en `budget.tsx`. **No se toca:** la navegación (`src/components/app-tabs.tsx`,
+    `app-tabs.web.tsx`, `src/app/_layout.tsx`, `src/app/(tabs)/_layout.tsx`), los contenedores
+    de pantalla (`screen-scroll.tsx`, `screen-header.tsx`), ni las constantes de layout de
+    `src/constants/theme.ts` (`MaxContentWidth`, `NavBreakpoint`, `TopBarInset`,
+    `BottomTabInset`, `FormRowBreakpoint`). El ancho, los márgenes y los insets de la página
+    siguen siendo los que ya define la app en web y móvil. Únicas excepciones previstas: el
+    `maxWidth: 480` de la hoja `ActionSheet` (fase 2, limita la hoja, no la página) y el
+    toast global de la fase 7 (ya montado en `_layout.tsx`; solo cambia el componente del
+    toast, no su montaje ni su posición). Si una fase parece necesitar tocar algo de esta
+    lista, **detente y pregunta**. En cada PR, confirma en el reporte que el diff no toca
+    estos archivos.
 
 ---
 
@@ -600,6 +614,7 @@ Origen: develop @ <hash>
 tsc --noEmit: <ok> · npm run lint: <ok> · npm test: <n>/<n>
 Archivos tocados: <lista>
 Desviaciones del plan aprobado: <lista o "ninguna">
+Navegación/contenedores/layout intactos (regla 0.11): <sí, o qué se tocó y por qué>
 Claves i18n añadidas/cambiadas/retiradas: <lista>
 Verificación manual (claro/oscuro, 150 %, dataset §11): <checklist>
 Dudas abiertas: <lista o "ninguna">
@@ -668,6 +683,8 @@ aprobación.
 ## 13. No hacer
 
 - No portar HTML/CSS del prototipo; no copiar los tamaños en px (usa tokens y tipos de texto).
+- No trasladar el ancho/marco del prototipo a la página ni tocar navegación, contenedores de
+  pantalla o constantes de layout (regla 0.11).
 - No añadir filtros, resumen global de categorías, "Editar/Quitar presupuesto", enlaces de
   navegación en el detalle ni segundas sugerencias de presupuesto.
 - No modificar el motor de recomendaciones, el modelo de datos, las reglas de Firestore ni
