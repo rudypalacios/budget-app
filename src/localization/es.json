@@ -327,13 +327,43 @@
     "recurringBudgeted": "Presupuestado {{amount}}",
     "recurringAverage": "Promedio 6 meses {{amount}}",
     "summary": {
-      "received": "Ingresos recibidos",
-      "paid": "Pagos realizados",
+      "thisMonth": "Este mes",
+      "received": "Recibido",
+      "paid": "Pagado",
       "settledBalance": "Saldo actual",
-      "pending": "Pendiente de pago",
-      "incomePending": "Ingresos pendientes",
+      "pending": "Falta pagar",
+      "incomePending": "Falta recibir",
       "projectedBalance": "Saldo proyectado",
-      "overallBalance": "Balance general"
+      "overallBalance": "Balance general",
+      "infoLabel": "Cómo se calcula el resumen"
+    },
+    "info": {
+      "title": "Cómo se calcula",
+      "settledBalance": {
+        "title": "Saldo actual",
+        "body": "Lo recibido menos lo pagado este mes."
+      },
+      "pending": {
+        "title": "Falta pagar",
+        "body": "Lo que vence este mes y aún no pagas. El Panel también cuenta vencidos de meses anteriores."
+      },
+      "projected": {
+        "title": "Saldo proyectado",
+        "body": "Saldo actual, menos lo que falta pagar, más lo que falta recibir. Es lo que te quedaría a fin de mes."
+      },
+      "overall": {
+        "title": "Balance general",
+        "body": "Todo lo recibido menos todo lo pagado desde que usas la app. No incluye un saldo inicial, así que no es el saldo de tu cuenta."
+      },
+      "colors": {
+        "title": "Colores de las barras",
+        "over": "Se pasó del presupuesto",
+        "mayExceed": "Podría pasarse con lo que falta pagar",
+        "exact": "Justo en el presupuesto",
+        "ok": "Dentro del presupuesto"
+      },
+      "openPanel": "Ver en el Panel",
+      "close": "Entendido"
     }
   },
   "history": {
