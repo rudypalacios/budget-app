@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   actualByCategory,
   attentionCount,
+  categoryMovements,
   computeBudgetSummary,
   getBudgetStatus,
   normalizeMonthlyBudget,
@@ -110,6 +111,7 @@ export default function BudgetScreen() {
         status={row.status}
         defaultCurrency={defaultCurrency}
         recurringExpensesInCategory={activeRecurringExpenses.filter((definition) => definition.categoryId === row.id)}
+        movements={categoryMovements(expenses, row.id, cycleRange)}
       />
     );
   }

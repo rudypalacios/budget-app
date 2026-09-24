@@ -320,10 +320,7 @@
     "overBudgetChip": "Sobre presupuesto",
     "ofBudgeted": "de {{amount}}",
     "noBudgetSet": "Sin presupuesto",
-    "details": "Detalles",
-    "hideDetails": "Ocultar detalles",
     "noHistoryYet": "Aún sin historial de pagos",
-    "recurringBudgeted": "Presupuestado {{amount}}",
     "recurringAverage": "Promedio 6 meses {{amount}}",
     "summary": {
       "thisMonth": "Este mes",
@@ -376,7 +373,15 @@
       "exact": "Justo en el presupuesto · 100 %",
       "projection": "Con lo que falta pagar ({{pending}}) llegarías a {{projected}} · {{percent}} %",
       "noBudget": "Sin presupuesto. Fija una meta mensual para ver cuánto te queda.",
-      "pendingNoBudget": "Falta pagar este mes: {{pending}}"
+      "pendingNoBudget": "Falta pagar este mes: {{pending}}",
+      "recurring": "Recurrentes",
+      "noRecurring": "Sin recurrentes en esta categoría: el gasto viene de pagos únicos.",
+      "editInExpenses": "Para cambiar un recurrente, edítalo en Gastos.",
+      "movements": "Movimientos del mes",
+      "showAll": "Ver todos ({{count}})",
+      "showLess": "Ver menos",
+      "movementPaid": "Pagado",
+      "movementPending": "Pendiente"
     },
     "a11y": {
       "card": "{{name}}, {{percent}} % del presupuesto, gastado {{spent}} de {{budgeted}}{{status}}. {{toggle}} detalles",

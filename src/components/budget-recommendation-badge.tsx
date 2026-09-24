@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Spacing } from '@/constants/theme';
 import type { WithId } from '@/lib/firebase/firestore.types';
+import { isRecommendationPending } from '@/lib/budget-recommendation';
 import { formatCurrency } from '@/lib/format-currency';
 import { acceptBudgetRecommendation, dismissBudgetRecommendation } from '@/store/recurring-expenses';
 import { showToast } from '@/store/toast';
@@ -24,7 +25,9 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   const { budgetRecommendation } = definition;
-  if (budgetRecommendation.status !== 'pending' || budgetRecommendation.suggestedBudgetedAmount === null) {
+  // The explicit null check is redundant with isRecommendationPending but
+  // narrows suggestedBudgetedAmount to a number for TypeScript below.
+  if (!isRecommendationPending(budgetRecommendation) || budgetRecommendation.suggestedBudgetedAmount === null) {
     return null;
   }
 

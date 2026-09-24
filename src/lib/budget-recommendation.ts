@@ -108,3 +108,10 @@ export function suggestCategoryMonthlyBudget(
     0,
   );
 }
+
+// The one definition of "there is a recommendation to act on" — shared by
+// BudgetRecommendationBadge (renders it) and the Budget card's recurring
+// rows (hide the plain average line when the badge already shows it).
+export function isRecommendationPending(recommendation: BudgetRecommendation): boolean {
+  return recommendation.status === 'pending' && recommendation.suggestedBudgetedAmount !== null;
+}
