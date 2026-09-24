@@ -327,13 +327,44 @@
     "recurringBudgeted": "Budgeted {{amount}}",
     "recurringAverage": "6-month avg {{amount}}",
     "summary": {
-      "received": "Income received",
-      "paid": "Payments made",
-      "settledBalance": "Balance so far",
-      "pending": "Still to pay",
-      "incomePending": "Income pending",
+      "thisMonth": "This month",
+      "remaining": "What's left",
+      "received": "Received",
+      "paid": "Paid",
+      "settledBalance": "Current balance",
+      "pending": "Left to pay",
+      "incomePending": "Left to receive",
       "projectedBalance": "Projected balance",
-      "overallBalance": "Overall balance"
+      "overallBalance": "Overall balance",
+      "infoLabel": "How the summary is calculated"
+    },
+    "info": {
+      "title": "How it's calculated",
+      "settledBalance": {
+        "title": "Current balance",
+        "body": "What you received minus what you paid this month."
+      },
+      "pending": {
+        "title": "Left to pay",
+        "body": "What is due this month and not yet paid. The Dashboard also counts overdue items from earlier months."
+      },
+      "projected": {
+        "title": "Projected balance",
+        "body": "Current balance, minus what is left to pay, plus what is left to receive. It is what you would have at month end."
+      },
+      "overall": {
+        "title": "Overall balance",
+        "body": "Everything received minus everything paid since you started using the app. It has no starting balance, so it is not your bank balance."
+      },
+      "colors": {
+        "title": "Bar colors",
+        "over": "Over budget",
+        "mayExceed": "Could go over once pending bills are paid",
+        "exact": "Exactly on budget",
+        "ok": "Within budget"
+      },
+      "openPanel": "View in Dashboard",
+      "close": "Got it"
     }
   },
   "history": {
