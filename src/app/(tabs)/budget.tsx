@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,10 +6,6 @@ import { CategoryBudgetCard } from '@/components/category-budget-card';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-// TEMP (fase 2 preview only — remove before merge)
-import { ActionSheet } from '@/components/ui/action-sheet';
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
 import { Spacing } from '@/constants/theme';
@@ -61,8 +57,6 @@ export default function BudgetScreen() {
   return (
     <ScreenScroll>
       <ScreenHeader title={t('budget.title')} />
-
-      <TempActionSheetDemo />
 
       <Card style={styles.summaryCard}>
         <View style={styles.gridRow}>
@@ -148,58 +142,7 @@ export default function BudgetScreen() {
   );
 }
 
-// TEMP (fase 2 preview only — remove before merge): exercises ActionSheet
-// with short content, long scrolling content and a TextField. Hardcoded
-// strings on purpose; this never ships.
-function TempActionSheetDemo() {
-  const [openSheet, setOpenSheet] = useState<'short' | 'long' | 'field' | null>(null);
-  const [value, setValue] = useState('');
-  const close = () => setOpenSheet(null);
-
-  return (
-    <Card style={styles.tempDemo}>
-      <ThemedText type="caption">TEMP · Prueba de ActionSheet (fase 2)</ThemedText>
-      <Button label="Hoja corta" variant="secondary" onPress={() => setOpenSheet('short')} />
-      <Button label="Hoja larga (scroll)" variant="secondary" onPress={() => setOpenSheet('long')} />
-      <Button label="Hoja con campo de texto" variant="secondary" onPress={() => setOpenSheet('field')} />
-
-      <ActionSheet isOpen={openSheet === 'short'} onClose={close} title="Hoja corta">
-        <ThemedText type="small">Contenido corto: la hoja mide solo lo que ocupa.</ThemedText>
-        <Button label="Entendido" onPress={close} />
-      </ActionSheet>
-
-      <ActionSheet isOpen={openSheet === 'long'} onClose={close} title="Hoja larga">
-        {Array.from({ length: 30 }, (_, index) => (
-          <ThemedText key={index} type="small">
-            Fila {index + 1} — la hoja no pasa del 88 % de la altura y este contenido hace scroll.
-          </ThemedText>
-        ))}
-        <Button label="Cerrar" onPress={close} />
-      </ActionSheet>
-
-      <ActionSheet isOpen={openSheet === 'field'} onClose={close} title="Hoja con campo">
-        <TextField label="Monto" value={value} onChangeText={setValue} keyboardType="decimal-pad" autoFocus />
-        <View style={styles.tempButtons}>
-          <Button label="Cancelar" variant="secondary" onPress={close} style={styles.tempButton} />
-          <Button label="Guardar" onPress={close} style={styles.tempButton} />
-        </View>
-      </ActionSheet>
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
-  tempDemo: {
-    gap: Spacing.two,
-    padding: Spacing.two,
-  },
-  tempButtons: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  tempButton: {
-    flex: 1,
-  },
   list: {
     gap: Spacing.three,
   },
