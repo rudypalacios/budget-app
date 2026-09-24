@@ -109,7 +109,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Spacing.three,
     borderTopRightRadius: Spacing.three,
     paddingTop: Spacing.two,
-    paddingHorizontal: Spacing.three,
     gap: Spacing.two,
   },
   handle: {
@@ -119,6 +118,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   header: {
+    paddingHorizontal: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -127,7 +127,14 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
   },
+  // The horizontal padding lives here, inside the ScrollView, rather than
+  // on the panel: a ScrollView clips its children, so with the padding
+  // outside it a full-width TextField's browser focus outline (drawn just
+  // outside its border) got cut off at the edges. paddingVertical gives the
+  // outline the same room at the top/bottom of the scrollable area.
   content: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
     gap: Spacing.three,
   },
 });
