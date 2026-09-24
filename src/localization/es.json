@@ -328,7 +328,6 @@
     "recurringAverage": "Promedio 6 meses {{amount}}",
     "summary": {
       "thisMonth": "Este mes",
-      "remaining": "Lo que falta",
       "received": "Recibido",
       "paid": "Pagado",
       "settledBalance": "Saldo actual",

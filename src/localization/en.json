@@ -328,7 +328,6 @@
     "recurringAverage": "6-month avg {{amount}}",
     "summary": {
       "thisMonth": "This month",
-      "remaining": "What's left",
       "received": "Received",
       "paid": "Paid",
       "settledBalance": "Current balance",

@@ -110,8 +110,6 @@ export default function BudgetScreen() {
 
         <Divider style={styles.rowDivider} />
 
-        <ThemedText type="caption">{t('budget.summary.remaining')}</ThemedText>
-
         <View style={styles.gridRow}>
           <View style={styles.cell}>
             <ThemedText type="caption" style={styles.cellLabel}>
