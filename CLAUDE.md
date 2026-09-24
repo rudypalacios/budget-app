@@ -351,6 +351,15 @@ actually resolved.)_
   caps at ESLint 8, conflicts with this project's ESLint 9 flat config.
   Accessibility props (`accessibilityRole`/`Label`/`State`) are applied by hand
   across `src/components/ui/*`, not lint-enforced.
+- **`ActionSheet` (`src/components/ui/action-sheet.tsx`, Presupuesto redesign
+  fase 2) verified on web only** — the user currently only has web access
+  (Vercel preview). Unverified on iOS/Android: the `KeyboardAvoidingView`
+  behavior (`padding` on iOS, `height` on Android — Android inside a `Modal`
+  is the likeliest to need adjusting), the hardware back button closing it
+  via `onRequestClose`, the bottom safe-area inset, and screen-reader focus
+  entering the sheet (`accessibilityViewIsModal` is iOS-only). Web
+  close-on-Escape, `role="dialog"`/`aria-modal`, focus trap and
+  focus-return-to-trigger all come from react-native-web's own `Modal`.
 - **Native bottom-tab-bar inset (`BottomTabInset` in theme.ts) unverified
   on-device** — added defensively so screen content doesn't render under the
   native tab bar on iOS/Android, but only the web top-bar inset (`TopBarInset`)
