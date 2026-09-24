@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CategoryBudgetCard } from '@/components/category-budget-card';
 import { ScreenHeader } from '@/components/screen-header';
@@ -12,9 +13,19 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Divider } from '@/components/ui/divider';
 import { IconButton } from '@/components/ui/icon-button';
+import { SectionHeader } from '@/components/ui/section-header';
 import { MinTouchTarget, Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { actualByCategory, computeBudgetSummary, normalizeMonthlyBudget } from '@/lib/budget-status';
+import {
+  actualByCategory,
+  attentionCount,
+  computeBudgetSummary,
+  getBudgetStatus,
+  normalizeMonthlyBudget,
+  pendingByCategory,
+  splitByBudget,
+  type BudgetCategoryRow,
+} from '@/lib/budget-status';
 import { getCurrentCycleRange } from '@/lib/cycle';
 import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
@@ -31,6 +42,8 @@ export default function BudgetScreen() {
   const recurringExpenses = useRecurringExpensesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isNoBudgetOpen, setIsNoBudgetOpen] = useState(false);
+  const theme = useTheme();
 
   // Same reason as the Expenses tab's identical effect: catches drift missed
   // by a stale cache (data-model.md §9) whenever this screen — which also
@@ -45,6 +58,7 @@ export default function BudgetScreen() {
   // originally due in").
   const cycleRange = getCurrentCycleRange();
   const actualTotals = actualByCategory(expenses, cycleRange);
+  const pendingTotals = pendingByCategory(expenses, cycleRange);
   const summary = computeBudgetSummary({ expenses, incomes, cycleRange });
 
   const activeExpenseCategories = categories.filter(
@@ -53,12 +67,52 @@ export default function BudgetScreen() {
   const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
 
   // Skips categories with no activity and no budget set, to avoid clutter
-  // from unused categories — a category only needs to appear once it's
-  // either being spent in or has an explicit target. A budget of 0 no
-  // longer counts as "budgeted" here (D1, normalizeMonthlyBudget).
+  // from unused categories — a category appears once it has an explicit
+  // target, paid spending, or unpaid spending due this cycle (D8: a
+  // no-budget category with only pending bills used to be hidden). A budget
+  // of 0 doesn't count as "budgeted" (D1, normalizeMonthlyBudget).
   const categoriesWithActivity = activeExpenseCategories.filter(
-    (category) => normalizeMonthlyBudget(category.monthlyBudget) !== null || (actualTotals.get(category.id) ?? 0) > 0,
+    (category) =>
+      normalizeMonthlyBudget(category.monthlyBudget) !== null ||
+      (actualTotals.get(category.id) ?? 0) > 0 ||
+      (pendingTotals.get(category.id) ?? 0) > 0,
   );
+
+  // Status, order and the attention count all come from budget-status.ts
+  // (Presupuesto redesign §5.2/§5.4); the screen only splits and renders.
+  const rows: BudgetCategoryRow[] = categoriesWithActivity.map((category) => {
+    const budgeted = normalizeMonthlyBudget(category.monthlyBudget);
+    const actual = actualTotals.get(category.id) ?? 0;
+    const pending = pendingTotals.get(category.id) ?? 0;
+    return {
+      id: category.id,
+      name: category.name,
+      budgeted,
+      actual,
+      pending,
+      status: getBudgetStatus({ budgeted, actual, pending }),
+    };
+  });
+  const { withBudget, withoutBudget } = splitByBudget(rows);
+  const needAttention = attentionCount(rows);
+  const categoriesById = new Map(categoriesWithActivity.map((category) => [category.id, category]));
+
+  function renderCategoryCard(row: BudgetCategoryRow) {
+    const category = categoriesById.get(row.id);
+    if (!category) return null;
+    return (
+      <CategoryBudgetCard
+        key={row.id}
+        category={category}
+        budgeted={row.budgeted}
+        actual={row.actual}
+        pending={row.pending}
+        status={row.status}
+        defaultCurrency={defaultCurrency}
+        recurringExpensesInCategory={activeRecurringExpenses.filter((definition) => definition.categoryId === row.id)}
+      />
+    );
+  }
 
   return (
     <ScreenScroll>
@@ -141,19 +195,41 @@ export default function BudgetScreen() {
         </View>
       </Card>
 
-      <View style={styles.list}>
-        {categoriesWithActivity.map((category) => (
-          <CategoryBudgetCard
-            key={category.id}
-            category={category}
-            actual={actualTotals.get(category.id) ?? 0}
-            defaultCurrency={defaultCurrency}
-            recurringExpensesInCategory={activeRecurringExpenses.filter(
-              (definition) => definition.categoryId === category.id,
-            )}
-          />
-        ))}
-      </View>
+      <SectionHeader
+        title={t('budget.categories')}
+        trailingText={needAttention > 0 ? t('budget.attention', { count: needAttention }) : undefined}
+      />
+
+      {rows.length === 0 ? (
+        <ThemedText type="caption">{t('budget.empty')}</ThemedText>
+      ) : (
+        <View style={styles.list}>
+          {withBudget.map(renderCategoryCard)}
+
+          {withoutBudget.length > 0 && (
+            <>
+              <Pressable
+                onPress={() => setIsNoBudgetOpen((value) => !value)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isNoBudgetOpen }}
+                style={styles.noBudgetRow}
+              >
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  {t('budget.noBudgetSection', { count: withoutBudget.length })}
+                </ThemedText>
+                <SymbolView
+                  name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+                  size={14}
+                  weight="bold"
+                  tintColor={theme.textSecondary}
+                  style={{ transform: [{ rotate: isNoBudgetOpen ? '-90deg' : '90deg' }] }}
+                />
+              </Pressable>
+              {isNoBudgetOpen && withoutBudget.map(renderCategoryCard)}
+            </>
+          )}
+        </View>
+      )}
 
       <BudgetInfoSheet isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
     </ScreenScroll>
@@ -213,6 +289,12 @@ function BudgetInfoSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 const styles = StyleSheet.create({
   list: {
     gap: Spacing.three,
+  },
+  noBudgetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: MinTouchTarget,
   },
   summaryCard: {
     gap: Spacing.two,

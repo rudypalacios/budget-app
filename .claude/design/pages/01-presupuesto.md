@@ -669,6 +669,7 @@ Categorías del ciclo (moneda por defecto, valores en `Q`):
 | D5 | Texto derecho del encabezado "Categorías" | El diseño lo incluye ("N requieren atención"): **se extiende `SectionHeader` con una prop opcional de texto derecho no interactivo** (p. ej. `trailingText?: string`); no se usa `actionLabel` porque implica un botón. |
 | D6 | Rótulo "Lo que falta" sobre la fila 2 del resumen | **Se retira** (revisión de la fase 3): el divisor ya separa las dos filas y el espacio libre compacta la tarjeta. La clave `budget.summary.remaining` no se crea. |
 | D7 | Separación entre etiquetas y cifras del resumen | **Se reduce** (revisión de la fase 3): se retira el `minHeight: 32` de las etiquetas de celda (paso 3 de la fase 3). Las cifras se anclan abajo de cada celda (`justifyContent: 'space-between'`), así que siguen alineadas cuando una etiqueta se parte, sin reservar una línea vacía. El tamaño de las cifras no cambia, para no forzar más saltos de línea con montos de 6 dígitos. |
+| D8 | Categoría sin presupuesto con solo gastos pendientes | **Se muestra** (revisión de la fase 4): `categoriesWithActivity` incluye también `pending > 0`, y el detalle de una categoría `none` añade `budget.detail.pendingNoBudget` ("Falta pagar este mes: X"). Antes quedaba oculta hasta pagar algo. |
 
 **Nota sobre D2 (qué se refactoriza exactamente):** hoy `stillToPayThisMonth` es un filtro
 escrito dentro de `budget.tsx` (no pagado, no omitido si es instancia recurrente, activo, con

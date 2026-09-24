@@ -318,7 +318,6 @@
   "budget": {
     "title": "Budget",
     "overBudgetChip": "Over budget",
-    "spent": "{{amount}} spent",
     "ofBudgeted": "of {{amount}}",
     "noBudgetSet": "No budget set",
     "details": "Details",
@@ -364,6 +363,29 @@
       },
       "openPanel": "View in Dashboard",
       "close": "Got it"
+    },
+    "categories": "Categories",
+    "attention_one": "{{count}} needs attention",
+    "attention_other": "{{count}} need attention",
+    "noBudgetSection": "No budget · {{count}}",
+    "mayExceedChip": "Could go over",
+    "empty": "No spending or budgets this month yet. Set a budget on a category to get started.",
+    "detail": {
+      "remaining": "{{amount}} left · {{percent}}% used",
+      "over": "Over by {{amount}} · {{percent}}% of budget",
+      "exact": "Exactly on budget · 100%",
+      "projection": "With what is left to pay ({{pending}}) you would reach {{projected}} · {{percent}}%",
+      "noBudget": "No budget set. Set a monthly target to see how much is left.",
+      "pendingNoBudget": "Left to pay this month: {{pending}}"
+    },
+    "a11y": {
+      "card": "{{name}}, {{percent}}% of budget, spent {{spent}} of {{budgeted}}{{status}}. {{toggle}} details",
+      "cardNoBudget": "{{name}}, spent {{spent}}, no budget. {{toggle}} details",
+      "statusOver": ", over budget",
+      "statusMayExceed": ", could go over",
+      "statusExact": ", exactly on budget",
+      "show": "Show",
+      "hide": "Hide"
     }
   },
   "history": {
