@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BudgetMovementRow } from '@/components/budget-movement-row';
 import { BudgetRecommendationBadge } from '@/components/budget-recommendation-badge';
+import { SetBudgetSheet } from '@/components/set-budget-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ export function CategoryBudgetCard({
   const { t } = useTranslation();
   const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
+  const [isSetBudgetOpen, setIsSetBudgetOpen] = useState(false);
 
   const name = categoryDisplayName(category);
   const chip = STATUS_CHIP[status];
@@ -131,7 +133,22 @@ export function CategoryBudgetCard({
           </View>
           <MovementsSection movements={movements} defaultCurrency={defaultCurrency} />
           <RecurringSection definitions={recurringExpensesInCategory} format={format} />
+          {/* §5.6 point 4 / fase 6: only a category with no budget gets an
+              action here; changing an existing one lives in Settings. */}
+          {status === 'none' && (
+            <Button label={t('budget.setBudget')} variant="secondary" onPress={() => setIsSetBudgetOpen(true)} />
+          )}
         </View>
+      )}
+
+      {status === 'none' && (
+        <SetBudgetSheet
+          isOpen={isSetBudgetOpen}
+          onClose={() => setIsSetBudgetOpen(false)}
+          category={category}
+          recurringExpensesInCategory={recurringExpensesInCategory}
+          defaultCurrency={defaultCurrency}
+        />
       )}
     </Card>
   );

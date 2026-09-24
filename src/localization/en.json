@@ -391,6 +391,16 @@
       "statusExact": ", exactly on budget",
       "show": "Show",
       "hide": "Hide"
+    },
+    "setBudget": "Set budget",
+    "setBudgetSheet": {
+      "title": "Set budget",
+      "field": "Monthly budget ({{currency}})",
+      "suggestion": "Based on your recurring items in this category: {{amount}}. One-time spending is not counted there.",
+      "useSuggested": "Use suggested",
+      "error": "Enter an amount greater than 0.",
+      "saved": "Budget for {{name}} set to {{amount}}.",
+      "saveFailed": "Couldn't save the budget. Please try again."
     }
   },
   "history": {
