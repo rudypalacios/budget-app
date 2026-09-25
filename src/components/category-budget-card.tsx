@@ -10,7 +10,6 @@ import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
-import { Divider } from '@/components/ui/divider';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -131,8 +130,11 @@ export function CategoryBudgetCard({
               format={format}
             />
           </View>
-          <MovementsSection movements={movements} defaultCurrency={defaultCurrency} />
-          <RecurringSection definitions={recurringExpensesInCategory} format={format} />
+          <MovementsSection
+            movements={movements}
+            recurringDefinitions={recurringExpensesInCategory}
+            defaultCurrency={defaultCurrency}
+          />
           {/* §5.6 point 4 / fase 6: only a category with no budget gets an
               action here; changing an existing one lives in Settings. */}
           {status === 'none' && (
@@ -215,11 +217,18 @@ const MOVEMENTS_PREVIEW_COUNT = 10;
 
 type MovementsSectionProps = {
   movements: CategoryMovements<WithId<ExpenseRecord>>;
+  // To attach a pending recommendation to its recurring expense's movement.
+  recurringDefinitions: WithId<RecurringExpense>[];
   defaultCurrency: CurrencyCode;
 };
 
-// D9: pending first (what's still coming), then paid.
-function MovementsSection({ movements, defaultCurrency }: MovementsSectionProps) {
+// D9 + D11: pending first (what's still coming), then paid. This is the
+// only list in the detail — recurring expenses show up here as their
+// instances (with a "Recurring" chip) rather than in a separate section,
+// which used to repeat them. A pending budget recommendation, the one
+// actionable thing that section had, now sits right under the movement it
+// comes from.
+function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: MovementsSectionProps) {
   const { t } = useTranslation();
   const [showAll, setShowAll] = useState(false);
 
@@ -229,12 +238,30 @@ function MovementsSection({ movements, defaultCurrency }: MovementsSectionProps)
   const visible = showAll ? all : all.slice(0, MOVEMENTS_PREVIEW_COUNT);
   const hasMore = all.length > MOVEMENTS_PREVIEW_COUNT;
 
+  const definitionsById = new Map(recurringDefinitions.map((definition) => [definition.id, definition]));
+  // A definition can have more than one instance in a cycle (e.g. biweekly);
+  // its recommendation is shown once, under the first visible one.
+  const recommendationShownFor = new Set<string>();
+
   return (
     <View style={styles.section}>
       <ThemedText type="smallBold">{t('budget.detail.movements')}</ThemedText>
-      {visible.map((expense) => (
-        <BudgetMovementRow key={expense.id} expense={expense} defaultCurrency={defaultCurrency} />
-      ))}
+      {visible.map((expense) => {
+        const definition =
+          expense.kind === 'recurringInstance' ? definitionsById.get(expense.recurringExpenseId) : undefined;
+        const showRecommendation =
+          definition !== undefined &&
+          isRecommendationPending(definition.budgetRecommendation) &&
+          !recommendationShownFor.has(definition.id);
+        if (showRecommendation) recommendationShownFor.add(definition.id);
+
+        return (
+          <View key={expense.id} style={styles.movement}>
+            <BudgetMovementRow expense={expense} defaultCurrency={defaultCurrency} />
+            {showRecommendation && <BudgetRecommendationBadge definition={definition} />}
+          </View>
+        );
+      })}
       {hasMore && (
         <Button
           label={showAll ? t('budget.detail.showLess') : t('budget.detail.showAll', { count: all.length })}
@@ -242,58 +269,6 @@ function MovementsSection({ movements, defaultCurrency }: MovementsSectionProps)
           onPress={() => setShowAll((value) => !value)}
         />
       )}
-    </View>
-  );
-}
-
-type RecurringSectionProps = {
-  definitions: WithId<RecurringExpense>[];
-  format: (amount: number) => string;
-};
-
-// §5.6 point 3: the plan side (each recurring's amount + its 6-month
-// average or recommendation), as opposed to MovementsSection's actuals.
-function RecurringSection({ definitions, format }: RecurringSectionProps) {
-  const { t } = useTranslation();
-
-  if (definitions.length === 0) {
-    return (
-      <View style={styles.section}>
-        <ThemedText type="caption">{t('budget.detail.noRecurring')}</ThemedText>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.section}>
-      <ThemedText type="smallBold">{t('budget.detail.recurring')}</ThemedText>
-      {definitions.map((definition, index) => {
-        const { rollingAverageAmount } = definition.budgetRecommendation;
-        return (
-          <View key={definition.id} style={styles.recurringItem}>
-            <View style={styles.recurringRow}>
-              <View style={styles.recurringMain}>
-                <ThemedText type="small">{definition.name}</ThemedText>
-                {/* A pending recommendation's badge already states the
-                    average, so the plain average line would repeat it. */}
-                {!isRecommendationPending(definition.budgetRecommendation) && (
-                  <ThemedText type="caption">
-                    {rollingAverageAmount === null
-                      ? t('budget.noHistoryYet')
-                      : t('budget.recurringAverage', { amount: format(rollingAverageAmount) })}
-                  </ThemedText>
-                )}
-              </View>
-              {/* definition.amount is in its own currency — convert before
-                  formatting in the default currency (same as the badge). */}
-              <ThemedText type="small">{format(definition.amount * definition.exchangeRateToDefault)}</ThemedText>
-            </View>
-            <BudgetRecommendationBadge definition={definition} />
-            {index < definitions.length - 1 && <Divider />}
-          </View>
-        );
-      })}
-      <ThemedText type="caption">{t('budget.detail.editInExpenses')}</ThemedText>
     </View>
   );
 }
@@ -329,16 +304,7 @@ const styles = StyleSheet.create({
   section: {
     gap: Spacing.two,
   },
-  recurringItem: {
+  movement: {
     gap: Spacing.two,
-  },
-  recurringRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-  },
-  recurringMain: {
-    flex: 1,
-    gap: Spacing.half,
   },
 });

@@ -35,7 +35,10 @@ export function BudgetMovementRow({ expense, defaultCurrency }: BudgetMovementRo
       <View style={styles.main}>
         <ThemedText type="small">{expense.name}</ThemedText>
         <View style={styles.meta}>
-          <ThemedText type="caption">{formatShortDate(shownDate)}</ThemedText>
+          <ThemedText type="caption" style={styles.date}>
+            {formatShortDate(shownDate)}
+          </ThemedText>
+          {expense.kind === 'recurringInstance' && <Chip label={t('budget.detail.movementRecurring')} />}
           <Chip
             label={t(expense.paid ? 'budget.detail.movementPaid' : 'budget.detail.movementPending')}
             tone={expense.paid ? 'neutral' : 'warning'}
@@ -59,10 +62,15 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
+  // Chips wrap to a new line on narrow widths instead of squeezing the date.
   meta: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  date: {
+    flexShrink: 0,
   },
   amount: {
     textAlign: 'right',
