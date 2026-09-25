@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Divider } from '@/components/ui/divider';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -90,7 +91,9 @@ export function CategoryBudgetCard({
         });
 
   return (
-    <Card style={styles.categoryCard}>
+    // v9: an over-budget card is outlined in the danger color too, so it
+    // stands out in the list without relying on the chip/bar alone.
+    <Card style={[styles.categoryCard, status === 'over' && { borderWidth: 1, borderColor: theme.danger }]}>
       <Pressable
         onPress={() => setExpanded((value) => !value)}
         accessibilityRole="button"
@@ -123,7 +126,7 @@ export function CategoryBudgetCard({
       </Pressable>
 
       {expanded && (
-        <View style={styles.detail}>
+        <View style={[styles.detail, { borderTopColor: theme.border }]}>
           <View style={styles.section}>
             <CategoryStatusLines
               status={status}
@@ -257,7 +260,7 @@ function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: 
   return (
     <View style={styles.section}>
       <ThemedText type="smallBold">{t('budget.detail.movements')}</ThemedText>
-      {visible.map((expense) => {
+      {visible.map((expense, index) => {
         const definition =
           expense.kind === 'recurringInstance' ? definitionsById.get(expense.recurringExpenseId) : undefined;
         const showRecommendation =
@@ -268,6 +271,7 @@ function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: 
 
         return (
           <View key={expense.id} style={styles.movement}>
+            {index > 0 && <Divider />}
             <BudgetMovementRow expense={expense} defaultCurrency={defaultCurrency} />
             {showRecommendation && <BudgetRecommendationBadge definition={definition} />}
           </View>
@@ -307,9 +311,11 @@ const styles = StyleSheet.create({
   faceAmounts: {
     alignItems: 'flex-end',
   },
-  // Sections are visually separated by spacing alone; each section's own
-  // `gap` handles the spacing inside it.
+  // v9: a hairline separates the card's face from its expanded detail;
+  // sections inside it are separated by spacing alone.
   detail: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: Spacing.three,
     gap: Spacing.four,
   },
   section: {

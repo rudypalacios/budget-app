@@ -59,6 +59,7 @@ export function BudgetMovementRow({ expense, defaultCurrency }: BudgetMovementRo
           <Chip
             label={t(expense.paid ? 'budget.detail.movementPaid' : 'budget.detail.movementPending')}
             tone={expense.paid ? 'neutral' : 'warning'}
+            size="small"
           />
         </View>
       </View>
