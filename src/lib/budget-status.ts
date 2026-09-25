@@ -1,4 +1,4 @@
-import { isWithinCycle, type CycleRange } from './cycle';
+import { getCurrentCycleRange, isWithinCycle, type CycleRange } from './cycle';
 import type { ExpenseRecord, IncomeRecord } from '@/types/firestore';
 
 // Pure budget-screen math (Presupuesto redesign §5) — kept separate from the
@@ -72,6 +72,51 @@ export function categoryMovements<T extends ExpenseRecord>(
     .filter((expense) => isPaidInCycle(expense, cycleRange))
     .sort((a, b) => a.paidDate!.toMillis() - b.paidDate!.toMillis());
   return { pending, paid };
+}
+
+// Fixed look-back for the category budget suggestion — same 6-month window
+// as the per-recurring rolling average (FR-6a), not user-configurable.
+const SUGGESTION_WINDOW_MONTHS = 6;
+
+export type CategorySpendingAverage = {
+  average: number; // in the default currency, rounded to cents
+  months: number; // how many complete months it averages over (1–6)
+};
+
+// D10: a category's suggested monthly budget is what it has actually cost
+// per month — every paid expense in it, one-time and recurring alike (a
+// category budget covers everything filed under it) — over the last 6
+// *complete* months (the current, unfinished one would drag it down).
+// Months before the category's first paid expense don't count, so a
+// 2-month-old category averages over 2 months, not 6. null when there's no
+// complete month of history yet — no suggestion rather than a guess.
+export function averageMonthlySpending(
+  expenses: ExpenseRecord[],
+  categoryId: string,
+  referenceDate: Date = new Date(),
+): CategorySpendingAverage | null {
+  const currentCycle = getCurrentCycleRange(referenceDate);
+  const paidInCategory = expenses.filter(
+    (expense) => expense.categoryId === categoryId && expense.paid && expense.lifecycleState === 'active',
+  );
+
+  const firstPaidMs = Math.min(...paidInCategory.map((expense) => expense.paidDate!.toMillis()));
+  if (!Number.isFinite(firstPaidMs) || firstPaidMs >= currentCycle.start.getTime()) return null;
+
+  const firstPaid = new Date(firstPaidMs);
+  const monthsOfHistory =
+    (currentCycle.start.getFullYear() - firstPaid.getFullYear()) * 12 + (currentCycle.start.getMonth() - firstPaid.getMonth());
+  const months = Math.min(monthsOfHistory, SUGGESTION_WINDOW_MONTHS);
+
+  const window: CycleRange = {
+    start: new Date(currentCycle.start.getFullYear(), currentCycle.start.getMonth() - months, 1),
+    end: currentCycle.start,
+  };
+  const total = paidInCategory
+    .filter((expense) => isWithinCycle(expense.paidDate!.toDate(), window))
+    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
+
+  return { average: Math.round((total / months) * 100) / 100, months };
 }
 
 export type BudgetStatus = 'none' | 'over' | 'mayExceed' | 'exact' | 'ok';

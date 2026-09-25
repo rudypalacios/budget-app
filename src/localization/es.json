@@ -396,11 +396,12 @@
     "setBudgetSheet": {
       "title": "Fijar presupuesto",
       "field": "Presupuesto mensual ({{currency}})",
-      "suggestion": "Según tus recurrentes de esta categoría: {{amount}}. El resto (gastos únicos) no se cuenta ahí.",
       "useSuggested": "Usar sugerido",
       "error": "Escribe un monto mayor que 0.",
       "saved": "Presupuesto de {{name}} fijado en {{amount}}.",
-      "saveFailed": "No se pudo guardar el presupuesto. Intenta de nuevo."
+      "saveFailed": "No se pudo guardar el presupuesto. Intenta de nuevo.",
+      "suggestion_one": "Promedio del último mes completo: {{amount}}.",
+      "suggestion_other": "Promedio de los últimos {{count}} meses completos: {{amount}}."
     }
   },
   "history": {

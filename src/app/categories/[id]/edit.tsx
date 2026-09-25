@@ -5,11 +5,10 @@ import { CategoryForm, type CategoryFormValues } from '@/components/category-for
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { suggestCategoryMonthlyBudget } from '@/lib/budget-recommendation';
-import { normalizeMonthlyBudget } from '@/lib/budget-status';
+import { averageMonthlySpending, normalizeMonthlyBudget } from '@/lib/budget-status';
 import { parseAmountInput } from '@/lib/currency-input';
 import { updateCategory, useCategoriesStore } from '@/store/categories';
-import { useRecurringExpensesStore } from '@/store/recurring-expenses';
+import { useExpensesStore } from '@/store/expenses';
 import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function EditCategoryScreen() {
@@ -17,7 +16,7 @@ export default function EditCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const items = useCategoriesStore((state) => state.items);
   const category = items.find((item) => item.id === id);
-  const recurringExpenses = useRecurringExpensesStore((state) => state.items);
+  const expenses = useExpensesStore((state) => state.items);
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
 
   if (!category) {
@@ -54,9 +53,9 @@ export default function EditCategoryScreen() {
 
   // Income categories never show the monthlyBudget field (CategoryForm), so
   // there's no suggestion to compute for one.
-  const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
-  const suggestedMonthlyBudget =
-    category.type === 'income' ? null : suggestCategoryMonthlyBudget(id, activeRecurringExpenses, defaultCurrency);
+  // D10: same suggestion as the Budget tab's "Set budget" sheet — the
+  // category's average monthly spending over the last complete months.
+  const suggestedMonthlyBudget = category.type === 'income' ? null : (averageMonthlySpending(expenses, id)?.average ?? null);
 
   return (
     <ScreenScroll>

@@ -146,7 +146,6 @@ export function CategoryBudgetCard({
           isOpen={isSetBudgetOpen}
           onClose={() => setIsSetBudgetOpen(false)}
           category={category}
-          recurringExpensesInCategory={recurringExpensesInCategory}
           defaultCurrency={defaultCurrency}
         />
       )}

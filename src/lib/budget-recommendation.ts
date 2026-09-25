@@ -4,8 +4,6 @@ import {
   ROLLING_AVERAGE_DRIFT_PERCENT,
   type BudgetRecommendation,
   type BudgetRecommendationStatus,
-  type CurrencyCode,
-  type RecurringExpense,
 } from '@/types/firestore';
 
 // Pure rolling-average/drift math for FR-6a-6d (docs/data-model.md §9),
@@ -88,25 +86,6 @@ export function computeBudgetRecommendation({
     dismissedAt: null,
     dismissedAtAverageAmount: null,
   };
-}
-
-// A category's budgeted amount defaults to the sum of what its active
-// recurring expenses say they should cost, converted to defaultCurrency —
-// a starting suggestion the user can freely overwrite (Category.monthlyBudget
-// stays manual), not a live derivation.
-export function suggestCategoryMonthlyBudget(
-  categoryId: string,
-  activeRecurringExpenses: RecurringExpense[],
-  defaultCurrency: CurrencyCode,
-): number | null {
-  const inCategory = activeRecurringExpenses.filter((definition) => definition.categoryId === categoryId);
-  if (inCategory.length === 0) return null;
-
-  return inCategory.reduce(
-    (sum, definition) =>
-      sum + (definition.currency === defaultCurrency ? definition.amount : definition.amount * definition.exchangeRateToDefault),
-    0,
-  );
 }
 
 // The one definition of "there is a recommendation to act on" — shared by

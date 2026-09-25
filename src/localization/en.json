@@ -396,11 +396,12 @@
     "setBudgetSheet": {
       "title": "Set budget",
       "field": "Monthly budget ({{currency}})",
-      "suggestion": "Based on your recurring items in this category: {{amount}}. One-time spending is not counted there.",
       "useSuggested": "Use suggested",
       "error": "Enter an amount greater than 0.",
       "saved": "Budget for {{name}} set to {{amount}}.",
-      "saveFailed": "Couldn't save the budget. Please try again."
+      "saveFailed": "Couldn't save the budget. Please try again.",
+      "suggestion_one": "Average over the last full month: {{amount}}.",
+      "suggestion_other": "Average over the last {{count}} full months: {{amount}}."
     }
   },
   "history": {

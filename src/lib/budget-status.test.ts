@@ -1,6 +1,7 @@
 import {
   actualByCategory,
   attentionCount,
+  averageMonthlySpending,
   budgetPercent,
   categoryMovements,
   computeBudgetSummary,
@@ -452,5 +453,52 @@ describe('computeBudgetSummary', () => {
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
 
     expect(computeBudgetSummary({ expenses, incomes, cycleRange: CYCLE_RANGE }).stillToPay).toBe(preRefactorStillToPay);
+  });
+});
+
+describe('averageMonthlySpending (D10)', () => {
+  // Reference: 15 Jul 2026 → complete months are Jun, May, Apr, … (July is
+  // the current, unfinished month and never counts).
+  const paidOn = (id: string, date: Date, amount: number, overrides: Partial<WithId<OneTimeExpense>> = {}) =>
+    oneTimeExpense({ id, categoryId: 'var', amountInDefaultCurrency: amount, paid: true, paidDate: fakeTimestamp(date), ...overrides });
+
+  it('averages one-time and recurring spending over the last 6 complete months', () => {
+    const expenses: ExpenseRecord[] = [
+      paidOn('jan', new Date(2026, 0, 10), 600), // first spending → 6 months of history (Jan–Jun)
+      paidOn('mar', new Date(2026, 2, 10), 300),
+      recurringExpenseInstance({ id: 'jun', categoryId: 'var', amountInDefaultCurrency: 300, paid: true, paidDate: fakeTimestamp(new Date(2026, 5, 5)) }),
+    ];
+    expect(averageMonthlySpending(expenses, 'var', REFERENCE_DATE)).toEqual({ average: 200, months: 6 });
+  });
+
+  it('only counts months since the first spending, so a young category is not diluted', () => {
+    const expenses = [paidOn('may', new Date(2026, 4, 20), 100), paidOn('jun', new Date(2026, 5, 20), 300)];
+    expect(averageMonthlySpending(expenses, 'var', REFERENCE_DATE)).toEqual({ average: 200, months: 2 });
+  });
+
+  it('caps the window at 6 months and ignores older spending', () => {
+    const expenses = [paidOn('old', new Date(2025, 0, 10), 9999), paidOn('jun', new Date(2026, 5, 10), 600)];
+    expect(averageMonthlySpending(expenses, 'var', REFERENCE_DATE)).toEqual({ average: 100, months: 6 });
+  });
+
+  it('excludes the current month, unpaid, archived and other categories', () => {
+    const expenses: ExpenseRecord[] = [
+      paidOn('jun', new Date(2026, 5, 10), 100),
+      paidOn('current', IN_CYCLE_DATE, 999),
+      paidOn('archived', new Date(2026, 5, 11), 999, { lifecycleState: 'archived' }),
+      paidOn('other', new Date(2026, 5, 12), 999, { categoryId: 'viv' }),
+      oneTimeExpense({ id: 'unpaid', categoryId: 'var', amountInDefaultCurrency: 999, date: fakeTimestamp(new Date(2026, 5, 13)) }),
+    ];
+    expect(averageMonthlySpending(expenses, 'var', REFERENCE_DATE)).toEqual({ average: 100, months: 1 });
+  });
+
+  it('is null with no complete month of history', () => {
+    expect(averageMonthlySpending([], 'var', REFERENCE_DATE)).toBeNull();
+    expect(averageMonthlySpending([paidOn('current', IN_CYCLE_DATE, 50)], 'var', REFERENCE_DATE)).toBeNull();
+  });
+
+  it('rounds to cents', () => {
+    const expenses = [paidOn('may', new Date(2026, 4, 1), 100), paidOn('jun', new Date(2026, 5, 1), 0.01)];
+    expect(averageMonthlySpending(expenses, 'var', REFERENCE_DATE)?.average).toBe(50.01);
   });
 });

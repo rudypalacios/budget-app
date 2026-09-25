@@ -8,21 +8,20 @@ import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { getCurrencySymbol } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
-import { suggestCategoryMonthlyBudget } from '@/lib/budget-recommendation';
-import { normalizeMonthlyBudget } from '@/lib/budget-status';
+import { averageMonthlySpending, normalizeMonthlyBudget } from '@/lib/budget-status';
 import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { formatCurrency } from '@/lib/format-currency';
 import { updateCategory } from '@/store/categories';
+import { useExpensesStore } from '@/store/expenses';
 import { showToast } from '@/store/toast';
-import type { Category, CurrencyCode, RecurringExpense } from '@/types/firestore';
+import type { Category, CurrencyCode } from '@/types/firestore';
 
 export type SetBudgetSheetProps = {
   isOpen: boolean;
   onClose: () => void;
   category: WithId<Category>;
-  recurringExpensesInCategory: WithId<RecurringExpense>[];
   defaultCurrency: CurrencyCode;
 };
 
@@ -44,15 +43,17 @@ export function SetBudgetSheet({ isOpen, onClose, ...formProps }: SetBudgetSheet
 function SetBudgetForm({
   onClose,
   category,
-  recurringExpensesInCategory,
   defaultCurrency,
 }: Omit<SetBudgetSheetProps, 'isOpen'>) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
 
-  const suggested = suggestCategoryMonthlyBudget(category.id, recurringExpensesInCategory, defaultCurrency);
-  const hasSuggestion = suggested !== null && suggested > 0;
+  const expenses = useExpensesStore((state) => state.items);
+  // D10: based on what the category actually cost (one-time + recurring),
+  // not on its recurring definitions.
+  const suggestion = averageMonthlySpending(expenses, category.id);
+  const hasSuggestion = suggestion !== null && suggestion.average > 0;
 
   function handleSave() {
     // Same rule as the category forms (D1): anything that isn't > 0 is not
@@ -93,13 +94,16 @@ function SetBudgetForm({
       {hasSuggestion && (
         <View style={styles.suggestion}>
           <ThemedText type="caption">
-            {t('budget.setBudgetSheet.suggestion', { amount: formatCurrency(suggested, defaultCurrency) })}
+            {t('budget.setBudgetSheet.suggestion', {
+              count: suggestion.months,
+              amount: formatCurrency(suggestion.average, defaultCurrency),
+            })}
           </ThemedText>
           <Button
             label={t('budget.setBudgetSheet.useSuggested')}
             variant="ghost"
             onPress={() => {
-              setValue(String(Math.round(suggested * 100) / 100));
+              setValue(String(suggestion.average));
               setError(undefined);
             }}
           />

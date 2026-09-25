@@ -1,4 +1,4 @@
-import { computeBudgetRecommendation, isRecommendationPending, suggestCategoryMonthlyBudget } from './budget-recommendation';
+import { computeBudgetRecommendation, isRecommendationPending } from './budget-recommendation';
 import type { RecurringExpense, Timestamp } from '@/types/firestore';
 
 function asDate(value: Timestamp | null): Date | null {
@@ -114,58 +114,6 @@ describe('computeBudgetRecommendation', () => {
 
     expect(result.status).toBe('pending');
     expect(result.dismissedAtAverageAmount).toBeNull();
-  });
-});
-
-describe('suggestCategoryMonthlyBudget', () => {
-  const baseDefinition: Omit<RecurringExpense, 'categoryId' | 'amount' | 'currency' | 'exchangeRateToDefault'> = {
-    name: 'Test',
-    dueDay: 1,
-    recurringGroupId: null,
-    startDate: new Date() as unknown as RecurringExpense['startDate'],
-    remindersEnabled: null,
-    reminderLeadDays: null,
-    budgetRecommendation: {
-      rollingAverageAmount: null,
-      sampleSize: 0,
-      computedAt: null,
-      suggestedBudgetedAmount: null,
-      status: 'none',
-      dismissedAt: null,
-      dismissedAtAverageAmount: null,
-    },
-    lifecycleState: 'active',
-    trashedFromState: null,
-    archivedAt: null,
-    trashedAt: null,
-    purgeAt: null,
-    createdAt: new Date() as unknown as RecurringExpense['createdAt'],
-    updatedAt: new Date() as unknown as RecurringExpense['updatedAt'],
-  };
-
-  it('returns null when the category has no active recurring expenses', () => {
-    const result = suggestCategoryMonthlyBudget('cat-1', [], 'GTQ');
-    expect(result).toBeNull();
-  });
-
-  it('sums amounts already in the default currency', () => {
-    const definitions: RecurringExpense[] = [
-      { ...baseDefinition, categoryId: 'cat-1', amount: 50, currency: 'GTQ', exchangeRateToDefault: 1 },
-      { ...baseDefinition, categoryId: 'cat-1', amount: 100, currency: 'GTQ', exchangeRateToDefault: 1 },
-      { ...baseDefinition, categoryId: 'cat-2', amount: 999, currency: 'GTQ', exchangeRateToDefault: 1 },
-    ];
-
-    const result = suggestCategoryMonthlyBudget('cat-1', definitions, 'GTQ');
-    expect(result).toBe(150);
-  });
-
-  it('converts a foreign-currency definition using its exchangeRateToDefault', () => {
-    const definitions: RecurringExpense[] = [
-      { ...baseDefinition, categoryId: 'cat-1', amount: 10, currency: 'USD', exchangeRateToDefault: 7.5 },
-    ];
-
-    const result = suggestCategoryMonthlyBudget('cat-1', definitions, 'GTQ');
-    expect(result).toBe(75);
   });
 });
 
