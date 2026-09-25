@@ -7,35 +7,54 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Palette from the redesign prototype (.claude/design/prototypes/presupuesto-v9.html):
+// warm neutral surfaces instead of the original blue-black, so cards read
+// clearly against the page. Mapping from the prototype's CSS variables:
+// background = surface-0 (page), backgroundElement = surface-2 (cards),
+// backgroundSelected = surface-1 (tracks, pressed/neutral fills), and the
+// *Surface tokens = its bg-* tints behind colored chips/notices. Text colors
+// meet WCAG AA (>= 4.5:1) on both background and backgroundElement.
 export const Colors = {
   light: {
-    text: '#14181F',
-    background: '#FAFBFD',
-    backgroundElement: '#F1F3F7',
-    backgroundSelected: '#E4E8F0',
-    textSecondary: '#4B5563',
-    // Below are Stage 4 additions — see docs/SRS-presupuesto-app.md NFR-3.
-    // All hex values are WCAG AA verified (>=4.5:1) both as text on
-    // `background`/`backgroundElement` and as a solid fill under `tintText`.
-    border: '#E1E5EC',
-    tint: '#2F63CB',
+    text: '#141413',
+    background: '#FAF9F5',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#F0EEE6',
+    textSecondary: '#5E5D59',
+    border: 'rgba(20,20,19,0.12)',
+    tint: '#185FA5',
     tintText: '#FFFFFF',
-    success: '#167A54',
-    warning: '#805100',
-    danger: '#B3261E',
+    success: '#3B6D11',
+    warning: '#854F0B',
+    danger: '#A32D2D',
+    tintSurface: '#E6F1FB',
+    successSurface: '#EAF3DE',
+    warningSurface: '#FAEEDA',
+    dangerSurface: '#FCEBEB',
+    // Outline of an over-budget card — softer than `danger` text.
+    dangerBorder: '#F09595',
+    // The "exact" budget bar: a brighter fill than `success`, which is tuned
+    // for text contrast rather than for a thin bar.
+    successFill: '#97C459',
   },
   dark: {
-    text: '#EEF1F5',
-    background: '#0A0C10',
-    backgroundElement: '#14171D',
-    backgroundSelected: '#1D2129',
-    textSecondary: '#99A1AD',
-    border: '#262B33',
-    tint: '#6FA0F5',
-    tintText: '#08101F',
-    success: '#47C08A',
-    warning: '#E3A83E',
-    danger: '#E67971',
+    text: '#FAF9F5',
+    background: '#1A1A19',
+    backgroundElement: '#30302E',
+    backgroundSelected: '#262624',
+    textSecondary: '#B0AEA5',
+    border: 'rgba(250,249,245,0.14)',
+    tint: '#85B7EB',
+    tintText: '#042C53',
+    success: '#97C459',
+    warning: '#EF9F27',
+    danger: '#F09595',
+    tintSurface: '#0C447C',
+    successSurface: '#27500A',
+    warningSurface: '#412402',
+    dangerSurface: '#501313',
+    dangerBorder: '#A32D2D',
+    successFill: '#97C459',
   },
 } as const;
 

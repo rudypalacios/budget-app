@@ -52,6 +52,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   title: {
-    fontWeight: 700,
+    fontWeight: 500,
   },
 });

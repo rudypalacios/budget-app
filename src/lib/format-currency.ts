@@ -26,6 +26,23 @@ export function formatCurrency(amount: number, currency: string): string {
   return `${symbol} ${formatted}`;
 }
 
+// Redesign (v9): a money-flow figure with its direction shown as a sign
+// before the symbol — "−Q 592.85", "+Q 20,974.67" — rather than the plain
+// "Q -592.85" formatCurrency gives. Uses a real minus sign (U+2212), which
+// lines up with "+" in proportional fonts. `showPlus` marks money coming in;
+// without it, positive values stay unsigned (a balance, not a flow). Zero is
+// never signed.
+export function formatSignedCurrency(
+  amount: number,
+  currency: string,
+  { showPlus = false }: { showPlus?: boolean } = {},
+): string {
+  const magnitude = formatCurrency(Math.abs(amount), currency);
+  if (amount < 0) return `\u2212${magnitude}`;
+  if (amount > 0 && showPlus) return `+${magnitude}`;
+  return magnitude;
+}
+
 // Stage 11 (FR-18): a record's own amount/currency alongside its
 // default-currency equivalent, e.g. "$ 1.00 (Q 8.00)" — used anywhere a
 // single record's own currency is displayed and may differ from the

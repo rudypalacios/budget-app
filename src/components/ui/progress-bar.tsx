@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Spacing, type ThemeColor } from '@/constants/theme';
+import { type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { BudgetStatus } from '@/lib/budget-status';
 
@@ -19,7 +19,7 @@ export type ProgressBarProps = {
 const STATUS_COLOR: Record<ProgressBarStatus, ThemeColor> = {
   over: 'danger',
   mayExceed: 'warning',
-  exact: 'success',
+  exact: 'successFill',
   ok: 'tint',
 };
 
@@ -48,13 +48,14 @@ export function ProgressBar({ status, budgeted, actual, style }: ProgressBarProp
 }
 
 const styles = StyleSheet.create({
+  // v9: a thin 6px bar under a compact category face.
   track: {
-    height: Spacing.two,
-    borderRadius: Spacing.one,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    borderRadius: Spacing.one,
+    borderRadius: 3,
   },
 });
