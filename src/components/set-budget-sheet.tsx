@@ -2,20 +2,18 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
 import { TextField } from '@/components/ui/text-field';
 import { getCurrencySymbol } from '@/constants/currencies';
-import { MinTouchTarget, Spacing } from '@/constants/theme';
-import { normalizeMonthlyBudget, suggestCategoryBudget } from '@/lib/budget-status';
+import { SuggestedBudgetRow } from '@/components/suggested-budget-row';
+import { Spacing } from '@/constants/theme';
+import { normalizeMonthlyBudget } from '@/lib/budget-status';
 import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { formatCurrency } from '@/lib/format-currency';
 import { updateCategory } from '@/store/categories';
-import { useExpensesStore } from '@/store/expenses';
 import { showToast } from '@/store/toast';
 import type { Category, CurrencyCode } from '@/types/firestore';
 
@@ -24,18 +22,25 @@ export type SetBudgetSheetProps = {
   onClose: () => void;
   category: WithId<Category>;
   defaultCurrency: CurrencyCode;
+  // D10: suggestCategoryBudget's value for this category, or null (no row).
+  suggested: number | null;
 };
 
-// Presupuesto redesign fase 6: the Budget screen can only *set* a monthly
-// budget on a category that has none. Changing or removing an existing one
-// stays in Settings → Categories, by product decision (spec §1).
+// Presupuesto redesign fase 6 + D13: sets a monthly budget on a category
+// that has none, or adjusts an existing one (same sheet, prefilled with the
+// current value). Removing a budget still lives in Settings → Categories.
 export function SetBudgetSheet({ isOpen, onClose, ...formProps }: SetBudgetSheetProps) {
   const { t } = useTranslation();
+  const isAdjusting = normalizeMonthlyBudget(formProps.category.monthlyBudget) !== null;
 
-  // The form only mounts while open, so every opening starts with an empty
-  // field and no leftover error.
+  // The form only mounts while open, so every opening starts from the
+  // current value (or empty) with no leftover error.
   return (
-    <ActionSheet isOpen={isOpen} onClose={onClose} title={t('budget.setBudgetSheet.title')}>
+    <ActionSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t(isAdjusting ? 'budget.setBudgetSheet.adjustTitle' : 'budget.setBudgetSheet.title')}
+    >
       {isOpen && <SetBudgetForm onClose={onClose} {...formProps} />}
     </ActionSheet>
   );
@@ -45,16 +50,12 @@ function SetBudgetForm({
   onClose,
   category,
   defaultCurrency,
+  suggested,
 }: Omit<SetBudgetSheetProps, 'isOpen'>) {
   const { t } = useTranslation();
-  const [value, setValue] = useState('');
+  const current = normalizeMonthlyBudget(category.monthlyBudget);
+  const [value, setValue] = useState(current === null ? '' : String(current));
   const [error, setError] = useState<string | undefined>(undefined);
-
-  const expenses = useExpensesStore((state) => state.items);
-  // D10: what the category costs in a normal month (one-time + recurring,
-  // outlier months excluded) — see suggestCategoryBudget.
-  const suggested = suggestCategoryBudget(expenses, category.id);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   function handleSave() {
     // Same rule as the category forms (D1): anything that isn't > 0 is not
@@ -74,7 +75,10 @@ function SetBudgetForm({
     });
     onClose();
     showToast(
-      t('budget.setBudgetSheet.saved', { name: categoryDisplayName(category), amount: formatCurrency(amount, defaultCurrency) }),
+      t(current === null ? 'budget.setBudgetSheet.saved' : 'budget.setBudgetSheet.updated', {
+        name: categoryDisplayName(category),
+        amount: formatCurrency(amount, defaultCurrency),
+      }),
     );
   }
 
@@ -94,20 +98,7 @@ function SetBudgetForm({
 
       {suggested !== null && (
         <View style={styles.suggestion}>
-          <View style={styles.suggestionRow}>
-            <ThemedText type="small" style={styles.suggestionText}>
-              {t('budget.setBudgetSheet.suggested', { amount: formatCurrency(suggested, defaultCurrency) })}
-            </ThemedText>
-            {/* Expands inline rather than opening another sheet: this one is
-                already a modal, and stacking a second is clumsy on mobile. */}
-            <IconButton
-              name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-              onPress={() => setIsInfoOpen((open) => !open)}
-              accessibilityLabel={t('budget.setBudgetSheet.suggestedInfoLabel')}
-              style={styles.infoButton}
-            />
-          </View>
-          {isInfoOpen && <ThemedText type="caption">{t('budget.setBudgetSheet.suggestedInfo')}</ThemedText>}
+          <SuggestedBudgetRow suggested={suggested} defaultCurrency={defaultCurrency} />
           <Button
             label={t('budget.setBudgetSheet.useSuggested')}
             variant="ghost"
@@ -131,21 +122,6 @@ const styles = StyleSheet.create({
   suggestion: {
     gap: Spacing.one,
     alignItems: 'flex-start',
-  },
-  suggestionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    gap: Spacing.one,
-  },
-  suggestionText: {
-    flexShrink: 1,
-  },
-  // Same trick as the summary card's ⓘ: keep the 44pt tap area without
-  // making the row taller, and show only the icon.
-  infoButton: {
-    marginVertical: -(MinTouchTarget - 20) / 2,
-    backgroundColor: 'transparent',
   },
   buttons: {
     flexDirection: 'row',

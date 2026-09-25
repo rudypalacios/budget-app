@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BudgetMovementRow } from '@/components/budget-movement-row';
 import { BudgetRecommendationBadge } from '@/components/budget-recommendation-badge';
 import { SetBudgetSheet } from '@/components/set-budget-sheet';
+import { SuggestedBudgetRow } from '@/components/suggested-budget-row';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,8 @@ export type CategoryBudgetCardProps = {
   recurringExpensesInCategory: WithId<RecurringExpense>[];
   // D9: this cycle's expenses behind `pending` and `actual` (categoryMovements).
   movements: CategoryMovements<WithId<ExpenseRecord>>;
+  // D10: what this category costs in a normal month (suggestCategoryBudget).
+  suggestedBudget: number | null;
 };
 
 const STATUS_CHIP: Partial<Record<BudgetStatus, { labelKey: string; tone: 'danger' | 'warning' }>> = {
@@ -58,6 +61,7 @@ export function CategoryBudgetCard({
   defaultCurrency,
   recurringExpensesInCategory,
   movements,
+  suggestedBudget,
 }: CategoryBudgetCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -135,22 +139,29 @@ export function CategoryBudgetCard({
             recurringDefinitions={recurringExpensesInCategory}
             defaultCurrency={defaultCurrency}
           />
-          {/* §5.6 point 4 / fase 6: only a category with no budget gets an
-              action here; changing an existing one lives in Settings. */}
-          {status === 'none' && (
-            <Button label={t('budget.setBudget')} variant="secondary" onPress={() => setIsSetBudgetOpen(true)} />
+          {/* D13: a budget is a goal, not a forecast — so no nagging banner
+              at category level (the over-budget chip already warns, and a
+              recurring bill's drift has its own recommendation, which would
+              otherwise double up here). Just the suggestion as a passive
+              reference, and the user decides whether to move the goal. */}
+          {budgeted !== null && suggestedBudget !== null && (
+            <SuggestedBudgetRow suggested={suggestedBudget} defaultCurrency={defaultCurrency} />
           )}
+          <Button
+            label={t(budgeted === null ? 'budget.setBudget' : 'budget.adjustBudget')}
+            variant="secondary"
+            onPress={() => setIsSetBudgetOpen(true)}
+          />
         </View>
       )}
 
-      {status === 'none' && (
-        <SetBudgetSheet
-          isOpen={isSetBudgetOpen}
-          onClose={() => setIsSetBudgetOpen(false)}
-          category={category}
-          defaultCurrency={defaultCurrency}
-        />
-      )}
+      <SetBudgetSheet
+        isOpen={isSetBudgetOpen}
+        onClose={() => setIsSetBudgetOpen(false)}
+        category={category}
+        defaultCurrency={defaultCurrency}
+        suggested={suggestedBudget}
+      />
     </Card>
   );
 }

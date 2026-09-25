@@ -398,8 +398,11 @@
       "saveFailed": "No se pudo guardar el presupuesto. Intenta de nuevo.",
       "suggested": "Presupuesto sugerido: {{amount}}",
       "suggestedInfoLabel": "Cómo se calcula el presupuesto sugerido",
-      "suggestedInfo": "Es lo que gastas en esta categoría en un mes normal: el promedio de los últimos 6 meses completos (o desde tu primer gasto aquí), sin contar meses atípicos, como una compra grande que no se repite. Incluye gastos únicos y recurrentes."
-    }
+      "suggestedInfo": "Es lo que gastas en esta categoría en un mes normal: el promedio de los últimos 6 meses completos (o desde tu primer gasto aquí), sin contar meses atípicos, como una compra grande que no se repite. Incluye gastos únicos y recurrentes.",
+      "adjustTitle": "Ajustar presupuesto",
+      "updated": "Presupuesto de {{name}} actualizado a {{amount}}."
+    },
+    "adjustBudget": "Ajustar presupuesto"
   },
   "history": {
     "title": "Historial",

@@ -398,8 +398,11 @@
       "saveFailed": "Couldn't save the budget. Please try again.",
       "suggested": "Suggested budget: {{amount}}",
       "suggestedInfoLabel": "How the suggested budget is calculated",
-      "suggestedInfo": "It is what you spend in this category in a normal month: the average of the last 6 full months (or since your first expense here), leaving out unusual months, like a big one-off purchase. It includes one-time and recurring expenses."
-    }
+      "suggestedInfo": "It is what you spend in this category in a normal month: the average of the last 6 full months (or since your first expense here), leaving out unusual months, like a big one-off purchase. It includes one-time and recurring expenses.",
+      "adjustTitle": "Adjust budget",
+      "updated": "Budget for {{name}} updated to {{amount}}."
+    },
+    "adjustBudget": "Adjust budget"
   },
   "history": {
     "title": "History",
