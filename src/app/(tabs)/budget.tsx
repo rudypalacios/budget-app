@@ -1,10 +1,9 @@
 import { router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { CategoryBudgetCard } from '@/components/category-budget-card';
+import { CategoryBudgetCard, ExpandChevron } from '@/components/category-budget-card';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -29,7 +28,7 @@ import {
   type BudgetCategoryRow,
 } from '@/lib/budget-status';
 import { getCurrentCycleRange } from '@/lib/cycle';
-import { formatCurrency } from '@/lib/format-currency';
+import { formatSignedCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
 import { useIncomesStore } from '@/store/incomes';
@@ -40,7 +39,7 @@ import {
 import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function BudgetScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
   const categories = useCategoriesStore((state) => state.items);
@@ -129,7 +128,10 @@ export default function BudgetScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader title={t('budget.title')} />
+      <ScreenHeader
+        title={t('budget.title')}
+        subtitle={formatCycleLabel(cycleRange.start, i18n.language)}
+      />
 
       <Card style={styles.summaryCard}>
         <View style={styles.sectionLabelRow}>
@@ -146,7 +148,7 @@ export default function BudgetScreen() {
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.received')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor="success">
-              {formatCurrency(summary.received, defaultCurrency)}
+              {formatSignedCurrency(summary.received, defaultCurrency, { showPlus: true })}
             </ThemedText>
           </View>
 
@@ -155,7 +157,7 @@ export default function BudgetScreen() {
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.paid')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor="danger">
-              {formatCurrency(summary.paid, defaultCurrency)}
+              {formatSignedCurrency(-summary.paid, defaultCurrency)}
             </ThemedText>
           </View>
 
@@ -168,7 +170,7 @@ export default function BudgetScreen() {
               style={styles.resultValue}
               themeColor={summary.settled >= 0 ? 'success' : 'danger'}
             >
-              {formatCurrency(summary.settled, defaultCurrency)}
+              {formatSignedCurrency(summary.settled, defaultCurrency)}
             </ThemedText>
           </View>
         </View>
@@ -183,7 +185,7 @@ export default function BudgetScreen() {
               style={styles.figure}
               themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}
             >
-              {formatCurrency(summary.stillToPay, defaultCurrency)}
+              {formatSignedCurrency(-summary.stillToPay, defaultCurrency)}
             </ThemedText>
           </View>
 
@@ -192,7 +194,7 @@ export default function BudgetScreen() {
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.incomePending')}</ThemedText>
             <ThemedText type="smallBold" style={styles.figure} themeColor="success">
-              {formatCurrency(summary.incomePending, defaultCurrency)}
+              {formatSignedCurrency(summary.incomePending, defaultCurrency, { showPlus: true })}
             </ThemedText>
           </View>
 
@@ -205,7 +207,7 @@ export default function BudgetScreen() {
               style={styles.resultValue}
               themeColor={summary.projected >= 0 ? 'success' : 'danger'}
             >
-              {formatCurrency(summary.projected, defaultCurrency)}
+              {formatSignedCurrency(summary.projected, defaultCurrency)}
             </ThemedText>
           </View>
         </View>
@@ -219,7 +221,7 @@ export default function BudgetScreen() {
             style={styles.footerValue}
             themeColor={summary.overall >= 0 ? 'success' : 'danger'}
           >
-            {formatCurrency(summary.overall, defaultCurrency)}
+            {formatSignedCurrency(summary.overall, defaultCurrency)}
           </ThemedText>
         </View>
       </Card>
@@ -248,13 +250,7 @@ export default function BudgetScreen() {
                 <ThemedText type="smallBold" themeColor="textSecondary">
                   {t('budget.noBudgetSection', { count: withoutBudget.length })}
                 </ThemedText>
-                <SymbolView
-                  name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-                  size={14}
-                  weight="bold"
-                  tintColor={theme.textSecondary}
-                  style={{ transform: [{ rotate: isNoBudgetOpen ? '-90deg' : '90deg' }] }}
-                />
+                <ExpandChevron expanded={isNoBudgetOpen} color={theme.textSecondary} />
               </Pressable>
               {isNoBudgetOpen && withoutBudget.map(renderCategoryCard)}
             </>
@@ -267,12 +263,21 @@ export default function BudgetScreen() {
   );
 }
 
+// "Septiembre 2026" / "September 2026" — the v9 subtitle. Month and year
+// are formatted separately because Spanish's long form ("septiembre de
+// 2026") doesn't match the design.
+function formatCycleLabel(date: Date, language: string): string {
+  const locale = language === 'es' ? 'es' : 'en';
+  const month = new Intl.DateTimeFormat(locale, { month: 'long' }).format(date);
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${date.getFullYear()}`;
+}
+
 // The same four swatch colors the category bars use (Presupuesto redesign
 // §5.3) — listed here ahead of phase 4 so the legend already matches them.
 const LEGEND_ITEMS: { key: 'over' | 'mayExceed' | 'exact' | 'ok'; color: ThemeColor }[] = [
   { key: 'over', color: 'danger' },
   { key: 'mayExceed', color: 'warning' },
-  { key: 'exact', color: 'success' },
+  { key: 'exact', color: 'successFill' },
   { key: 'ok', color: 'tint' },
 ];
 
@@ -323,8 +328,9 @@ function BudgetInfoSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 }
 
 const styles = StyleSheet.create({
+  // v9: 10px between category cards.
   list: {
-    gap: Spacing.three,
+    gap: 10,
   },
   noBudgetRow: {
     flexDirection: 'row',
@@ -334,7 +340,6 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     gap: Spacing.two,
-    padding: Spacing.two,
   },
   sectionLabelRow: {
     flexDirection: 'row',
@@ -365,16 +370,23 @@ const styles = StyleSheet.create({
   // Same line height as resultValue (the `default` type's 24) so the
   // bottom-pinned figures in a row share a baseline despite column 3's
   // larger font.
+  // v9 sizes: 15 for plain figures, 17 for a row's result, 20 for the
+  // footer — all medium weight, with tabular digits so columns line up.
   figure: {
+    fontSize: 15,
     lineHeight: 24,
+    fontVariant: ['tabular-nums'],
   },
   resultValue: {
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   footerValue: {
     fontSize: 20,
     lineHeight: 28,
-    fontWeight: '700',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   infoBlock: {
     gap: Spacing.one,

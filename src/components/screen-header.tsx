@@ -14,6 +14,9 @@ import { Spacing } from '@/constants/theme';
 // per-screen instead of injected into the tab bar shell.
 export type ScreenHeaderProps = {
   title: string;
+  // Small secondary line under the title (e.g. the Budget tab's "September
+  // 2026"). Optional — most screens don't have one.
+  subtitle?: string;
   syncStatus?: SyncStatus;
   // Set on screens reached by pushing (not a tab root) — headerShown is
   // false globally (src/app/_layout.tsx), so pushed screens need their own
@@ -22,7 +25,7 @@ export type ScreenHeaderProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function ScreenHeader({ title, syncStatus, onBack, style }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, syncStatus, onBack, style }: ScreenHeaderProps) {
   const { t } = useTranslation();
   return (
     <View style={[styles.row, style]}>
@@ -35,7 +38,14 @@ export function ScreenHeader({ title, syncStatus, onBack, style }: ScreenHeaderP
             size={18}
           />
         )}
-        <ThemedText type="title">{title}</ThemedText>
+        <View style={styles.titleText}>
+          <ThemedText type="title">{title}</ThemedText>
+          {subtitle ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {subtitle}
+            </ThemedText>
+          ) : null}
+        </View>
       </View>
       <SyncStatusIndicator status={syncStatus} />
     </View>
@@ -53,6 +63,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    flexShrink: 1,
+  },
+  titleText: {
     flexShrink: 1,
   },
 });

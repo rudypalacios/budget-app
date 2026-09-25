@@ -1,4 +1,8 @@
-import { formatCurrency, formatCurrencyWithConversion } from './format-currency';
+import {
+  formatCurrency,
+  formatCurrencyWithConversion,
+  formatSignedCurrency,
+} from './format-currency';
 import i18n from '@/localization/i18n';
 
 afterEach(async () => {
@@ -47,5 +51,21 @@ describe('formatCurrencyWithConversion', () => {
 
   it('appends the default-currency equivalent in parentheses when currencies differ', () => {
     expect(formatCurrencyWithConversion(1, 'USD', 7.62, 'GTQ')).toBe('$ 1.00 (Q 7.62)');
+  });
+});
+
+describe('formatSignedCurrency', () => {
+  it('puts a minus sign before the symbol for negative amounts', () => {
+    expect(formatSignedCurrency(-592.85, 'GTQ')).toBe('\u2212Q 592.85');
+  });
+
+  it('adds a plus only when asked (money coming in)', () => {
+    expect(formatSignedCurrency(20974.67, 'GTQ', { showPlus: true })).toBe('+Q 20,974.67');
+    expect(formatSignedCurrency(20974.67, 'GTQ')).toBe('Q 20,974.67');
+  });
+
+  it('never signs zero', () => {
+    expect(formatSignedCurrency(0, 'GTQ', { showPlus: true })).toBe('Q 0.00');
+    expect(formatSignedCurrency(-0, 'GTQ')).toBe('Q 0.00');
   });
 });

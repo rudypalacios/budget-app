@@ -93,7 +93,7 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
   // actions inside it as equal-width buttons, instead of a pill chip with
   // link buttons below. Shared with the Expenses tab, which gets it too.
   return (
-    <View style={[styles.box, { backgroundColor: `${theme.warning}22` }]}>
+    <View style={[styles.box, { backgroundColor: theme.warningSurface }]}>
       <ThemedText type="small" themeColor="warning">
         {t('recurringExpense.recommendation.message', {
           average: formatCurrency(budgetRecommendation.suggestedBudgetedAmount, defaultCurrency),

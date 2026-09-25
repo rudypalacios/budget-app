@@ -1,3 +1,4 @@
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,6 +12,9 @@ export type ChipProps = {
   tone?: ChipTone;
   // 'small' for dense rows (e.g. the Budget tab's movement list, v9 look).
   size?: 'default' | 'small';
+  // Optional leading icon in the chip's text color, so status never relies
+  // on color alone (e.g. the Budget tab's over-budget / may-exceed chips).
+  icon?: SymbolViewProps['name'];
   style?: StyleProp<ViewStyle>;
 };
 
@@ -20,7 +24,7 @@ const TONE_SURFACE = {
   danger: 'dangerSurface',
 } as const;
 
-export function Chip({ label, tone = 'neutral', size = 'default', style }: ChipProps) {
+export function Chip({ label, tone = 'neutral', size = 'default', icon, style }: ChipProps) {
   const theme = useTheme();
   const toneColor = tone === 'neutral' ? null : theme[tone];
 
@@ -32,6 +36,7 @@ export function Chip({ label, tone = 'neutral', size = 'default', style }: ChipP
       style={[
         styles.chip,
         size === 'small' && styles.small,
+        icon !== undefined && styles.withIcon,
         {
           // Semantic tones sit on the palette's matching tint (the v9
           // prototype's bg-* colors), which keeps the tone text readable.
@@ -42,6 +47,13 @@ export function Chip({ label, tone = 'neutral', size = 'default', style }: ChipP
         style,
       ]}
     >
+      {icon !== undefined && (
+        <SymbolView
+          name={icon}
+          size={size === 'small' ? 12 : 14}
+          tintColor={tone === 'neutral' ? theme.text : theme[tone]}
+        />
+      )}
       <ThemedText
         type={size === 'small' ? 'caption' : 'smallBold'}
         themeColor={tone === 'neutral' ? 'text' : tone}
@@ -60,6 +72,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
+  },
+  withIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   small: {
     paddingVertical: Spacing.half,

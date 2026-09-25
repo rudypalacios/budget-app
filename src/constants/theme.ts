@@ -31,6 +31,8 @@ export const Colors = {
     successSurface: '#EAF3DE',
     warningSurface: '#FAEEDA',
     dangerSurface: '#FCEBEB',
+    // Outline of an over-budget card — softer than `danger` text.
+    dangerBorder: '#F09595',
     // The "exact" budget bar: a brighter fill than `success`, which is tuned
     // for text contrast rather than for a thin bar.
     successFill: '#97C459',
@@ -51,6 +53,7 @@ export const Colors = {
     successSurface: '#27500A',
     warningSurface: '#412402',
     dangerSurface: '#501313',
+    dangerBorder: '#A32D2D',
     successFill: '#97C459',
   },
 } as const;

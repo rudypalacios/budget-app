@@ -1,4 +1,4 @@
-import { SymbolView } from 'expo-symbols';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -46,11 +46,41 @@ export type CategoryBudgetCardProps = {
   suggestedBudget: number | null;
 };
 
-const STATUS_CHIP: Partial<Record<BudgetStatus, { labelKey: string; tone: 'danger' | 'warning' }>> =
-  {
-    over: { labelKey: 'budget.overBudgetChip', tone: 'danger' },
-    mayExceed: { labelKey: 'budget.mayExceedChip', tone: 'warning' },
-  };
+// v9: the two attention chips carry their own icon (alert circle / alert
+// triangle), so the status reads without the color.
+const STATUS_CHIP: Partial<
+  Record<
+    BudgetStatus,
+    { labelKey: string; tone: 'danger' | 'warning'; icon: SymbolViewProps['name'] }
+  >
+> = {
+  over: {
+    labelKey: 'budget.overBudgetChip',
+    tone: 'danger',
+    icon: { ios: 'exclamationmark.circle', android: 'error', web: 'error' },
+  },
+  mayExceed: {
+    labelKey: 'budget.mayExceedChip',
+    tone: 'warning',
+    icon: { ios: 'exclamationmark.triangle', android: 'warning', web: 'warning' },
+  },
+};
+
+// SymbolView ignores `style` on web, so the open/closed state swaps the icon
+// itself instead of rotating one — shared with budget.tsx's "No budget" row.
+export function ExpandChevron({ expanded, color }: { expanded: boolean; color: string }) {
+  return (
+    <SymbolView
+      name={
+        expanded
+          ? { ios: 'chevron.up', android: 'expand_less', web: 'expand_less' }
+          : { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' }
+      }
+      size={18}
+      tintColor={color}
+    />
+  );
+}
 
 const A11Y_STATUS_KEY: Partial<Record<BudgetStatus, string>> = {
   over: 'budget.a11y.statusOver',
@@ -101,7 +131,7 @@ export function CategoryBudgetCard({
     <Card
       style={[
         styles.categoryCard,
-        status === 'over' && { borderWidth: 1, borderColor: theme.danger },
+        status === 'over' && { borderWidth: 1, borderColor: theme.dangerBorder },
       ]}
     >
       <Pressable
@@ -113,24 +143,30 @@ export function CategoryBudgetCard({
       >
         <View style={styles.faceRow}>
           <View style={styles.faceMain}>
-            <ThemedText type="smallBold">{name}</ThemedText>
-            {chip && <Chip label={t(chip.labelKey)} tone={chip.tone} style={styles.chip} />}
+            <ThemedText type="smallBold" style={styles.name}>
+              {name}
+            </ThemedText>
+            {chip && (
+              <Chip
+                label={t(chip.labelKey)}
+                tone={chip.tone}
+                icon={chip.icon}
+                size="small"
+                style={styles.chip}
+              />
+            )}
           </View>
           <View style={styles.faceAmounts}>
-            <ThemedText type="smallBold">{format(actual)}</ThemedText>
+            <ThemedText type="smallBold" style={styles.amount}>
+              {format(actual)}
+            </ThemedText>
             <ThemedText type="caption">
               {budgeted === null
                 ? t('budget.noBudgetSet')
                 : t('budget.ofBudgeted', { amount: format(budgeted) })}
             </ThemedText>
           </View>
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            weight="bold"
-            tintColor={theme.textSecondary}
-            style={{ transform: [{ rotate: expanded ? '-90deg' : '90deg' }] }}
-          />
+          <ExpandChevron expanded={expanded} color={theme.textSecondary} />
         </View>
         {budgeted !== null && status !== 'none' && (
           <ProgressBar status={status} budgeted={budgeted} actual={actual} />
@@ -327,8 +363,15 @@ const styles = StyleSheet.create({
   },
   faceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.two,
+  },
+  name: {
+    fontSize: 15,
+  },
+  amount: {
+    fontSize: 15,
+    fontVariant: ['tabular-nums'],
   },
   faceMain: {
     flex: 1,

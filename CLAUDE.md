@@ -566,6 +566,17 @@ table, which is the place to look for *why* something works the way it does.
   `SuggestedBudgetRow`. `BudgetRecommendationBadge` got the v9 look and
   Undo/Edit toasts (guarded by `canRevertRecommendation`) — this also
   changed it on the Expenses tab.
+- **Global re-skin (post-closeout, D16)**: the v9 palette, typography and
+  card style are now the app-wide theme (`src/constants/theme.ts` — adds
+  `*Surface` tint tokens, `successFill`, `dangerBorder`; system font stack
+  in `src/global.css`; 400/500 weights and a 22px page title in
+  `ThemedText`; hairline-bordered 12px `Card`). Other pages only inherit
+  these tokens — their own layout changes come in each page's redesign
+  cycle. Budget-only follow-ups: signed summary figures
+  (`formatSignedCurrency`), month subtitle (`ScreenHeader subtitle`), chips
+  with icons (`Chip icon`), 6px bars, and an `ExpandChevron` that swaps
+  icons instead of rotating (`SymbolView` ignores `style` on web, so the
+  old rotated chevron always pointed right there).
 - **No data-model or `firestore.rules` changes.** Writes from this screen
   (set/adjust budget, accept/keep recommendation) are not awaited, so they
   work offline; a real rejection shows an error toast.
