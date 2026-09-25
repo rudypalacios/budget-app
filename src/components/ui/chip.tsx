@@ -9,10 +9,12 @@ export type ChipTone = 'neutral' | 'success' | 'warning' | 'danger';
 export type ChipProps = {
   label: string;
   tone?: ChipTone;
+  // 'small' for dense rows (e.g. the Budget tab's movement list, v9 look).
+  size?: 'default' | 'small';
   style?: StyleProp<ViewStyle>;
 };
 
-export function Chip({ label, tone = 'neutral', style }: ChipProps) {
+export function Chip({ label, tone = 'neutral', size = 'default', style }: ChipProps) {
   const theme = useTheme();
   const toneColor = tone === 'neutral' ? null : theme[tone];
 
@@ -23,6 +25,7 @@ export function Chip({ label, tone = 'neutral', style }: ChipProps) {
       accessibilityLabel={label}
       style={[
         styles.chip,
+        size === 'small' && styles.small,
         {
           // Semantic tones use a translucent wash of the tone color as the
           // fill (see Stage 4 design preview) rather than a new set of pale
@@ -33,7 +36,11 @@ export function Chip({ label, tone = 'neutral', style }: ChipProps) {
         style,
       ]}
     >
-      <ThemedText type="smallBold" themeColor={tone === 'neutral' ? 'text' : tone}>
+      <ThemedText
+        type={size === 'small' ? 'caption' : 'smallBold'}
+        themeColor={tone === 'neutral' ? 'text' : tone}
+        style={size === 'small' ? styles.smallText : undefined}
+      >
         {label}
       </ThemedText>
     </View>
@@ -47,5 +54,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
+  },
+  small: {
+    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.two,
+  },
+  smallText: {
+    fontWeight: '600',
   },
 });

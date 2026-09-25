@@ -320,8 +320,6 @@
     "overBudgetChip": "Over budget",
     "ofBudgeted": "of {{amount}}",
     "noBudgetSet": "No budget set",
-    "noHistoryYet": "No paid history yet",
-    "recurringAverage": "6-month avg {{amount}}",
     "summary": {
       "thisMonth": "This month",
       "received": "Received",
@@ -374,14 +372,12 @@
       "projection": "With what is left to pay ({{pending}}) you would reach {{projected}} · {{percent}}%",
       "noBudget": "No budget set. Set a monthly target to see how much is left.",
       "pendingNoBudget": "Left to pay this month: {{pending}}",
-      "recurring": "Recurring",
-      "noRecurring": "No recurring items in this category: spending comes from one-time payments.",
-      "editInExpenses": "To change a recurring item, edit it in Expenses.",
       "movements": "This month's movements",
       "showAll": "Show all ({{count}})",
       "showLess": "Show less",
       "movementPaid": "Paid",
-      "movementPending": "Pending"
+      "movementPending": "Pending",
+      "movementRecurring": "Recurring"
     },
     "a11y": {
       "card": "{{name}}, {{percent}}% of budget, spent {{spent}} of {{budgeted}}{{status}}. {{toggle}} details",
@@ -391,7 +387,22 @@
       "statusExact": ", exactly on budget",
       "show": "Show",
       "hide": "Hide"
-    }
+    },
+    "setBudget": "Set budget",
+    "setBudgetSheet": {
+      "title": "Set budget",
+      "field": "Monthly budget ({{currency}})",
+      "useSuggested": "Use suggested",
+      "error": "Enter an amount greater than 0.",
+      "saved": "Budget for {{name}} set to {{amount}}.",
+      "saveFailed": "Couldn't save the budget. Please try again.",
+      "suggested": "Suggested budget: {{amount}}",
+      "suggestedInfoLabel": "How the suggested budget is calculated",
+      "suggestedInfo": "It is what you spend in this category in a normal month: the average of the last 6 full months (or since your first expense here), leaving out unusual months, like a big one-off purchase. It includes one-time and recurring expenses.",
+      "adjustTitle": "Adjust budget",
+      "updated": "Budget for {{name}} updated to {{amount}}."
+    },
+    "adjustBudget": "Adjust budget"
   },
   "history": {
     "title": "History",

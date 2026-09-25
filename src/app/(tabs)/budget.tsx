@@ -25,6 +25,7 @@ import {
   normalizeMonthlyBudget,
   pendingByCategory,
   splitByBudget,
+  suggestCategoryBudget,
   type BudgetCategoryRow,
 } from '@/lib/budget-status';
 import { getCurrentCycleRange } from '@/lib/cycle';
@@ -112,6 +113,7 @@ export default function BudgetScreen() {
         defaultCurrency={defaultCurrency}
         recurringExpensesInCategory={activeRecurringExpenses.filter((definition) => definition.categoryId === row.id)}
         movements={categoryMovements(expenses, row.id, cycleRange)}
+        suggestedBudget={suggestCategoryBudget(expenses, row.id)}
       />
     );
   }

@@ -69,7 +69,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, style }:
       {isPending ? (
         <ActivityIndicator size="small" color={textColor} />
       ) : (
-        <ThemedText type="smallBold" style={{ color: textColor }}>
+        <ThemedText type="smallBold" style={[styles.label, { color: textColor }]}>
           {label}
         </ThemedText>
       )}
@@ -85,6 +85,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Centered so a label that wraps on a narrow, flex-width button (e.g. two
+  // side by side) stays centered instead of hugging the left edge.
+  label: {
+    textAlign: 'center',
   },
   pressed: {
     opacity: 0.8,

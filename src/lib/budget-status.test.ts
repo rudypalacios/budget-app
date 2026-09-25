@@ -10,6 +10,8 @@ import {
   pendingByCategory,
   projectedTotal,
   splitByBudget,
+  suggestCategoryBudget,
+  withoutOutliers,
   type BudgetCategoryRow,
 } from './budget-status';
 import { getCurrentCycleRange } from './cycle';
@@ -452,5 +454,79 @@ describe('computeBudgetSummary', () => {
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
 
     expect(computeBudgetSummary({ expenses, incomes, cycleRange: CYCLE_RANGE }).stillToPay).toBe(preRefactorStillToPay);
+  });
+});
+
+describe('withoutOutliers (Tukey 1.5 × IQR)', () => {
+  it('drops a one-off spike', () => {
+    expect(withoutOutliers([800, 900, 850, 750, 6800, 900])).toEqual([800, 900, 850, 750, 900]);
+  });
+
+  it('keeps a sporadic but recurring pattern', () => {
+    expect(withoutOutliers([0, 0, 500, 0, 0, 1200])).toEqual([0, 0, 500, 0, 0, 1200]);
+  });
+
+  it('treats a single non-zero month among zeros as an outlier', () => {
+    expect(withoutOutliers([0, 0, 0, 0, 0, 1200])).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  it('drops an unusually low month too', () => {
+    expect(withoutOutliers([1000, 1050, 950, 1000, 1020, 10])).toEqual([1000, 1050, 950, 1000, 1020]);
+  });
+});
+
+describe('suggestCategoryBudget (D10)', () => {
+  // Reference: 15 Jul 2026 → complete months are Jun back to Jan; July is
+  // the current, unfinished month and never counts.
+  const paidOn = (id: string, date: Date, amount: number, overrides: Partial<WithId<OneTimeExpense>> = {}) =>
+    oneTimeExpense({ id, categoryId: 'var', amountInDefaultCurrency: amount, paid: true, paidDate: fakeTimestamp(date), ...overrides });
+  const month = (m: number, amount: number, id = `m${m}`) => paidOn(id, new Date(2026, m, 10), amount);
+
+  it('averages normal months and ignores a one-off purchase (the washing machine case)', () => {
+    const expenses = [month(0, 800), month(1, 900), month(2, 850), month(3, 750), month(4, 6800), month(5, 900)];
+    expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(840);
+  });
+
+  it('keeps the real average of a sporadic category', () => {
+    const expenses = [month(0, 0.01, 'first'), month(2, 500), month(5, 1200)];
+    // Jan's 0.01 only anchors the history start; months: .01, 0, 500, 0, 0, 1200
+    expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(283.33);
+  });
+
+  it('mixes one-time and recurring spending in the monthly totals', () => {
+    const expenses: ExpenseRecord[] = [
+      month(4, 100),
+      recurringExpenseInstance({ id: 'rec', categoryId: 'var', amountInDefaultCurrency: 200, paid: true, paidDate: fakeTimestamp(new Date(2026, 4, 20)) }),
+      month(5, 300),
+    ];
+    // 2 months of history (May, Jun) → no outlier filtering: (300 + 300) / 2
+    expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(300);
+  });
+
+  it('only counts months since the first spending, so a young category is not diluted', () => {
+    expect(suggestCategoryBudget([month(4, 100), month(5, 300)], 'var', REFERENCE_DATE)).toBe(200);
+  });
+
+  it('caps the window at 6 months and ignores older spending', () => {
+    const expenses = [paidOn('old', new Date(2025, 0, 10), 9999), month(0, 600), month(1, 600), month(2, 600), month(3, 600), month(4, 600), month(5, 600)];
+    expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(600);
+  });
+
+  it('excludes the current month, unpaid, archived and other categories', () => {
+    const expenses: ExpenseRecord[] = [
+      month(5, 100),
+      paidOn('current', IN_CYCLE_DATE, 999),
+      paidOn('archived', new Date(2026, 5, 11), 999, { lifecycleState: 'archived' }),
+      paidOn('other', new Date(2026, 5, 12), 999, { categoryId: 'viv' }),
+      oneTimeExpense({ id: 'unpaid', categoryId: 'var', amountInDefaultCurrency: 999, date: fakeTimestamp(new Date(2026, 5, 13)) }),
+    ];
+    expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(100);
+  });
+
+  it('is null with no complete month of history, or when nothing is left after filtering', () => {
+    expect(suggestCategoryBudget([], 'var', REFERENCE_DATE)).toBeNull();
+    expect(suggestCategoryBudget([paidOn('current', IN_CYCLE_DATE, 50)], 'var', REFERENCE_DATE)).toBeNull();
+    const oneSpike = [month(0, 0.001, 'anchor'), month(5, 1200)]; // ≈ 0, 0, 0, 0, 0, 1200
+    expect(suggestCategoryBudget(oneSpike, 'var', REFERENCE_DATE)).toBeNull();
   });
 });
