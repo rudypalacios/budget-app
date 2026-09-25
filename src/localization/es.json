@@ -149,10 +149,6 @@
         "system": "Sistema"
       }
     },
-    "languageOption": {
-      "en": "English",
-      "es": "Español"
-    },
     "categories": {
       "title": "Categorías",
       "manage": "Administrar categorías",

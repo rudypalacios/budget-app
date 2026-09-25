@@ -149,10 +149,6 @@
         "system": "System"
       }
     },
-    "languageOption": {
-      "en": "English",
-      "es": "Español"
-    },
     "categories": {
       "title": "Categories",
       "manage": "Manage categories",
