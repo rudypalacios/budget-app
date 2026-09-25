@@ -78,23 +78,48 @@ export function categoryMovements<T extends ExpenseRecord>(
 // as the per-recurring rolling average (FR-6a), not user-configurable.
 const SUGGESTION_WINDOW_MONTHS = 6;
 
-export type CategorySpendingAverage = {
-  average: number; // in the default currency, rounded to cents
-  months: number; // how many complete months it averages over (1–6)
-};
+// Below this many months there's too little data to call any month an
+// outlier, so the suggestion is a plain average.
+const MIN_MONTHS_FOR_OUTLIER_FILTER = 4;
 
-// D10: a category's suggested monthly budget is what it has actually cost
-// per month — every paid expense in it, one-time and recurring alike (a
-// category budget covers everything filed under it) — over the last 6
-// *complete* months (the current, unfinished one would drag it down).
-// Months before the category's first paid expense don't count, so a
-// 2-month-old category averages over 2 months, not 6. null when there's no
-// complete month of history yet — no suggestion rather than a guess.
-export function averageMonthlySpending(
+// Tukey's fence multiplier — the standard 1.5 × IQR outlier rule.
+const TUKEY_FENCE = 1.5;
+
+function median(sorted: number[]): number {
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+// Tukey's rule: drop values outside [Q1 − 1.5·IQR, Q3 + 1.5·IQR]. Quartiles
+// are the medians of the lower and upper halves (the middle value excluded
+// when the count is odd) — the simple textbook method, fine for ≤ 6 values.
+export function withoutOutliers(values: number[]): number[] {
+  const sorted = [...values].sort((a, b) => a - b);
+  const half = Math.floor(sorted.length / 2);
+  const q1 = median(sorted.slice(0, half));
+  const q3 = median(sorted.slice(sorted.length - half));
+  const iqr = q3 - q1;
+  const low = q1 - TUKEY_FENCE * iqr;
+  const high = q3 + TUKEY_FENCE * iqr;
+  return values.filter((value) => value >= low && value <= high);
+}
+
+// D10: a category's suggested monthly budget is what it costs in a normal
+// month — every paid expense in it, one-time and recurring alike (a category
+// budget covers everything filed under it). Built from monthly totals over
+// the last 6 *complete* months (the current, unfinished one would drag it
+// down), counting only months since the category's first paid expense so a
+// young category isn't diluted by empty months before it existed. Outlier
+// months (e.g. a one-off appliance purchase) are dropped with Tukey's IQR
+// rule before averaging, while a category that's sporadic by nature (gifts:
+// 0, 0, 500, 0, 1200…) keeps its real average — a plain median would say 0.
+// null means no suggestion: no complete month of history, or nothing left
+// to suggest (0).
+export function suggestCategoryBudget(
   expenses: ExpenseRecord[],
   categoryId: string,
   referenceDate: Date = new Date(),
-): CategorySpendingAverage | null {
+): number | null {
   const currentCycle = getCurrentCycleRange(referenceDate);
   const paidInCategory = expenses.filter(
     (expense) => expense.categoryId === categoryId && expense.paid && expense.lifecycleState === 'active',
@@ -108,15 +133,21 @@ export function averageMonthlySpending(
     (currentCycle.start.getFullYear() - firstPaid.getFullYear()) * 12 + (currentCycle.start.getMonth() - firstPaid.getMonth());
   const months = Math.min(monthsOfHistory, SUGGESTION_WINDOW_MONTHS);
 
-  const window: CycleRange = {
-    start: new Date(currentCycle.start.getFullYear(), currentCycle.start.getMonth() - months, 1),
-    end: currentCycle.start,
-  };
-  const total = paidInCategory
-    .filter((expense) => isWithinCycle(expense.paidDate!.toDate(), window))
-    .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
+  // One total per complete month, oldest first; months with no spending
+  // stay 0 (they're part of the pattern).
+  const monthlyTotals = Array.from({ length: months }, (_, index) => {
+    const cycle: CycleRange = {
+      start: new Date(currentCycle.start.getFullYear(), currentCycle.start.getMonth() - months + index, 1),
+      end: new Date(currentCycle.start.getFullYear(), currentCycle.start.getMonth() - months + index + 1, 1),
+    };
+    return paidInCategory
+      .filter((expense) => isWithinCycle(expense.paidDate!.toDate(), cycle))
+      .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
+  });
 
-  return { average: Math.round((total / months) * 100) / 100, months };
+  const kept = months >= MIN_MONTHS_FOR_OUTLIER_FILTER ? withoutOutliers(monthlyTotals) : monthlyTotals;
+  const average = Math.round((kept.reduce((sum, total) => sum + total, 0) / kept.length) * 100) / 100;
+  return average > 0 ? average : null;
 }
 
 export type BudgetStatus = 'none' | 'over' | 'mayExceed' | 'exact' | 'ok';

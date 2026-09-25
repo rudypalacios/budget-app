@@ -5,10 +5,11 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { TextField } from '@/components/ui/text-field';
 import { getCurrencySymbol } from '@/constants/currencies';
-import { Spacing } from '@/constants/theme';
-import { averageMonthlySpending, normalizeMonthlyBudget } from '@/lib/budget-status';
+import { MinTouchTarget, Spacing } from '@/constants/theme';
+import { normalizeMonthlyBudget, suggestCategoryBudget } from '@/lib/budget-status';
 import { categoryDisplayName } from '@/lib/category-display';
 import { parseAmountInput, sanitizeAmountInput } from '@/lib/currency-input';
 import type { WithId } from '@/lib/firebase/firestore.types';
@@ -50,10 +51,10 @@ function SetBudgetForm({
   const [error, setError] = useState<string | undefined>(undefined);
 
   const expenses = useExpensesStore((state) => state.items);
-  // D10: based on what the category actually cost (one-time + recurring),
-  // not on its recurring definitions.
-  const suggestion = averageMonthlySpending(expenses, category.id);
-  const hasSuggestion = suggestion !== null && suggestion.average > 0;
+  // D10: what the category costs in a normal month (one-time + recurring,
+  // outlier months excluded) — see suggestCategoryBudget.
+  const suggested = suggestCategoryBudget(expenses, category.id);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   function handleSave() {
     // Same rule as the category forms (D1): anything that isn't > 0 is not
@@ -91,19 +92,27 @@ function SetBudgetForm({
         error={error}
       />
 
-      {hasSuggestion && (
+      {suggested !== null && (
         <View style={styles.suggestion}>
-          <ThemedText type="caption">
-            {t('budget.setBudgetSheet.suggestion', {
-              count: suggestion.months,
-              amount: formatCurrency(suggestion.average, defaultCurrency),
-            })}
-          </ThemedText>
+          <View style={styles.suggestionRow}>
+            <ThemedText type="small" style={styles.suggestionText}>
+              {t('budget.setBudgetSheet.suggested', { amount: formatCurrency(suggested, defaultCurrency) })}
+            </ThemedText>
+            {/* Expands inline rather than opening another sheet: this one is
+                already a modal, and stacking a second is clumsy on mobile. */}
+            <IconButton
+              name={{ ios: 'info.circle', android: 'info', web: 'info' }}
+              onPress={() => setIsInfoOpen((open) => !open)}
+              accessibilityLabel={t('budget.setBudgetSheet.suggestedInfoLabel')}
+              style={styles.infoButton}
+            />
+          </View>
+          {isInfoOpen && <ThemedText type="caption">{t('budget.setBudgetSheet.suggestedInfo')}</ThemedText>}
           <Button
             label={t('budget.setBudgetSheet.useSuggested')}
             variant="ghost"
             onPress={() => {
-              setValue(String(suggestion.average));
+              setValue(String(suggested));
               setError(undefined);
             }}
           />
@@ -122,6 +131,21 @@ const styles = StyleSheet.create({
   suggestion: {
     gap: Spacing.one,
     alignItems: 'flex-start',
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    gap: Spacing.one,
+  },
+  suggestionText: {
+    flexShrink: 1,
+  },
+  // Same trick as the summary card's ⓘ: keep the 44pt tap area without
+  // making the row taller, and show only the icon.
+  infoButton: {
+    marginVertical: -(MinTouchTarget - 20) / 2,
+    backgroundColor: 'transparent',
   },
   buttons: {
     flexDirection: 'row',

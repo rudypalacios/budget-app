@@ -5,7 +5,7 @@ import { CategoryForm, type CategoryFormValues } from '@/components/category-for
 import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { averageMonthlySpending, normalizeMonthlyBudget } from '@/lib/budget-status';
+import { normalizeMonthlyBudget, suggestCategoryBudget } from '@/lib/budget-status';
 import { parseAmountInput } from '@/lib/currency-input';
 import { updateCategory, useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
@@ -53,9 +53,9 @@ export default function EditCategoryScreen() {
 
   // Income categories never show the monthlyBudget field (CategoryForm), so
   // there's no suggestion to compute for one.
-  // D10: same suggestion as the Budget tab's "Set budget" sheet — the
-  // category's average monthly spending over the last complete months.
-  const suggestedMonthlyBudget = category.type === 'income' ? null : (averageMonthlySpending(expenses, id)?.average ?? null);
+  // D10: same suggestion as the Budget tab's "Set budget" sheet — what the
+  // category costs in a normal month.
+  const suggestedMonthlyBudget = category.type === 'income' ? null : suggestCategoryBudget(expenses, id);
 
   return (
     <ScreenScroll>

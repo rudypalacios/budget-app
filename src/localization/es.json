@@ -400,8 +400,9 @@
       "error": "Escribe un monto mayor que 0.",
       "saved": "Presupuesto de {{name}} fijado en {{amount}}.",
       "saveFailed": "No se pudo guardar el presupuesto. Intenta de nuevo.",
-      "suggestion_one": "Promedio del último mes completo: {{amount}}.",
-      "suggestion_other": "Promedio de los últimos {{count}} meses completos: {{amount}}."
+      "suggested": "Presupuesto sugerido: {{amount}}",
+      "suggestedInfoLabel": "Cómo se calcula el presupuesto sugerido",
+      "suggestedInfo": "Es lo que gastas en esta categoría en un mes normal: el promedio de los últimos 6 meses completos (o desde tu primer gasto aquí), sin contar meses atípicos, como una compra grande que no se repite. Incluye gastos únicos y recurrentes."
     }
   },
   "history": {

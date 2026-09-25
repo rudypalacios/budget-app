@@ -400,8 +400,9 @@
       "error": "Enter an amount greater than 0.",
       "saved": "Budget for {{name}} set to {{amount}}.",
       "saveFailed": "Couldn't save the budget. Please try again.",
-      "suggestion_one": "Average over the last full month: {{amount}}.",
-      "suggestion_other": "Average over the last {{count}} full months: {{amount}}."
+      "suggested": "Suggested budget: {{amount}}",
+      "suggestedInfoLabel": "How the suggested budget is calculated",
+      "suggestedInfo": "It is what you spend in this category in a normal month: the average of the last 6 full months (or since your first expense here), leaving out unusual months, like a big one-off purchase. It includes one-time and recurring expenses."
     }
   },
   "history": {
