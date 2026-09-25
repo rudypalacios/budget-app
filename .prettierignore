@@ -9,3 +9,7 @@ docs/
 CLAUDE.md
 scripts/
 assets/expo.icon/icon.json
+
+# Design specs and prototypes (Presupuesto redesign and future pages) — reference
+# material, not app code
+.claude/design/

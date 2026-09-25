@@ -72,9 +72,15 @@ The POC's visual style (dark + green) is not carried forward as a requirement. T
 
 ### 6.3 Budget Tracking
 - FR-6: App shows budget vs. actual spending per category/period with visual alerts when overspending.
+- FR-6e (Presupuesto redesign, `.claude/design/pages/01-presupuesto.md`): the Budget screen **shows and warns**. Per category:
+  - **Bar status** for the current month: red = over budget, amber = *could go over* once pending bills due this month are paid, green = exactly on budget, blue = within budget. The former "near the limit (≥ 80%)" warning is retired — real risk is "could go over". Categories are ordered by urgency; the header counts those that need attention.
+  - A budget of 0 is treated as "no budget". Categories without a budget appear in a collapsible "No budget" section (including ones with only pending bills).
+  - The expanded detail lists **this month's movements** (paid and pending, one-time and recurring; never skipped, archived or trashed), which always add up to the card's figures. A recurring expense's budget recommendation (FR-6b) appears under its movement.
+  - **Set budget** (no budget yet) or **Adjust budget** (existing budget) opens a sheet with a **suggested budget**: what the category costs in a normal month — paid spending over the last 6 complete months (or since its first expense), outlier months excluded, one-time and recurring alike. Removing a budget stays in Settings → Categories.
+  - A category budget is a goal, not a forecast, so there is no category-level recommendation banner (the over-budget state already warns).
 
 ### 6.3a Budget Recommendations
-- FR-6a: For recurring expenses whose actual paid amount varies month to month (e.g. an electric bill), the system calculates a **rolling average** of actual amounts over the last **6 months**.
+- FR-6a: For recurring expenses whose actual paid amount varies month to month (e.g. an electric bill), the system calculates a **rolling average** of actual amounts over the last **6 months**. Outlier payments (e.g. a one-off billing error) are excluded before averaging, using the app's standard estimate (Tukey's 1.5 × IQR rule once there are at least 4 values — `src/lib/estimate.ts`, Presupuesto redesign D12).
 - FR-6b: When the rolling average diverges meaningfully from the currently budgeted amount, the app surfaces a visible **recommendation** to adjust the budget up or down to match the average — e.g. "Budgeted Q200, average actual is Q250 — consider updating your budget."
 - FR-6c: This recommendation is shown both when creating a new recurring expense with a matching history (suggesting a realistic starting budget) and on existing recurring expenses whose average has drifted from the current budget.
 - FR-6d: User can accept the recommendation (auto-updates the budgeted amount) or dismiss it and keep the current budget.

@@ -351,6 +351,20 @@ actually resolved.)_
   caps at ESLint 8, conflicts with this project's ESLint 9 flat config.
   Accessibility props (`accessibilityRole`/`Label`/`State`) are applied by hand
   across `src/components/ui/*`, not lint-enforced.
+- **"Left to pay" means different things on Budget vs. Dashboard — on
+  purpose** (Presupuesto redesign spec §4): the Budget tab counts only bills
+  due *this month* (it answers "am I within this month's budget"), while the
+  Dashboard counts everything unpaid, including overdue bills from earlier
+  months. The Budget tab's ⓘ sheet explains it. Don't unify them.
+- **Dashboard not yet aligned with the Budget redesign** — it still marks
+  recurring rows with a "Recurrente" chip (Budget uses a ↻ icon) and uses a
+  `Switch` for paid (see the Switch/Checkbox entry below). Owner plans a
+  Dashboard redesign that adopts the icon and a checkbox; left as is until
+  then.
+- **Repo-wide Prettier drift** — `npm run format:check` fails on ~90 files
+  (mostly lines over the 100-char `printWidth`), accumulated since Stage 2;
+  no CI enforces it. Cosmetic only; planned as one separate formatting-only
+  PR. `.claude/design/` is excluded via `.prettierignore`.
 - **`ActionSheet` (`src/components/ui/action-sheet.tsx`, Presupuesto redesign
   fase 2) verified on web only** — the user currently only has web access
   (Vercel preview). Unverified on iOS/Android: the `KeyboardAvoidingView`
@@ -447,6 +461,11 @@ actually resolved.)_
 _(Update this line as work progresses — tells Claude Code where we are without
 re-explaining context each session.)_
 
+**Presupuesto (Budget tab) redesign complete (2026-09)** — phases 1–8,
+PRs #34–#40 plus the closeout; see its summary below and
+`.claude/design/pages/01-presupuesto.md`. Further page redesigns will follow
+the same pattern: a spec + prototype per page under `.claude/design/`.
+
 `git log` on `develop` confirms Stages 9a–17 (through PR #26), round 3/4 UX
 polish, the post-Stage-13 review, and the Budget tab's summary-card
 restructure (PRs #27/#28) are all merged. 9c (Facebook sign-in) remains
@@ -520,6 +539,42 @@ exists to hold it. `tsc`/lint/tests all clean after the rollback (26/26
 suites, 214/214 tests — down from 236 with the 22 drag-only tests in the
 deleted `drag-drop-groups.test.ts` removed, no other test changes
 needed). Done on branch `claude/rollback-drag-drop-f5bzl1`.
+
+### Presupuesto (Budget tab) redesign summary
+
+Re-skin plus behavior changes of the Budget tab, driven by the design spec
+and v9 prototype in `.claude/design/` (`pages/01-presupuesto.md`,
+`prototypes/presupuesto-v9.html`). Delivered in 8 phases, PRs #34–#40 plus
+this closeout; every owner decision is recorded as D1–D15 in the spec's §12
+table, which is the place to look for *why* something works the way it does.
+
+- **Pure logic** in `src/lib/budget-status.ts` (unit tested): summary
+  figures, per-category actual/pending, status (`over`/`mayExceed`/`exact`/
+  `ok`/`none`), ordering, attention count, this month's movements
+  (`categoryMovements`, D9), and the category budget suggestion
+  (`suggestCategoryBudget`, D10). `isPaidInCycle`/`isPendingInCycle` are the
+  single source for "spent" and "left to pay" everywhere on the screen.
+- **Standard estimate** (`src/lib/estimate.ts`, D12): `robustAverage` =
+  Tukey 1.5 × IQR outlier exclusion (from 4 values) + average. Used by the
+  category suggestion *and* the recurring 6-month recommendation average
+  (FR-6a) — use it for any new estimate rather than a plain average.
+- **UI**: summary card with an ⓘ help sheet; compact category cards with
+  status bars/chips; detail with status/projection lines and "This month's
+  movements" (recurring shown with a ↻ icon; D11 folded the old "Recurring"
+  section into it); Set/Adjust budget sheet with the suggested budget and an
+  inline ⓘ (D13); v9 visual alignment (D14).
+- **Shared components built here**: `ActionSheet` (bottom sheet,
+  `src/components/ui/action-sheet.tsx`), toast actions (`showToast(message,
+  { actions })` — a toast with actions stays until acted on or closed, D15),
+  `Chip size="small"`, `SectionHeader trailingText`, `BudgetMovementRow`,
+  `SuggestedBudgetRow`. `BudgetRecommendationBadge` got the v9 look and
+  Undo/Edit toasts (guarded by `canRevertRecommendation`) — this also
+  changed it on the Expenses tab.
+- **No data-model or `firestore.rules` changes.** Writes from this screen
+  (set/adjust budget, accept/keep recommendation) are not awaited, so they
+  work offline; a real rejection shows an error toast.
+- Manual verification was done on the Vercel preview with a dedicated test
+  account, plus Playwright on local seeded data during development.
 
 ### Stage 10 summary
 - New `users/{uid}` settings-doc store (`src/store/create-document-store.ts`
