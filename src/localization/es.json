@@ -22,7 +22,8 @@
     "delete": "Eliminar",
     "restore": "Restaurar",
     "deletePermanently": "Eliminar permanentemente",
-    "rename": "Renombrar"
+    "rename": "Renombrar",
+    "close": "Cerrar"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" se movió al archivo",
@@ -255,8 +256,10 @@
       "message": "Promedio 6 meses {{average}} vs presupuestado {{budgeted}}",
       "accept": "Actualizar presupuesto",
       "dismiss": "Mantener actual",
-      "accepted": "Presupuesto de {{name}} actualizado",
-      "dismissed": "Descartado para {{name}}"
+      "accepted": "Presupuesto de {{name}} actualizado a {{amount}} desde el próximo mes.",
+      "dismissed": "Se mantiene el presupuesto de {{name}}. Te avisaremos si el promedio se aleja más.",
+      "undo": "Deshacer",
+      "saveFailed": "No se pudo guardar el cambio. Intenta de nuevo."
     }
   },
   "recurringIncome": {
