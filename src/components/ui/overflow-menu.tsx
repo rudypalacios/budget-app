@@ -59,7 +59,9 @@ export function OverflowMenu({ items, accessibilityLabel }: OverflowMenuProps) {
             accessibilityRole="button"
             style={[
               styles.option,
-              { backgroundColor: hoveredIndex === index ? theme.backgroundSelected : 'transparent' },
+              {
+                backgroundColor: hoveredIndex === index ? theme.backgroundSelected : 'transparent',
+              },
             ]}
           >
             <ThemedText>{item.label}</ThemedText>

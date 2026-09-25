@@ -36,7 +36,13 @@ beforeEach(() => {
   mockSetDoc.mockClear();
   mockUpdateDoc.mockClear();
   mockDeleteDoc.mockClear();
-  useCurrenciesStore.setState({ items: [], isLoading: false, error: null, fromCache: false, hasPendingWrites: false });
+  useCurrenciesStore.setState({
+    items: [],
+    isLoading: false,
+    error: null,
+    fromCache: false,
+    hasPendingWrites: false,
+  });
 });
 
 describe('addCurrency', () => {
@@ -73,7 +79,10 @@ describe('removeCurrency', () => {
 
 describe('getConfiguredRate', () => {
   it('returns rate 1 / manual for the default currency without consulting the store', () => {
-    expect(getConfiguredRate('GTQ', 'GTQ')).toEqual({ exchangeRateToDefault: 1, rateSource: 'manual' });
+    expect(getConfiguredRate('GTQ', 'GTQ')).toEqual({
+      exchangeRateToDefault: 1,
+      rateSource: 'manual',
+    });
   });
 
   it('returns the configured rate for an added currency', () => {
@@ -88,10 +97,16 @@ describe('getConfiguredRate', () => {
       ],
     });
 
-    expect(getConfiguredRate('EUR', 'GTQ')).toEqual({ exchangeRateToDefault: 8.78, rateSource: 'fetched' });
+    expect(getConfiguredRate('EUR', 'GTQ')).toEqual({
+      exchangeRateToDefault: 8.78,
+      rateSource: 'fetched',
+    });
   });
 
   it('falls back to 1 / manual for a currency not found in the store (e.g. removed between render and submit)', () => {
-    expect(getConfiguredRate('USD', 'GTQ')).toEqual({ exchangeRateToDefault: 1, rateSource: 'manual' });
+    expect(getConfiguredRate('USD', 'GTQ')).toEqual({
+      exchangeRateToDefault: 1,
+      rateSource: 'manual',
+    });
   });
 });

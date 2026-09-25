@@ -6,7 +6,10 @@ import { useSharedValue } from 'react-native-reanimated';
 
 import { GroupHeaderRow } from '@/components/group-header-row';
 import { PaymentRowItem } from '@/components/payment-row-item';
-import { RecurringDefinitionRowItem, toGroupableRecurringExpense } from '@/components/recurring-definition-row-item';
+import {
+  RecurringDefinitionRowItem,
+  toGroupableRecurringExpense,
+} from '@/components/recurring-definition-row-item';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -19,9 +22,19 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Spacing } from '@/constants/theme';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { expenseToPaymentRow, type PaymentRow } from '@/lib/payments-dashboard';
-import { groupRowsIntoSections, type GroupableItem, type GroupSection } from '@/lib/recurring-groups';
+import {
+  groupRowsIntoSections,
+  type GroupableItem,
+  type GroupSection,
+} from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
-import { archiveExpense, setExpenseGroupId, setExpensePaid, trashExpense, useExpensesStore } from '@/store/expenses';
+import {
+  archiveExpense,
+  setExpenseGroupId,
+  setExpensePaid,
+  trashExpense,
+  useExpensesStore,
+} from '@/store/expenses';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import {
   archiveRecurringExpense,
@@ -65,7 +78,9 @@ export default function ExpensesScreen() {
     [recurringGroups],
   );
 
-  const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
+  const activeRecurring = recurringDefinitions.filter(
+    (definition) => definition.lifecycleState === 'active',
+  );
   const uid = useSessionStore((state) => state.uid);
   const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
   const scrollY = useSharedValue(0);
@@ -83,7 +98,8 @@ export default function ExpensesScreen() {
   // expenses drop off every normal view, per FR-4a.
   const plannedOneTime = [
     ...expenses.filter(
-      (expense) => expense.kind === 'oneTime' && !expense.paid && expense.lifecycleState === 'active',
+      (expense) =>
+        expense.kind === 'oneTime' && !expense.paid && expense.lifecycleState === 'active',
     ),
   ].sort((a, b) => b.date.toMillis() - a.date.toMillis());
 
@@ -93,7 +109,10 @@ export default function ExpensesScreen() {
     [oneTimeRows, activeGroups],
   );
 
-  const recurringRows = useMemo(() => activeRecurring.map(toGroupableRecurringExpense), [activeRecurring]);
+  const recurringRows = useMemo(
+    () => activeRecurring.map(toGroupableRecurringExpense),
+    [activeRecurring],
+  );
   const recurringSections = useMemo(
     () => groupRowsIntoSections(recurringRows, activeGroups),
     [recurringRows, activeGroups],
@@ -123,7 +142,9 @@ export default function ExpensesScreen() {
   // Stage 18 redo (FR-21) — the "Grupo…" row action's picker, one instance
   // shared by both sections (only one can ever be open at a time).
   const [groupPickerTarget, setGroupPickerTarget] = useState<
-    { kind: 'oneTime'; row: PaymentRow } | { kind: 'recurring'; id: string; groupId: string | null } | null
+    | { kind: 'oneTime'; row: PaymentRow }
+    | { kind: 'recurring'; id: string; groupId: string | null }
+    | null
   >(null);
 
   function handleArchiveDefinition(id: string, name: string) {
@@ -156,8 +177,14 @@ export default function ExpensesScreen() {
 
   function oneTimeOverflowItems(row: PaymentRow): OverflowMenuItem[] {
     return [
-      { label: t('common.edit'), onPress: () => router.push({ pathname: '/expenses/[id]/edit', params: { id: row.id } }) },
-      { label: t('recurringGroups.rowAction'), onPress: () => setGroupPickerTarget({ kind: 'oneTime', row }) },
+      {
+        label: t('common.edit'),
+        onPress: () => router.push({ pathname: '/expenses/[id]/edit', params: { id: row.id } }),
+      },
+      {
+        label: t('recurringGroups.rowAction'),
+        onPress: () => setGroupPickerTarget({ kind: 'oneTime', row }),
+      },
       {
         label: t('common.archive'),
         onPress: () => handleArchiveExpense(row.id, row.name),
@@ -169,15 +196,25 @@ export default function ExpensesScreen() {
     ];
   }
 
-  function recurringOverflowItems(definition: { id: string; name: string; recurringGroupId: string | null }): OverflowMenuItem[] {
+  function recurringOverflowItems(definition: {
+    id: string;
+    name: string;
+    recurringGroupId: string | null;
+  }): OverflowMenuItem[] {
     return [
       {
         label: t('common.edit'),
-        onPress: () => router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
+        onPress: () =>
+          router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
       },
       {
         label: t('recurringGroups.rowAction'),
-        onPress: () => setGroupPickerTarget({ kind: 'recurring', id: definition.id, groupId: definition.recurringGroupId }),
+        onPress: () =>
+          setGroupPickerTarget({
+            kind: 'recurring',
+            id: definition.id,
+            groupId: definition.recurringGroupId,
+          }),
       },
       {
         label: t('common.archive'),
@@ -195,7 +232,10 @@ export default function ExpensesScreen() {
   // is plugged in — extracted once so the two sections don't duplicate this
   // JSX, mirroring how (tabs)/index.tsx already solved the same problem for
   // its own single section.
-  function renderGroupSections<T extends GroupableItem>(groups: GroupSection<T>[], renderRow: (item: T) => ReactNode) {
+  function renderGroupSections<T extends GroupableItem>(
+    groups: GroupSection<T>[],
+    renderRow: (item: T) => ReactNode,
+  ) {
     return groups.map((section) => {
       const expanded = expandedGroupIds.has(section.groupId);
       return (
@@ -233,14 +273,22 @@ export default function ExpensesScreen() {
                 <Card style={styles.card}>
                   {recurringSections.rows.map((definition, index) => (
                     <View key={definition.id}>
-                      <RecurringDefinitionRowItem definition={definition} overflowItems={recurringOverflowItems(definition)} />
-                      {index < recurringSections.rows.length - 1 && <Divider style={styles.divider} />}
+                      <RecurringDefinitionRowItem
+                        definition={definition}
+                        overflowItems={recurringOverflowItems(definition)}
+                      />
+                      {index < recurringSections.rows.length - 1 && (
+                        <Divider style={styles.divider} />
+                      )}
                     </View>
                   ))}
                 </Card>
               )}
               {renderGroupSections(recurringSections.groups, (definition) => (
-                <RecurringDefinitionRowItem definition={definition} overflowItems={recurringOverflowItems(definition)} />
+                <RecurringDefinitionRowItem
+                  definition={definition}
+                  overflowItems={recurringOverflowItems(definition)}
+                />
               ))}
             </>
           )}
@@ -264,7 +312,9 @@ export default function ExpensesScreen() {
                         onTogglePaid={handleMarkExpensePaid}
                         overflowItems={oneTimeOverflowItems(row)}
                       />
-                      {index < oneTimeSections.rows.length - 1 && <Divider style={styles.divider} />}
+                      {index < oneTimeSections.rows.length - 1 && (
+                        <Divider style={styles.divider} />
+                      )}
                     </View>
                   ))}
                 </Card>
@@ -288,7 +338,9 @@ export default function ExpensesScreen() {
             isOpen
             onClose={() => setGroupPickerTarget(null)}
             value={
-              groupPickerTarget.kind === 'oneTime' ? groupPickerTarget.row.recurringGroupId : groupPickerTarget.groupId
+              groupPickerTarget.kind === 'oneTime'
+                ? groupPickerTarget.row.recurringGroupId
+                : groupPickerTarget.groupId
             }
             onSelect={(recurringGroupId) => {
               if (groupPickerTarget.kind === 'oneTime') {

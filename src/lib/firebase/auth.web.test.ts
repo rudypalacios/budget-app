@@ -51,7 +51,9 @@ beforeEach(() => {
 
 describe('signInWithGoogle', () => {
   it('links the popup credential to the existing anonymous uid on success', async () => {
-    mockLinkWithPopup.mockResolvedValue({ user: { uid: 'anon-uid', email: 'a@b.com', isAnonymous: false } });
+    mockLinkWithPopup.mockResolvedValue({
+      user: { uid: 'anon-uid', email: 'a@b.com', isAnonymous: false },
+    });
 
     await expect(authClient.signInWithGoogle()).resolves.toEqual({
       status: 'linked',
@@ -91,7 +93,10 @@ describe('signInWithGoogle', () => {
 
   it('reports an account-exists conflict when the email already belongs to a different real account', async () => {
     const recoveredCredential = { idToken: 'recovered-token' };
-    mockLinkWithPopup.mockRejectedValue({ code: 'auth/email-already-in-use', customData: { email: 'a@b.com' } });
+    mockLinkWithPopup.mockRejectedValue({
+      code: 'auth/email-already-in-use',
+      customData: { email: 'a@b.com' },
+    });
     mockCredentialFromError.mockReturnValue(recoveredCredential);
 
     await expect(authClient.signInWithGoogle()).resolves.toEqual({
@@ -104,14 +109,18 @@ describe('signInWithGoogle', () => {
   it('rethrows an unrecognized error', async () => {
     mockLinkWithPopup.mockRejectedValue({ code: 'auth/network-request-failed' });
 
-    await expect(authClient.signInWithGoogle()).rejects.toEqual({ code: 'auth/network-request-failed' });
+    await expect(authClient.signInWithGoogle()).rejects.toEqual({
+      code: 'auth/network-request-failed',
+    });
   });
 });
 
 describe('completeGoogleLink', () => {
   it('links the pending credential to the currently signed-in user', async () => {
     fakeAuth.currentUser = { uid: 'real-uid', email: 'a@b.com', isAnonymous: false };
-    mockLinkWithCredential.mockResolvedValue({ user: { uid: 'real-uid', email: 'a@b.com', isAnonymous: false } });
+    mockLinkWithCredential.mockResolvedValue({
+      user: { uid: 'real-uid', email: 'a@b.com', isAnonymous: false },
+    });
 
     const pendingCredential = { idToken: 'recovered-token' };
     await expect(authClient.completeGoogleLink(pendingCredential)).resolves.toEqual({

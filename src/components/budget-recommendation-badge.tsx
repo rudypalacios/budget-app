@@ -34,7 +34,10 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
   const { budgetRecommendation } = definition;
   // The explicit null check is redundant with isRecommendationPending but
   // narrows suggestedBudgetedAmount to a number for TypeScript below.
-  if (!isRecommendationPending(budgetRecommendation) || budgetRecommendation.suggestedBudgetedAmount === null) {
+  if (
+    !isRecommendationPending(budgetRecommendation) ||
+    budgetRecommendation.suggestedBudgetedAmount === null
+  ) {
     return null;
   }
 
@@ -66,7 +69,11 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
           { label: t('recurringExpense.recommendation.undo'), onPress: () => undo('accepted') },
           {
             label: t('common.edit'),
-            onPress: () => router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
+            onPress: () =>
+              router.push({
+                pathname: '/recurring-expenses/[id]/edit',
+                params: { id: definition.id },
+              }),
           },
         ],
       },
@@ -76,7 +83,9 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
   function handleDismiss() {
     dismissBudgetRecommendation(definition.id).catch(onWriteFailed);
     showToast(t('recurringExpense.recommendation.dismissed', { name: definition.name }), {
-      actions: [{ label: t('recurringExpense.recommendation.undo'), onPress: () => undo('dismissed') }],
+      actions: [
+        { label: t('recurringExpense.recommendation.undo'), onPress: () => undo('dismissed') },
+      ],
     });
   }
 
@@ -94,7 +103,10 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
           // as a defaultCurrency figure it never was (the bug this comment
           // now guards against — found live comparing a $20 bill against its
           // correctly-converted Q155 average, which rendered as "Q 20.00").
-          budgeted: formatCurrency(definition.amount * definition.exchangeRateToDefault, defaultCurrency),
+          budgeted: formatCurrency(
+            definition.amount * definition.exchangeRateToDefault,
+            defaultCurrency,
+          ),
         })}
       </ThemedText>
       <View style={styles.actions}>

@@ -26,7 +26,9 @@ function toAuthUser(user: User): AuthUser {
 }
 
 function getErrorCode(error: unknown): string {
-  return typeof error === 'object' && error !== null && 'code' in error ? String((error as { code: unknown }).code) : '';
+  return typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code: unknown }).code)
+    : '';
 }
 
 export const authClient: AuthClient = {
@@ -117,15 +119,24 @@ export const authClient: AuthClient = {
       // 'auth/account-exists-with-different-credential' — RNFirebase's
       // linkWithCredential can surface either code for this situation, so
       // both must map to the same conflict result here too.
-      if (code === 'auth/email-already-in-use' || code === 'auth/account-exists-with-different-credential') {
-        return { status: 'account-exists', conflict: { email: response.data.user.email, pendingCredential: credential } };
+      if (
+        code === 'auth/email-already-in-use' ||
+        code === 'auth/account-exists-with-different-credential'
+      ) {
+        return {
+          status: 'account-exists',
+          conflict: { email: response.data.user.email, pendingCredential: credential },
+        };
       }
       throw error;
     }
   },
 
   async completeGoogleLink(pendingCredential) {
-    const result = await linkWithCredential(auth.currentUser!, pendingCredential as ReturnType<typeof GoogleAuthProvider.credential>);
+    const result = await linkWithCredential(
+      auth.currentUser!,
+      pendingCredential as ReturnType<typeof GoogleAuthProvider.credential>,
+    );
     return toAuthUser(result.user);
   },
 

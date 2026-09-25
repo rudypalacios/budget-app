@@ -1,4 +1,8 @@
-import { canRevertRecommendation, computeBudgetRecommendation, isRecommendationPending } from './budget-recommendation';
+import {
+  canRevertRecommendation,
+  computeBudgetRecommendation,
+  isRecommendationPending,
+} from './budget-recommendation';
 import type { RecurringExpense, Timestamp } from '@/types/firestore';
 
 function asDate(value: Timestamp | null): Date | null {
@@ -136,12 +140,23 @@ describe('isRecommendationPending', () => {
   const base = { rollingAverageAmount: 112, suggestedBudgetedAmount: 112 } as const;
 
   it('is true only when pending with a suggested amount', () => {
-    expect(isRecommendationPending({ ...base, status: 'pending' } as RecurringExpense['budgetRecommendation'])).toBe(true);
     expect(
-      isRecommendationPending({ ...base, status: 'pending', suggestedBudgetedAmount: null } as RecurringExpense['budgetRecommendation']),
+      isRecommendationPending({
+        ...base,
+        status: 'pending',
+      } as RecurringExpense['budgetRecommendation']),
+    ).toBe(true);
+    expect(
+      isRecommendationPending({
+        ...base,
+        status: 'pending',
+        suggestedBudgetedAmount: null,
+      } as RecurringExpense['budgetRecommendation']),
     ).toBe(false);
     for (const status of ['accepted', 'dismissed', 'stale'] as const) {
-      expect(isRecommendationPending({ ...base, status } as RecurringExpense['budgetRecommendation'])).toBe(false);
+      expect(
+        isRecommendationPending({ ...base, status } as RecurringExpense['budgetRecommendation']),
+      ).toBe(false);
     }
   });
 });
@@ -159,27 +174,47 @@ describe('canRevertRecommendation', () => {
   const snapshot = { amount: 85, budgetRecommendation: pending };
 
   it('allows undoing an accept while the definition still holds the accepted amount', () => {
-    const current = { amount: 112, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' as const } };
+    const current = {
+      amount: 112,
+      exchangeRateToDefault: 1,
+      budgetRecommendation: { ...pending, status: 'accepted' as const },
+    };
     expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(true);
   });
 
   it('handles a foreign-currency accept (amount = suggested / rate)', () => {
-    const current = { amount: 112 / 7.7, exchangeRateToDefault: 7.7, budgetRecommendation: { ...pending, status: 'accepted' as const } };
+    const current = {
+      amount: 112 / 7.7,
+      exchangeRateToDefault: 7.7,
+      budgetRecommendation: { ...pending, status: 'accepted' as const },
+    };
     expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(true);
   });
 
   it('refuses once the amount was edited after accepting', () => {
-    const current = { amount: 120, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' as const } };
+    const current = {
+      amount: 120,
+      exchangeRateToDefault: 1,
+      budgetRecommendation: { ...pending, status: 'accepted' as const },
+    };
     expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(false);
   });
 
   it('refuses once a recompute changed the status', () => {
-    const current = { amount: 112, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'pending' as const } };
+    const current = {
+      amount: 112,
+      exchangeRateToDefault: 1,
+      budgetRecommendation: { ...pending, status: 'pending' as const },
+    };
     expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(false);
   });
 
   it('allows undoing a keep while the amount is unchanged', () => {
-    const current = { amount: 85, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'dismissed' as const } };
+    const current = {
+      amount: 85,
+      exchangeRateToDefault: 1,
+      budgetRecommendation: { ...pending, status: 'dismissed' as const },
+    };
     expect(canRevertRecommendation(current, snapshot, 'dismissed')).toBe(true);
     expect(canRevertRecommendation({ ...current, amount: 90 }, snapshot, 'dismissed')).toBe(false);
   });

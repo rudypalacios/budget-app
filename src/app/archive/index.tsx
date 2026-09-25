@@ -14,7 +14,11 @@ import { Divider } from '@/components/ui/divider';
 import { OverflowMenu } from '@/components/ui/overflow-menu';
 import { Spacing } from '@/constants/theme';
 import { formatShortDate } from '@/lib/format-date';
-import { collectArchivedRecords, type LifecycleRecord, type LifecycleRecordType } from '@/lib/lifecycle-records';
+import {
+  collectArchivedRecords,
+  type LifecycleRecord,
+  type LifecycleRecordType,
+} from '@/lib/lifecycle-records';
 import { goBack } from '@/lib/navigation';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
@@ -61,7 +65,13 @@ export default function ArchiveScreen() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [restoreTargets, setRestoreTargets] = useState<LifecycleRecord[] | null>(null);
 
-  const records = collectArchivedRecords(expenses, incomes, recurringExpenses, recurringIncomes, categories);
+  const records = collectArchivedRecords(
+    expenses,
+    incomes,
+    recurringExpenses,
+    recurringIncomes,
+    categories,
+  );
   const allSelected = records.length > 0 && selectedKeys.size === records.length;
   const selectedRecords = records.filter((record) => selectedKeys.has(recordKey(record)));
 
@@ -83,7 +93,9 @@ export default function ArchiveScreen() {
 
   async function handleConfirmRestore() {
     if (!uid || !restoreTargets || restoreTargets.length === 0) return;
-    await Promise.all(restoreTargets.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)));
+    await Promise.all(
+      restoreTargets.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)),
+    );
     showToast(
       restoreTargets.length === 1
         ? t('lifecycle.restored', { name: restoreTargets[0].name })
@@ -93,7 +105,11 @@ export default function ArchiveScreen() {
     setSelectedKeys(new Set());
   }
 
-  async function handleMoveToTrash(recordType: Exclude<LifecycleRecordType, 'category'>, id: string, name: string) {
+  async function handleMoveToTrash(
+    recordType: Exclude<LifecycleRecordType, 'category'>,
+    id: string,
+    name: string,
+  ) {
     await trashLifecycleRecord(recordType, id);
     showToast(t('archive.movedToTrash', { name }));
   }
@@ -105,7 +121,12 @@ export default function ArchiveScreen() {
     const trashable = selectedRecords.filter((record) => record.recordType !== 'category');
     if (trashable.length === 0) return;
     await Promise.all(
-      trashable.map((record) => trashLifecycleRecord(record.recordType as Exclude<LifecycleRecordType, 'category'>, record.id)),
+      trashable.map((record) =>
+        trashLifecycleRecord(
+          record.recordType as Exclude<LifecycleRecordType, 'category'>,
+          record.id,
+        ),
+      ),
     );
     showToast(t('lifecycle.bulkTrashed', { count: trashable.length }));
     setSelectedKeys(new Set());
@@ -120,9 +141,15 @@ export default function ArchiveScreen() {
       ) : (
         <>
           <View style={styles.bulkBar}>
-            <Checkbox checked={allSelected} onValueChange={toggleSelectAll} accessibilityLabel={t('lifecycle.selectAll')} />
+            <Checkbox
+              checked={allSelected}
+              onValueChange={toggleSelectAll}
+              accessibilityLabel={t('lifecycle.selectAll')}
+            />
             <ThemedText type="caption">
-              {selectedKeys.size > 0 ? t('lifecycle.selectedCount', { count: selectedKeys.size }) : t('lifecycle.selectAll')}
+              {selectedKeys.size > 0
+                ? t('lifecycle.selectedCount', { count: selectedKeys.size })
+                : t('lifecycle.selectAll')}
             </ThemedText>
             {selectedKeys.size > 0 && (
               <View style={styles.bulkActions}>
@@ -131,7 +158,11 @@ export default function ArchiveScreen() {
                   variant="secondary"
                   onPress={() => setRestoreTargets(selectedRecords)}
                 />
-                <Button label={t('lifecycle.trashSelected')} variant="secondary" onPress={handleBulkMoveToTrash} />
+                <Button
+                  label={t('lifecycle.trashSelected')}
+                  variant="secondary"
+                  onPress={handleBulkMoveToTrash}
+                />
               </View>
             )}
           </View>
@@ -148,7 +179,11 @@ export default function ArchiveScreen() {
                       {
                         label: t('common.delete'),
                         onPress: () =>
-                          handleMoveToTrash(record.recordType as Exclude<LifecycleRecordType, 'category'>, record.id, record.name),
+                          handleMoveToTrash(
+                            record.recordType as Exclude<LifecycleRecordType, 'category'>,
+                            record.id,
+                            record.name,
+                          ),
                       },
                     ]),
               ];
@@ -170,7 +205,10 @@ export default function ArchiveScreen() {
                         </ThemedText>
                       </View>
                     </View>
-                    <OverflowMenu accessibilityLabel={t('common.actionsFor', { name: record.name })} items={menuItems} />
+                    <OverflowMenu
+                      accessibilityLabel={t('common.actionsFor', { name: record.name })}
+                      items={menuItems}
+                    />
                   </View>
                   {index < records.length - 1 && <Divider style={styles.divider} />}
                 </View>

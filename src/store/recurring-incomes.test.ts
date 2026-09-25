@@ -19,7 +19,9 @@ jest.mock('@/lib/firebase/firestore', () => ({
 
 let mockTrashRetentionDays = 30;
 jest.mock('@/store/user-settings', () => ({
-  useUserSettingsStore: { getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }) },
+  useUserSettingsStore: {
+    getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }),
+  },
 }));
 
 import {
@@ -80,7 +82,14 @@ describe('trashRecurringIncome', () => {
 describe('restoreRecurringIncome', () => {
   it('restores to trashedFromState and clears trash fields', async () => {
     useRecurringIncomesStore.setState({
-      items: [{ id: 'r1', lifecycleState: 'trashed', trashedFromState: 'active', archivedAt: null } as never],
+      items: [
+        {
+          id: 'r1',
+          lifecycleState: 'trashed',
+          trashedFromState: 'active',
+          archivedAt: null,
+        } as never,
+      ],
     });
 
     await restoreRecurringIncome('r1');

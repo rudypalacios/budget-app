@@ -52,7 +52,11 @@ export const firestoreClient: FirestoreClient = {
     path: string,
     data: Omit<T, 'createdAt' | 'updatedAt'>,
   ) {
-    await fsSetDoc(doc(db, path), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await fsSetDoc(doc(db, path), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
   },
 
   async addDoc<T extends { createdAt: unknown; updatedAt: unknown }>(

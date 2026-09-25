@@ -74,7 +74,9 @@ function oneTimeIncome(overrides: Partial<WithId<OneTimeIncome>> = {}): WithId<O
   };
 }
 
-function recurringExpenseDefinition(overrides: Partial<WithId<RecurringExpense>> = {}): WithId<RecurringExpense> {
+function recurringExpenseDefinition(
+  overrides: Partial<WithId<RecurringExpense>> = {},
+): WithId<RecurringExpense> {
   return {
     id: 'rexp-1',
     name: 'Rent',
@@ -107,7 +109,9 @@ function recurringExpenseDefinition(overrides: Partial<WithId<RecurringExpense>>
   };
 }
 
-function recurringIncomeDefinition(overrides: Partial<WithId<RecurringIncome>> = {}): WithId<RecurringIncome> {
+function recurringIncomeDefinition(
+  overrides: Partial<WithId<RecurringIncome>> = {},
+): WithId<RecurringIncome> {
   return {
     id: 'rinc-1',
     name: 'Salary',
@@ -138,10 +142,14 @@ describe('countCategoryItems', () => {
       oneTimeExpense({ id: 'e3', categoryId: 'cat-9' }),
     ];
     const incomes: IncomeRecord[] = [oneTimeIncome({ id: 'i1', categoryId: 'cat-1' })];
-    const recurringExpenses: RecurringExpense[] = [recurringExpenseDefinition({ id: 'r1', categoryId: 'cat-1' })];
+    const recurringExpenses: RecurringExpense[] = [
+      recurringExpenseDefinition({ id: 'r1', categoryId: 'cat-1' }),
+    ];
     const recurringIncomes: RecurringIncome[] = [];
 
-    expect(countCategoryItems('cat-1', expenses, incomes, recurringExpenses, recurringIncomes)).toBe(4);
+    expect(
+      countCategoryItems('cat-1', expenses, incomes, recurringExpenses, recurringIncomes),
+    ).toBe(4);
   });
 
   it('excludes archived/trashed records even when the categoryId matches', () => {

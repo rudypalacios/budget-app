@@ -16,7 +16,9 @@ import {
 // doesn't surface noise.
 function hasDrifted(rollingAverageAmount: number, budgetedAmount: number): boolean {
   const diff = Math.abs(rollingAverageAmount - budgetedAmount);
-  return diff / budgetedAmount > ROLLING_AVERAGE_DRIFT_PERCENT && diff > ROLLING_AVERAGE_DRIFT_FLOOR;
+  return (
+    diff / budgetedAmount > ROLLING_AVERAGE_DRIFT_PERCENT && diff > ROLLING_AVERAGE_DRIFT_FLOOR
+  );
 }
 
 export type ComputeBudgetRecommendationParams = {
@@ -61,7 +63,8 @@ export function computeBudgetRecommendation({
   const staysDismissed =
     previousStatus === 'dismissed' &&
     dismissedAtAverageAmount !== null &&
-    Math.abs(rollingAverageAmount - budgetedAmount) <= Math.abs(dismissedAtAverageAmount - budgetedAmount);
+    Math.abs(rollingAverageAmount - budgetedAmount) <=
+      Math.abs(dismissedAtAverageAmount - budgetedAmount);
 
   if (staysDismissed) {
     return {

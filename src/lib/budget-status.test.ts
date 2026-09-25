@@ -163,14 +163,63 @@ function recurringIncomeInstance(
 // Dataset from 01-presupuesto.md §11 / presupuesto-v9.html's DATA array —
 // the shared source of truth for every test below.
 const DATASET = [
-  { id: 'viv', name: 'Vivienda', budgeted: 7500, actual: 7077.05, pending: 0, status: 'ok' as const },
-  { id: 'deu', name: 'Deudas', budgeted: 14000, actual: 13104.6, pending: 0, status: 'ok' as const },
-  { id: 'pre', name: 'Préstamos', budgeted: 3900, actual: 3900, pending: 0, status: 'exact' as const },
-  { id: 'ali', name: 'Alimentación', budgeted: 3000, actual: 3184.85, pending: 0, status: 'over' as const },
+  {
+    id: 'viv',
+    name: 'Vivienda',
+    budgeted: 7500,
+    actual: 7077.05,
+    pending: 0,
+    status: 'ok' as const,
+  },
+  {
+    id: 'deu',
+    name: 'Deudas',
+    budgeted: 14000,
+    actual: 13104.6,
+    pending: 0,
+    status: 'ok' as const,
+  },
+  {
+    id: 'pre',
+    name: 'Préstamos',
+    budgeted: 3900,
+    actual: 3900,
+    pending: 0,
+    status: 'exact' as const,
+  },
+  {
+    id: 'ali',
+    name: 'Alimentación',
+    budgeted: 3000,
+    actual: 3184.85,
+    pending: 0,
+    status: 'over' as const,
+  },
   { id: 'fam', name: 'Familia', budgeted: null, actual: 1500, pending: 0, status: 'none' as const },
-  { id: 'ser', name: 'Servicios', budgeted: 1200, actual: 550, pending: 335, status: 'ok' as const },
-  { id: 'oci', name: 'Ocio', budgeted: 500, actual: 420, pending: 150, status: 'mayExceed' as const },
-  { id: 'pro', name: 'Programación', budgeted: 300, actual: 0, pending: 107.85, status: 'ok' as const },
+  {
+    id: 'ser',
+    name: 'Servicios',
+    budgeted: 1200,
+    actual: 550,
+    pending: 335,
+    status: 'ok' as const,
+  },
+  {
+    id: 'oci',
+    name: 'Ocio',
+    budgeted: 500,
+    actual: 420,
+    pending: 150,
+    status: 'mayExceed' as const,
+  },
+  {
+    id: 'pro',
+    name: 'Programación',
+    budgeted: 300,
+    actual: 0,
+    pending: 107.85,
+    status: 'ok' as const,
+  },
   { id: 'tra', name: 'Transporte', budgeted: 800, actual: 0, pending: 0, status: 'ok' as const },
 ];
 
@@ -237,7 +286,16 @@ describe('sortCategoryRows / splitByBudget / attentionCount', () => {
   it('splits into con/sin presupuesto and orders each per §5.4', () => {
     const { withBudget, withoutBudget } = splitByBudget(datasetRows());
 
-    expect(withBudget.map((row) => row.id)).toEqual(['ali', 'oci', 'pre', 'viv', 'deu', 'ser', 'pro', 'tra']);
+    expect(withBudget.map((row) => row.id)).toEqual([
+      'ali',
+      'oci',
+      'pre',
+      'viv',
+      'deu',
+      'ser',
+      'pro',
+      'tra',
+    ]);
     expect(withoutBudget.map((row) => row.id)).toEqual(['fam']);
   });
 
@@ -273,36 +331,92 @@ describe('sortCategoryRows / splitByBudget / attentionCount', () => {
 
 describe('isPendingInCycle', () => {
   it('is true for an unpaid, non-skipped, active expense due this cycle', () => {
-    expect(isPendingInCycle(oneTimeExpense({ paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }), CYCLE_RANGE)).toBe(true);
+    expect(
+      isPendingInCycle(
+        oneTimeExpense({ paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
+        CYCLE_RANGE,
+      ),
+    ).toBe(true);
   });
 
   it('is false once paid', () => {
-    expect(isPendingInCycle(oneTimeExpense({ paid: true, date: fakeTimestamp(IN_CYCLE_DATE) }), CYCLE_RANGE)).toBe(false);
+    expect(
+      isPendingInCycle(
+        oneTimeExpense({ paid: true, date: fakeTimestamp(IN_CYCLE_DATE) }),
+        CYCLE_RANGE,
+      ),
+    ).toBe(false);
   });
 
   it('is false for a skipped recurring instance', () => {
-    const expense = recurringExpenseInstance({ paid: false, skipped: true, date: fakeTimestamp(IN_CYCLE_DATE) });
+    const expense = recurringExpenseInstance({
+      paid: false,
+      skipped: true,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    });
     expect(isPendingInCycle(expense, CYCLE_RANGE)).toBe(false);
   });
 
   it('is false for an archived or trashed expense', () => {
     expect(
-      isPendingInCycle(oneTimeExpense({ paid: false, lifecycleState: 'archived', date: fakeTimestamp(IN_CYCLE_DATE) }), CYCLE_RANGE),
+      isPendingInCycle(
+        oneTimeExpense({
+          paid: false,
+          lifecycleState: 'archived',
+          date: fakeTimestamp(IN_CYCLE_DATE),
+        }),
+        CYCLE_RANGE,
+      ),
     ).toBe(false);
   });
 
   it('is false when the due date falls outside the cycle', () => {
-    expect(isPendingInCycle(oneTimeExpense({ paid: false, date: fakeTimestamp(PREVIOUS_CYCLE_DATE) }), CYCLE_RANGE)).toBe(false);
+    expect(
+      isPendingInCycle(
+        oneTimeExpense({ paid: false, date: fakeTimestamp(PREVIOUS_CYCLE_DATE) }),
+        CYCLE_RANGE,
+      ),
+    ).toBe(false);
   });
 });
 
 describe('actualByCategory / pendingByCategory', () => {
   const expenses: ExpenseRecord[] = [
-    oneTimeExpense({ id: 'e-viv', categoryId: 'viv', amountInDefaultCurrency: 7077.05, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-deu', categoryId: 'deu', amountInDefaultCurrency: 13104.6, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-ser-paid', categoryId: 'ser', amountInDefaultCurrency: 550, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-ser-pending', categoryId: 'ser', amountInDefaultCurrency: 335, paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-pro-pending', categoryId: 'pro', amountInDefaultCurrency: 107.85, paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
+    oneTimeExpense({
+      id: 'e-viv',
+      categoryId: 'viv',
+      amountInDefaultCurrency: 7077.05,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-deu',
+      categoryId: 'deu',
+      amountInDefaultCurrency: 13104.6,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-ser-paid',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 550,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-ser-pending',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 335,
+      paid: false,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-pro-pending',
+      categoryId: 'pro',
+      amountInDefaultCurrency: 107.85,
+      paid: false,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    }),
     // Edge cases — none of these should count:
     oneTimeExpense({
       id: 'e-viv-archived',
@@ -349,15 +463,57 @@ describe('categoryMovements (D9)', () => {
   const EARLY = new Date(2026, 6, 3);
   const LATE = new Date(2026, 6, 20);
   const expenses: WithId<ExpenseRecord>[] = [
-    oneTimeExpense({ id: 'paid-late', categoryId: 'ser', amountInDefaultCurrency: 300, paid: true, paidDate: fakeTimestamp(LATE) }),
-    oneTimeExpense({ id: 'paid-early', categoryId: 'ser', amountInDefaultCurrency: 250, paid: true, paidDate: fakeTimestamp(EARLY) }),
-    recurringExpenseInstance({ id: 'pending-late', categoryId: 'ser', amountInDefaultCurrency: 85, date: fakeTimestamp(LATE) }),
-    oneTimeExpense({ id: 'pending-early', categoryId: 'ser', amountInDefaultCurrency: 250, date: fakeTimestamp(EARLY) }),
+    oneTimeExpense({
+      id: 'paid-late',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 300,
+      paid: true,
+      paidDate: fakeTimestamp(LATE),
+    }),
+    oneTimeExpense({
+      id: 'paid-early',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 250,
+      paid: true,
+      paidDate: fakeTimestamp(EARLY),
+    }),
+    recurringExpenseInstance({
+      id: 'pending-late',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 85,
+      date: fakeTimestamp(LATE),
+    }),
+    oneTimeExpense({
+      id: 'pending-early',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 250,
+      date: fakeTimestamp(EARLY),
+    }),
     // None of these should appear:
-    recurringExpenseInstance({ id: 'skipped', categoryId: 'ser', amountInDefaultCurrency: 999, skipped: true }),
-    oneTimeExpense({ id: 'archived', categoryId: 'ser', amountInDefaultCurrency: 999, lifecycleState: 'archived' }),
-    oneTimeExpense({ id: 'trashed', categoryId: 'ser', amountInDefaultCurrency: 999, lifecycleState: 'trashed' }),
-    oneTimeExpense({ id: 'other-cycle', categoryId: 'ser', amountInDefaultCurrency: 999, date: fakeTimestamp(PREVIOUS_CYCLE_DATE) }),
+    recurringExpenseInstance({
+      id: 'skipped',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 999,
+      skipped: true,
+    }),
+    oneTimeExpense({
+      id: 'archived',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 999,
+      lifecycleState: 'archived',
+    }),
+    oneTimeExpense({
+      id: 'trashed',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 999,
+      lifecycleState: 'trashed',
+    }),
+    oneTimeExpense({
+      id: 'other-cycle',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 999,
+      date: fakeTimestamp(PREVIOUS_CYCLE_DATE),
+    }),
     oneTimeExpense({ id: 'other-category', categoryId: 'viv', amountInDefaultCurrency: 999 }),
   ];
 
@@ -377,7 +533,8 @@ describe('categoryMovements (D9)', () => {
 
   it('sums exactly to the card totals (actualByCategory / pendingByCategory)', () => {
     const { pending, paid } = categoryMovements(expenses, 'ser', CYCLE_RANGE);
-    const sum = (list: WithId<ExpenseRecord>[]) => list.reduce((total, e) => total + e.amountInDefaultCurrency, 0);
+    const sum = (list: WithId<ExpenseRecord>[]) =>
+      list.reduce((total, e) => total + e.amountInDefaultCurrency, 0);
     expect(sum(pending)).toBe(pendingByCategory(expenses, CYCLE_RANGE).get('ser'));
     expect(sum(paid)).toBe(actualByCategory(expenses, CYCLE_RANGE).get('ser'));
   });
@@ -385,18 +542,84 @@ describe('categoryMovements (D9)', () => {
 
 describe('computeBudgetSummary', () => {
   const expenses: ExpenseRecord[] = [
-    oneTimeExpense({ id: 'e-viv', categoryId: 'viv', amountInDefaultCurrency: 7077.05, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-deu', categoryId: 'deu', amountInDefaultCurrency: 13104.6, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-pre', categoryId: 'pre', amountInDefaultCurrency: 3900, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-ali', categoryId: 'ali', amountInDefaultCurrency: 3184.85, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-fam', categoryId: 'fam', amountInDefaultCurrency: 1500, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-ser', categoryId: 'ser', amountInDefaultCurrency: 550, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-oci', categoryId: 'oci', amountInDefaultCurrency: 420, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-ser-pending', categoryId: 'ser', amountInDefaultCurrency: 335, paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-oci-pending', categoryId: 'oci', amountInDefaultCurrency: 150, paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeExpense({ id: 'e-pro-pending', categoryId: 'pro', amountInDefaultCurrency: 107.85, paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
+    oneTimeExpense({
+      id: 'e-viv',
+      categoryId: 'viv',
+      amountInDefaultCurrency: 7077.05,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-deu',
+      categoryId: 'deu',
+      amountInDefaultCurrency: 13104.6,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-pre',
+      categoryId: 'pre',
+      amountInDefaultCurrency: 3900,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-ali',
+      categoryId: 'ali',
+      amountInDefaultCurrency: 3184.85,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-fam',
+      categoryId: 'fam',
+      amountInDefaultCurrency: 1500,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-ser',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 550,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-oci',
+      categoryId: 'oci',
+      amountInDefaultCurrency: 420,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-ser-pending',
+      categoryId: 'ser',
+      amountInDefaultCurrency: 335,
+      paid: false,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-oci-pending',
+      categoryId: 'oci',
+      amountInDefaultCurrency: 150,
+      paid: false,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeExpense({
+      id: 'e-pro-pending',
+      categoryId: 'pro',
+      amountInDefaultCurrency: 107.85,
+      paid: false,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    }),
     // Paid last cycle — counts toward the all-time total only.
-    oneTimeExpense({ id: 'e-old', categoryId: 'viv', amountInDefaultCurrency: 26084.5, paid: true, paidDate: fakeTimestamp(PREVIOUS_CYCLE_DATE) }),
+    oneTimeExpense({
+      id: 'e-old',
+      categoryId: 'viv',
+      amountInDefaultCurrency: 26084.5,
+      paid: true,
+      paidDate: fakeTimestamp(PREVIOUS_CYCLE_DATE),
+    }),
     // Archived — excluded everywhere, including the all-time total.
     oneTimeExpense({
       id: 'e-archived',
@@ -409,10 +632,25 @@ describe('computeBudgetSummary', () => {
   ];
 
   const incomes: IncomeRecord[] = [
-    oneTimeIncome({ id: 'i-received', amountInDefaultCurrency: 20974.67, paid: true, paidDate: fakeTimestamp(IN_CYCLE_DATE) }),
-    oneTimeIncome({ id: 'i-pending', amountInDefaultCurrency: 6755.48, paid: false, date: fakeTimestamp(IN_CYCLE_DATE) }),
+    oneTimeIncome({
+      id: 'i-received',
+      amountInDefaultCurrency: 20974.67,
+      paid: true,
+      paidDate: fakeTimestamp(IN_CYCLE_DATE),
+    }),
+    oneTimeIncome({
+      id: 'i-pending',
+      amountInDefaultCurrency: 6755.48,
+      paid: false,
+      date: fakeTimestamp(IN_CYCLE_DATE),
+    }),
     // Received last cycle — counts toward the all-time total only.
-    oneTimeIncome({ id: 'i-old', amountInDefaultCurrency: 20345.44, paid: true, paidDate: fakeTimestamp(PREVIOUS_CYCLE_DATE) }),
+    oneTimeIncome({
+      id: 'i-old',
+      amountInDefaultCurrency: 20345.44,
+      paid: true,
+      paidDate: fakeTimestamp(PREVIOUS_CYCLE_DATE),
+    }),
     // Skipped recurring income — excluded from both received and pending.
     recurringIncomeInstance({
       id: 'i-skipped',
@@ -452,19 +690,41 @@ describe('computeBudgetSummary', () => {
       )
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
 
-    expect(computeBudgetSummary({ expenses, incomes, cycleRange: CYCLE_RANGE }).stillToPay).toBe(preRefactorStillToPay);
+    expect(computeBudgetSummary({ expenses, incomes, cycleRange: CYCLE_RANGE }).stillToPay).toBe(
+      preRefactorStillToPay,
+    );
   });
 });
 
 describe('suggestCategoryBudget (D10)', () => {
   // Reference: 15 Jul 2026 → complete months are Jun back to Jan; July is
   // the current, unfinished month and never counts.
-  const paidOn = (id: string, date: Date, amount: number, overrides: Partial<WithId<OneTimeExpense>> = {}) =>
-    oneTimeExpense({ id, categoryId: 'var', amountInDefaultCurrency: amount, paid: true, paidDate: fakeTimestamp(date), ...overrides });
-  const month = (m: number, amount: number, id = `m${m}`) => paidOn(id, new Date(2026, m, 10), amount);
+  const paidOn = (
+    id: string,
+    date: Date,
+    amount: number,
+    overrides: Partial<WithId<OneTimeExpense>> = {},
+  ) =>
+    oneTimeExpense({
+      id,
+      categoryId: 'var',
+      amountInDefaultCurrency: amount,
+      paid: true,
+      paidDate: fakeTimestamp(date),
+      ...overrides,
+    });
+  const month = (m: number, amount: number, id = `m${m}`) =>
+    paidOn(id, new Date(2026, m, 10), amount);
 
   it('averages normal months and ignores a one-off purchase (the washing machine case)', () => {
-    const expenses = [month(0, 800), month(1, 900), month(2, 850), month(3, 750), month(4, 6800), month(5, 900)];
+    const expenses = [
+      month(0, 800),
+      month(1, 900),
+      month(2, 850),
+      month(3, 750),
+      month(4, 6800),
+      month(5, 900),
+    ];
     expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(840);
   });
 
@@ -477,7 +737,13 @@ describe('suggestCategoryBudget (D10)', () => {
   it('mixes one-time and recurring spending in the monthly totals', () => {
     const expenses: ExpenseRecord[] = [
       month(4, 100),
-      recurringExpenseInstance({ id: 'rec', categoryId: 'var', amountInDefaultCurrency: 200, paid: true, paidDate: fakeTimestamp(new Date(2026, 4, 20)) }),
+      recurringExpenseInstance({
+        id: 'rec',
+        categoryId: 'var',
+        amountInDefaultCurrency: 200,
+        paid: true,
+        paidDate: fakeTimestamp(new Date(2026, 4, 20)),
+      }),
       month(5, 300),
     ];
     // 2 months of history (May, Jun) → no outlier filtering: (300 + 300) / 2
@@ -489,7 +755,15 @@ describe('suggestCategoryBudget (D10)', () => {
   });
 
   it('caps the window at 6 months and ignores older spending', () => {
-    const expenses = [paidOn('old', new Date(2025, 0, 10), 9999), month(0, 600), month(1, 600), month(2, 600), month(3, 600), month(4, 600), month(5, 600)];
+    const expenses = [
+      paidOn('old', new Date(2025, 0, 10), 9999),
+      month(0, 600),
+      month(1, 600),
+      month(2, 600),
+      month(3, 600),
+      month(4, 600),
+      month(5, 600),
+    ];
     expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(600);
   });
 
@@ -499,14 +773,21 @@ describe('suggestCategoryBudget (D10)', () => {
       paidOn('current', IN_CYCLE_DATE, 999),
       paidOn('archived', new Date(2026, 5, 11), 999, { lifecycleState: 'archived' }),
       paidOn('other', new Date(2026, 5, 12), 999, { categoryId: 'viv' }),
-      oneTimeExpense({ id: 'unpaid', categoryId: 'var', amountInDefaultCurrency: 999, date: fakeTimestamp(new Date(2026, 5, 13)) }),
+      oneTimeExpense({
+        id: 'unpaid',
+        categoryId: 'var',
+        amountInDefaultCurrency: 999,
+        date: fakeTimestamp(new Date(2026, 5, 13)),
+      }),
     ];
     expect(suggestCategoryBudget(expenses, 'var', REFERENCE_DATE)).toBe(100);
   });
 
   it('is null with no complete month of history, or when nothing is left after filtering', () => {
     expect(suggestCategoryBudget([], 'var', REFERENCE_DATE)).toBeNull();
-    expect(suggestCategoryBudget([paidOn('current', IN_CYCLE_DATE, 50)], 'var', REFERENCE_DATE)).toBeNull();
+    expect(
+      suggestCategoryBudget([paidOn('current', IN_CYCLE_DATE, 50)], 'var', REFERENCE_DATE),
+    ).toBeNull();
     const oneSpike = [month(0, 0.001, 'anchor'), month(5, 1200)]; // ≈ 0, 0, 0, 0, 0, 1200
     expect(suggestCategoryBudget(oneSpike, 'var', REFERENCE_DATE)).toBeNull();
   });

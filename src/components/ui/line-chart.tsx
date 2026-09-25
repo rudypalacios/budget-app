@@ -96,8 +96,20 @@ export function LineChart({ data, width = 320, height = 180 }: LineChartProps) {
           );
         })}
 
-        <Path d={budgetedPath} stroke={theme.textSecondary} strokeWidth={1.5} strokeDasharray="4,4" fill="none" />
-        <Path d={averagePath} stroke={theme.warning} strokeWidth={1.5} strokeDasharray="1,3" fill="none" />
+        <Path
+          d={budgetedPath}
+          stroke={theme.textSecondary}
+          strokeWidth={1.5}
+          strokeDasharray="4,4"
+          fill="none"
+        />
+        <Path
+          d={averagePath}
+          stroke={theme.warning}
+          strokeWidth={1.5}
+          strokeDasharray="1,3"
+          fill="none"
+        />
         <Path d={actualPath} stroke={theme.tint} strokeWidth={2.5} fill="none" />
 
         {data.map(

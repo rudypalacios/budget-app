@@ -43,7 +43,10 @@ export function DatePicker({ label, value, onChange, placeholder }: DatePickerPr
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityValue={{ text: value ? formatShortDate(value) : resolvedPlaceholder }}
-        style={[styles.field, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+        style={[
+          styles.field,
+          { borderColor: theme.border, backgroundColor: theme.backgroundElement },
+        ]}
       >
         <ThemedText themeColor={value ? 'text' : 'textSecondary'}>
           {value ? formatShortDate(value) : resolvedPlaceholder}

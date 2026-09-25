@@ -43,7 +43,9 @@ export function RecurringExpenseForm({
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
-    (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
+    (category) =>
+      category.lifecycleState === 'active' &&
+      (category.type === 'expense' || category.type === 'both'),
   );
 
   const [values, setValues] = useState<RecurringExpenseFormValues>(
@@ -100,7 +102,10 @@ export function RecurringExpenseForm({
       <Select
         label={t('common.category')}
         value={values.categoryId}
-        options={expenseCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
+        options={expenseCategories.map((category) => ({
+          value: category.id,
+          label: categoryDisplayName(category),
+        }))}
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
@@ -117,7 +122,12 @@ export function RecurringExpenseForm({
       />
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label={submitLabel}
+          onPress={handleSave}
+          disabled={!isValid}
+          style={styles.actionButton}
+        />
         <Button
           label={t('common.cancel')}
           variant="secondary"

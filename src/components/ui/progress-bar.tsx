@@ -40,7 +40,9 @@ export function ProgressBar({ status, budgeted, actual, style }: ProgressBarProp
       aria-hidden
       style={[styles.track, { backgroundColor: theme.backgroundSelected }, style]}
     >
-      <View style={[styles.fill, { width: fillPercent, backgroundColor: theme[STATUS_COLOR[status]] }]} />
+      <View
+        style={[styles.fill, { width: fillPercent, backgroundColor: theme[STATUS_COLOR[status]] }]}
+      />
     </View>
   );
 }

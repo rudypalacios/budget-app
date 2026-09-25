@@ -19,7 +19,9 @@ jest.mock('@/lib/firebase/firestore', () => ({
 
 let mockTrashRetentionDays = 30;
 jest.mock('@/store/user-settings', () => ({
-  useUserSettingsStore: { getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }) },
+  useUserSettingsStore: {
+    getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }),
+  },
 }));
 
 // Avoids pulling in the real session.ts -> @/lib/firebase/auth -> the native
@@ -49,7 +51,13 @@ beforeEach(() => {
   mockUpdateDoc.mockClear();
   mockDeleteDoc.mockClear();
   mockTrashRetentionDays = 30;
-  useExpensesStore.setState({ items: [], isLoading: false, error: null, fromCache: false, hasPendingWrites: false });
+  useExpensesStore.setState({
+    items: [],
+    isLoading: false,
+    error: null,
+    fromCache: false,
+    hasPendingWrites: false,
+  });
 });
 
 describe('archiveExpense', () => {
@@ -94,14 +102,26 @@ describe('trashExpense', () => {
 describe('restoreExpense', () => {
   it('restores to trashedFromState and clears trash fields', async () => {
     useExpensesStore.setState({
-      items: [{ id: 'e1', lifecycleState: 'trashed', trashedFromState: 'archived', archivedAt: null } as never],
+      items: [
+        {
+          id: 'e1',
+          lifecycleState: 'trashed',
+          trashedFromState: 'archived',
+          archivedAt: null,
+        } as never,
+      ],
     });
 
     await restoreExpense('e1');
 
     expect(mockUpdateDoc).toHaveBeenCalledWith(
       'users/test-uid/expenses/e1',
-      expect.objectContaining({ lifecycleState: 'archived', trashedFromState: null, trashedAt: null, purgeAt: null }),
+      expect.objectContaining({
+        lifecycleState: 'archived',
+        trashedFromState: null,
+        trashedAt: null,
+        purgeAt: null,
+      }),
     );
   });
 
@@ -127,12 +147,16 @@ describe('setExpenseGroupId', () => {
   it('writes the given recurringGroupId', async () => {
     await setExpenseGroupId('e1', 'g1');
 
-    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1', { recurringGroupId: 'g1' });
+    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1', {
+      recurringGroupId: 'g1',
+    });
   });
 
   it('clears the group when passed null', async () => {
     await setExpenseGroupId('e1', null);
 
-    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1', { recurringGroupId: null });
+    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/expenses/e1', {
+      recurringGroupId: null,
+    });
   });
 });

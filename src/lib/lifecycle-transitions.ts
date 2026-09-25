@@ -22,7 +22,11 @@ export function archiveTransition(now: Date): TrashableLifecycle {
 // where to put it back (FR-4b). archivedAt is preserved only when trashing
 // an already-archived record, so a later restore-to-archived still reflects
 // when it was originally archived.
-export function trashTransition(from: ArchivableState, now: Date, trashRetentionDays: number): TrashableLifecycle {
+export function trashTransition(
+  from: ArchivableState,
+  now: Date,
+  trashRetentionDays: number,
+): TrashableLifecycle {
   const purgeDate = new Date(now);
   purgeDate.setDate(purgeDate.getDate() + trashRetentionDays);
   return {

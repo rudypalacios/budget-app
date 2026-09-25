@@ -14,7 +14,9 @@ describe('withoutOutliers (Tukey 1.5 × IQR)', () => {
   });
 
   it('drops an unusually low month too', () => {
-    expect(withoutOutliers([1000, 1050, 950, 1000, 1020, 10])).toEqual([1000, 1050, 950, 1000, 1020]);
+    expect(withoutOutliers([1000, 1050, 950, 1000, 1020, 10])).toEqual([
+      1000, 1050, 950, 1000, 1020,
+    ]);
   });
 });
 

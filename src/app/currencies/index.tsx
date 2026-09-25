@@ -44,19 +44,28 @@ export default function CurrenciesScreen() {
             <View key={currency.id}>
               <View style={styles.row}>
                 <View style={styles.main}>
-                  <ThemedText type="smallBold">{CURRENCY_LABEL_BY_CODE[currency.id] ?? currency.id}</ThemedText>
+                  <ThemedText type="smallBold">
+                    {CURRENCY_LABEL_BY_CODE[currency.id] ?? currency.id}
+                  </ThemedText>
                   <ThemedText type="caption">
                     {formatCurrency(currency.exchangeRateToDefault, defaultCurrency)}
                   </ThemedText>
-                  {currency.status === 'stale' && <Chip label={t('currencies.needsRefresh')} tone="warning" />}
+                  {currency.status === 'stale' && (
+                    <Chip label={t('currencies.needsRefresh')} tone="warning" />
+                  )}
                 </View>
                 <OverflowMenu
-                  accessibilityLabel={t('common.actionsFor', { name: CURRENCY_LABEL_BY_CODE[currency.id] ?? currency.id })}
+                  accessibilityLabel={t('common.actionsFor', {
+                    name: CURRENCY_LABEL_BY_CODE[currency.id] ?? currency.id,
+                  })}
                   items={[
                     {
                       label: t('currencies.editRate'),
                       onPress: () =>
-                        router.push({ pathname: '/currencies/[code]/edit', params: { code: currency.id } }),
+                        router.push({
+                          pathname: '/currencies/[code]/edit',
+                          params: { code: currency.id },
+                        }),
                     },
                     {
                       label: t('common.remove'),

@@ -33,7 +33,9 @@ export default function EditCategoryScreen() {
       name: values.name,
       type: values.type,
       // D1: 0, blank, or non-numeric all normalize to "no budget" (null).
-      monthlyBudget: normalizeMonthlyBudget(values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget)),
+      monthlyBudget: normalizeMonthlyBudget(
+        values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+      ),
       icon: values.icon,
     });
     router.back();
@@ -55,7 +57,8 @@ export default function EditCategoryScreen() {
   // there's no suggestion to compute for one.
   // D10: same suggestion as the Budget tab's "Set budget" sheet — what the
   // category costs in a normal month.
-  const suggestedMonthlyBudget = category.type === 'income' ? null : suggestCategoryBudget(expenses, id);
+  const suggestedMonthlyBudget =
+    category.type === 'income' ? null : suggestCategoryBudget(expenses, id);
 
   return (
     <ScreenScroll>

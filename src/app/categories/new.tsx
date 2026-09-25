@@ -18,7 +18,9 @@ export default function NewCategoryScreen() {
       name: values.name,
       type: values.type,
       // D1: 0, blank, or non-numeric all normalize to "no budget" (null).
-      monthlyBudget: normalizeMonthlyBudget(values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget)),
+      monthlyBudget: normalizeMonthlyBudget(
+        values.monthlyBudget === '' ? null : parseAmountInput(values.monthlyBudget),
+      ),
       icon: values.icon,
     });
     router.back();

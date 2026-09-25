@@ -1,4 +1,9 @@
-import { canDeleteCategory, collectArchivedRecords, collectTrashedRecords, daysUntilPurge } from './lifecycle-records';
+import {
+  canDeleteCategory,
+  collectArchivedRecords,
+  collectTrashedRecords,
+  daysUntilPurge,
+} from './lifecycle-records';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type {
   Category,
@@ -73,7 +78,9 @@ function oneTimeIncome(overrides: Partial<WithId<OneTimeIncome>> = {}): WithId<O
   };
 }
 
-function recurringExpenseDefinition(overrides: Partial<WithId<RecurringExpense>> = {}): WithId<RecurringExpense> {
+function recurringExpenseDefinition(
+  overrides: Partial<WithId<RecurringExpense>> = {},
+): WithId<RecurringExpense> {
   return {
     id: 'rexp-1',
     name: 'Rent',
@@ -106,7 +113,9 @@ function recurringExpenseDefinition(overrides: Partial<WithId<RecurringExpense>>
   };
 }
 
-function recurringIncomeDefinition(overrides: Partial<WithId<RecurringIncome>> = {}): WithId<RecurringIncome> {
+function recurringIncomeDefinition(
+  overrides: Partial<WithId<RecurringIncome>> = {},
+): WithId<RecurringIncome> {
   return {
     id: 'rinc-1',
     name: 'Salary',
@@ -149,12 +158,24 @@ function category(overrides: Partial<WithId<Category>> = {}): WithId<Category> {
 describe('collectArchivedRecords', () => {
   it('includes only archived records across all five types, sorted newest-first', () => {
     const expenses = [
-      oneTimeExpense({ id: 'e1', lifecycleState: 'archived', archivedAt: fakeTimestamp(new Date(2026, 6, 10)) }),
+      oneTimeExpense({
+        id: 'e1',
+        lifecycleState: 'archived',
+        archivedAt: fakeTimestamp(new Date(2026, 6, 10)),
+      }),
       oneTimeExpense({ id: 'e2', lifecycleState: 'active' }),
-      oneTimeExpense({ id: 'e3', lifecycleState: 'trashed', trashedAt: fakeTimestamp(new Date(2026, 6, 5)) }),
+      oneTimeExpense({
+        id: 'e3',
+        lifecycleState: 'trashed',
+        trashedAt: fakeTimestamp(new Date(2026, 6, 5)),
+      }),
     ];
     const incomes = [
-      oneTimeIncome({ id: 'i1', lifecycleState: 'archived', archivedAt: fakeTimestamp(new Date(2026, 6, 15)) }),
+      oneTimeIncome({
+        id: 'i1',
+        lifecycleState: 'archived',
+        archivedAt: fakeTimestamp(new Date(2026, 6, 15)),
+      }),
     ];
     const recurringExpenses = [
       recurringExpenseDefinition({
@@ -171,11 +192,21 @@ describe('collectArchivedRecords', () => {
       }),
     ];
     const categories = [
-      category({ id: 'c1', lifecycleState: 'archived', updatedAt: fakeTimestamp(new Date(2026, 6, 12)) }),
+      category({
+        id: 'c1',
+        lifecycleState: 'archived',
+        updatedAt: fakeTimestamp(new Date(2026, 6, 12)),
+      }),
       category({ id: 'c2', lifecycleState: 'active' }),
     ];
 
-    const records = collectArchivedRecords(expenses, incomes, recurringExpenses, recurringIncomes, categories);
+    const records = collectArchivedRecords(
+      expenses,
+      incomes,
+      recurringExpenses,
+      recurringIncomes,
+      categories,
+    );
 
     expect(records.map((r) => r.id)).toEqual(['r2', 'i1', 'c1', 'e1', 'r1']);
     expect(records.every((r) => r.purgeAt === null)).toBe(true);
@@ -191,7 +222,13 @@ describe('collectArchivedRecords', () => {
     const records = collectArchivedRecords([], [], [], [], [cat]);
 
     expect(records).toEqual([
-      { recordType: 'category', id: 'c1', name: 'Subscriptions', statusDate: new Date(2026, 3, 5), purgeAt: null },
+      {
+        recordType: 'category',
+        id: 'c1',
+        name: 'Subscriptions',
+        statusDate: new Date(2026, 3, 5),
+        purgeAt: null,
+      },
     ]);
   });
 
@@ -216,7 +253,13 @@ describe('collectTrashedRecords', () => {
     const records = collectTrashedRecords(expenses, [], [], []);
 
     expect(records).toEqual([
-      { recordType: 'expense', id: 'e1', name: 'Groceries', statusDate: new Date(2026, 6, 1), purgeAt: new Date(2026, 7, 1) },
+      {
+        recordType: 'expense',
+        id: 'e1',
+        name: 'Groceries',
+        statusDate: new Date(2026, 6, 1),
+        purgeAt: new Date(2026, 7, 1),
+      },
     ]);
   });
 
@@ -244,12 +287,18 @@ describe('daysUntilPurge', () => {
 
 describe('canDeleteCategory', () => {
   it('allows deletion when nothing references the category', () => {
-    expect(canDeleteCategory('cat-empty', [], [], [], [])).toEqual({ allowed: true, blockingCount: 0 });
+    expect(canDeleteCategory('cat-empty', [], [], [], [])).toEqual({
+      allowed: true,
+      blockingCount: 0,
+    });
   });
 
   it('blocks deletion when an active record references the category', () => {
     const expenses = [oneTimeExpense({ categoryId: 'cat-1', lifecycleState: 'active' })];
-    expect(canDeleteCategory('cat-1', expenses, [], [], [])).toEqual({ allowed: false, blockingCount: 1 });
+    expect(canDeleteCategory('cat-1', expenses, [], [], [])).toEqual({
+      allowed: false,
+      blockingCount: 1,
+    });
   });
 
   it('blocks deletion even when the only reference is archived or trashed-but-not-purged', () => {
@@ -259,7 +308,10 @@ describe('canDeleteCategory', () => {
     ];
     const incomes = [oneTimeIncome({ categoryId: 'cat-1', lifecycleState: 'trashed' })];
 
-    expect(canDeleteCategory('cat-1', expenses, incomes, [], [])).toEqual({ allowed: false, blockingCount: 3 });
+    expect(canDeleteCategory('cat-1', expenses, incomes, [], [])).toEqual({
+      allowed: false,
+      blockingCount: 3,
+    });
   });
 
   it('counts references across all four collections', () => {
@@ -268,7 +320,9 @@ describe('canDeleteCategory', () => {
     const recurringExpenses = [recurringExpenseDefinition({ categoryId: 'cat-1' })];
     const recurringIncomes = [recurringIncomeDefinition({ categoryId: 'cat-1' })];
 
-    expect(canDeleteCategory('cat-1', expenses, incomes, recurringExpenses, recurringIncomes)).toEqual({
+    expect(
+      canDeleteCategory('cat-1', expenses, incomes, recurringExpenses, recurringIncomes),
+    ).toEqual({
       allowed: false,
       blockingCount: 4,
     });

@@ -70,7 +70,11 @@ export function RecurringGroupField({ value, onChange }: RecurringGroupFieldProp
           placeholder={t('recurringGroups.newGroupNamePlaceholder')}
         />
         <View style={styles.actionRow}>
-          <Button label={t('common.save')} onPress={handleCreate} disabled={!newName.trim() || isSaving} />
+          <Button
+            label={t('common.save')}
+            onPress={handleCreate}
+            disabled={!newName.trim() || isSaving}
+          />
           <Button
             label={t('common.cancel')}
             variant="secondary"

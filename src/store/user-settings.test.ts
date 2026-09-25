@@ -45,7 +45,10 @@ import {
 } from './user-settings';
 /* eslint-enable import/first */
 
-type SubscribeDocCallback = (doc: unknown, meta: { fromCache: boolean; hasPendingWrites: boolean }) => void;
+type SubscribeDocCallback = (
+  doc: unknown,
+  meta: { fromCache: boolean; hasPendingWrites: boolean },
+) => void;
 
 // createDocumentStore's subscribe() no-ops on a repeat call for the same uid
 // (see create-document-store.ts), so — mirroring how _layout.tsx only calls
@@ -72,7 +75,13 @@ beforeEach(() => {
   mockBatchUpdate.mockClear();
   mockRecurringExpenseItems = [];
   mockCurrencyItems = [];
-  useUserSettingsStore.setState({ data: null, isLoading: true, error: null, fromCache: false, hasPendingWrites: false });
+  useUserSettingsStore.setState({
+    data: null,
+    isLoading: true,
+    error: null,
+    fromCache: false,
+    hasPendingWrites: false,
+  });
 });
 
 describe('seedDefaultUserSettings', () => {
@@ -122,8 +131,14 @@ describe('updateUserSettings', () => {
 
     expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid', { defaultCurrency: 'USD' });
     expect(mockBatchUpdate).toHaveBeenCalledWith([
-      { path: 'users/test-uid/recurringExpenses/r1', data: { 'budgetRecommendation.status': 'stale' } },
-      { path: 'users/test-uid/recurringExpenses/r2', data: { 'budgetRecommendation.status': 'stale' } },
+      {
+        path: 'users/test-uid/recurringExpenses/r1',
+        data: { 'budgetRecommendation.status': 'stale' },
+      },
+      {
+        path: 'users/test-uid/recurringExpenses/r2',
+        data: { 'budgetRecommendation.status': 'stale' },
+      },
     ]);
   });
 

@@ -30,23 +30,39 @@ export function isPendingInCycle(expense: ExpenseRecord, cycleRange: CycleRange)
 // even if it was due months ago). Shared by actualByCategory, the summary's
 // paid total and categoryMovements so all three always agree.
 export function isPaidInCycle(expense: ExpenseRecord, cycleRange: CycleRange): boolean {
-  return expense.paid && expense.lifecycleState === 'active' && isWithinCycle(expense.paidDate!.toDate(), cycleRange);
+  return (
+    expense.paid &&
+    expense.lifecycleState === 'active' &&
+    isWithinCycle(expense.paidDate!.toDate(), cycleRange)
+  );
 }
 
-function sumByCategory(expenses: ExpenseRecord[], predicate: (expense: ExpenseRecord) => boolean): Map<string, number> {
+function sumByCategory(
+  expenses: ExpenseRecord[],
+  predicate: (expense: ExpenseRecord) => boolean,
+): Map<string, number> {
   const totals = new Map<string, number>();
   for (const expense of expenses) {
     if (!predicate(expense)) continue;
-    totals.set(expense.categoryId, (totals.get(expense.categoryId) ?? 0) + expense.amountInDefaultCurrency);
+    totals.set(
+      expense.categoryId,
+      (totals.get(expense.categoryId) ?? 0) + expense.amountInDefaultCurrency,
+    );
   }
   return totals;
 }
 
-export function actualByCategory(expenses: ExpenseRecord[], cycleRange: CycleRange): Map<string, number> {
+export function actualByCategory(
+  expenses: ExpenseRecord[],
+  cycleRange: CycleRange,
+): Map<string, number> {
   return sumByCategory(expenses, (expense) => isPaidInCycle(expense, cycleRange));
 }
 
-export function pendingByCategory(expenses: ExpenseRecord[], cycleRange: CycleRange): Map<string, number> {
+export function pendingByCategory(
+  expenses: ExpenseRecord[],
+  cycleRange: CycleRange,
+): Map<string, number> {
   return sumByCategory(expenses, (expense) => isPendingInCycle(expense, cycleRange));
 }
 
@@ -97,7 +113,8 @@ export function suggestCategoryBudget(
 ): number | null {
   const currentCycle = getCurrentCycleRange(referenceDate);
   const paidInCategory = expenses.filter(
-    (expense) => expense.categoryId === categoryId && expense.paid && expense.lifecycleState === 'active',
+    (expense) =>
+      expense.categoryId === categoryId && expense.paid && expense.lifecycleState === 'active',
   );
 
   const firstPaidMs = Math.min(...paidInCategory.map((expense) => expense.paidDate!.toMillis()));
@@ -105,15 +122,24 @@ export function suggestCategoryBudget(
 
   const firstPaid = new Date(firstPaidMs);
   const monthsOfHistory =
-    (currentCycle.start.getFullYear() - firstPaid.getFullYear()) * 12 + (currentCycle.start.getMonth() - firstPaid.getMonth());
+    (currentCycle.start.getFullYear() - firstPaid.getFullYear()) * 12 +
+    (currentCycle.start.getMonth() - firstPaid.getMonth());
   const months = Math.min(monthsOfHistory, SUGGESTION_WINDOW_MONTHS);
 
   // One total per complete month, oldest first; months with no spending
   // stay 0 (they're part of the pattern).
   const monthlyTotals = Array.from({ length: months }, (_, index) => {
     const cycle: CycleRange = {
-      start: new Date(currentCycle.start.getFullYear(), currentCycle.start.getMonth() - months + index, 1),
-      end: new Date(currentCycle.start.getFullYear(), currentCycle.start.getMonth() - months + index + 1, 1),
+      start: new Date(
+        currentCycle.start.getFullYear(),
+        currentCycle.start.getMonth() - months + index,
+        1,
+      ),
+      end: new Date(
+        currentCycle.start.getFullYear(),
+        currentCycle.start.getMonth() - months + index + 1,
+        1,
+      ),
     };
     return paidInCategory
       .filter((expense) => isWithinCycle(expense.paidDate!.toDate(), cycle))
@@ -230,9 +256,18 @@ export type BudgetSummary = {
 
 // Same formulas as budget.tsx's summary card, extracted so they're testable
 // against the prototype's dataset — see §4, these are not to be reinterpreted.
-export function computeBudgetSummary({ expenses, incomes, cycleRange }: BudgetSummaryInput): BudgetSummary {
+export function computeBudgetSummary({
+  expenses,
+  incomes,
+  cycleRange,
+}: BudgetSummaryInput): BudgetSummary {
   const received = incomes
-    .filter((income) => income.paid && income.lifecycleState === 'active' && isWithinCycle(income.paidDate!.toDate(), cycleRange))
+    .filter(
+      (income) =>
+        income.paid &&
+        income.lifecycleState === 'active' &&
+        isWithinCycle(income.paidDate!.toDate(), cycleRange),
+    )
     .reduce((sum, income) => sum + income.amountInDefaultCurrency, 0);
 
   const paid = expenses

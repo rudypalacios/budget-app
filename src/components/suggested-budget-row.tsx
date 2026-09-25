@@ -26,7 +26,9 @@ export function SuggestedBudgetRow({ suggested, defaultCurrency }: SuggestedBudg
     <View style={styles.container}>
       <View style={styles.row}>
         <ThemedText type="small" style={styles.text}>
-          {t('budget.setBudgetSheet.suggested', { amount: formatCurrency(suggested, defaultCurrency) })}
+          {t('budget.setBudgetSheet.suggested', {
+            amount: formatCurrency(suggested, defaultCurrency),
+          })}
         </ThemedText>
         <IconButton
           name={{ ios: 'info.circle', android: 'info', web: 'info' }}
@@ -35,7 +37,9 @@ export function SuggestedBudgetRow({ suggested, defaultCurrency }: SuggestedBudg
           style={styles.infoButton}
         />
       </View>
-      {isInfoOpen && <ThemedText type="caption">{t('budget.setBudgetSheet.suggestedInfo')}</ThemedText>}
+      {isInfoOpen && (
+        <ThemedText type="caption">{t('budget.setBudgetSheet.suggestedInfo')}</ThemedText>
+      )}
     </View>
   );
 }

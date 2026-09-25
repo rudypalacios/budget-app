@@ -73,7 +73,9 @@ export function ExpenseForm({
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
-    (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
+    (category) =>
+      category.lifecycleState === 'active' &&
+      (category.type === 'expense' || category.type === 'both'),
   );
 
   const [values, setValues] = useState<ExpenseFormValues>(
@@ -122,7 +124,9 @@ export function ExpenseForm({
         <TextField
           label={t('common.amountWithCurrency', { currency: values.currency })}
           value={values.amount}
-          onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
+          onChangeText={(amount) =>
+            setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))
+          }
           keyboardType="decimal-pad"
           inputMode="decimal"
           placeholder={t('expenses.form.amountPlaceholder')}
@@ -141,7 +145,10 @@ export function ExpenseForm({
       <Select
         label={t('common.category')}
         value={values.categoryId}
-        options={expenseCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
+        options={expenseCategories.map((category) => ({
+          value: category.id,
+          label: categoryDisplayName(category),
+        }))}
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
@@ -174,7 +181,9 @@ export function ExpenseForm({
       {values.isRecurring && !disableRecurringToggle && (
         <RecurringGroupField
           value={values.recurringGroupId}
-          onChange={(recurringGroupId) => setValues((current) => ({ ...current, recurringGroupId }))}
+          onChange={(recurringGroupId) =>
+            setValues((current) => ({ ...current, recurringGroupId }))
+          }
         />
       )}
 
@@ -198,7 +207,12 @@ export function ExpenseForm({
       )}
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label={submitLabel}
+          onPress={handleSave}
+          disabled={!isValid}
+          style={styles.actionButton}
+        />
         <Button
           label={t('common.cancel')}
           variant="secondary"

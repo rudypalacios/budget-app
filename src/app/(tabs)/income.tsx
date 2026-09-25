@@ -21,7 +21,11 @@ import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { archiveIncome, setIncomeReceived, trashIncome, useIncomesStore } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
-import { archiveRecurringIncome, trashRecurringIncome, useRecurringIncomesStore } from '@/store/recurring-incomes';
+import {
+  archiveRecurringIncome,
+  trashRecurringIncome,
+  useRecurringIncomesStore,
+} from '@/store/recurring-incomes';
 import { useSessionStore } from '@/store/session';
 import { showToast } from '@/store/toast';
 
@@ -37,7 +41,9 @@ export default function IncomeScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const recurringDefinitions = useRecurringIncomesStore((state) => state.items);
 
-  const activeRecurring = recurringDefinitions.filter((definition) => definition.lifecycleState === 'active');
+  const activeRecurring = recurringDefinitions.filter(
+    (definition) => definition.lifecycleState === 'active',
+  );
   const uid = useSessionStore((state) => state.uid);
   const { refreshing, onRefresh } = usePullToRefresh(() => uid && runRecurringGeneration(uid));
   const scrollY = useSharedValue(0);
@@ -47,7 +53,9 @@ export default function IncomeScreen() {
   // the History tab, but drops off this planning list. Archived/trashed
   // income drops off every normal view, per FR-4a.
   const plannedOneTime = [
-    ...incomes.filter((income) => income.kind === 'oneTime' && !income.paid && income.lifecycleState === 'active'),
+    ...incomes.filter(
+      (income) => income.kind === 'oneTime' && !income.paid && income.lifecycleState === 'active',
+    ),
   ].sort((a, b) => b.date.toMillis() - a.date.toMillis());
 
   function handleArchiveDefinition(id: string, name: string) {
@@ -112,7 +120,10 @@ export default function IncomeScreen() {
                           {
                             label: t('common.edit'),
                             onPress: () =>
-                              router.push({ pathname: '/recurring-incomes/[id]/edit', params: { id: definition.id } }),
+                              router.push({
+                                pathname: '/recurring-incomes/[id]/edit',
+                                params: { id: definition.id },
+                              }),
                           },
                           {
                             label: t('common.archive'),
@@ -146,7 +157,9 @@ export default function IncomeScreen() {
                     <View style={styles.row}>
                       <View style={styles.rowMain}>
                         <ThemedText type="smallBold">{income.name}</ThemedText>
-                        <ThemedText type="caption">{formatShortDate(income.date.toDate())}</ThemedText>
+                        <ThemedText type="caption">
+                          {formatShortDate(income.date.toDate())}
+                        </ThemedText>
                         <ThemedText type="caption">{categoryDisplayName(category)}</ThemedText>
                       </View>
                       <View style={styles.rowEnd}>
@@ -158,7 +171,11 @@ export default function IncomeScreen() {
                           items={[
                             {
                               label: t('common.edit'),
-                              onPress: () => router.push({ pathname: '/income/[id]/edit', params: { id: income.id } }),
+                              onPress: () =>
+                                router.push({
+                                  pathname: '/income/[id]/edit',
+                                  params: { id: income.id },
+                                }),
                             },
                             {
                               label: t('common.archive'),

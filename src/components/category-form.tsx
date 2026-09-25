@@ -98,8 +98,14 @@ export function CategoryForm({
       </ThemedText>
       <View style={styles.chipRow}>
         {TYPES.map((option) => (
-          <Pressable key={option} onPress={() => setValues((current) => ({ ...current, type: option }))}>
-            <Chip label={t(TYPE_LABEL_KEY[option])} tone={values.type === option ? 'success' : 'neutral'} />
+          <Pressable
+            key={option}
+            onPress={() => setValues((current) => ({ ...current, type: option }))}
+          >
+            <Chip
+              label={t(TYPE_LABEL_KEY[option])}
+              tone={values.type === option ? 'success' : 'neutral'}
+            />
           </Pressable>
         ))}
       </View>
@@ -122,7 +128,12 @@ export function CategoryForm({
       )}
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label={submitLabel}
+          onPress={handleSave}
+          disabled={!isValid}
+          style={styles.actionButton}
+        />
         <Button
           label={t('common.cancel')}
           variant="secondary"

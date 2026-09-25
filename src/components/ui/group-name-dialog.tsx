@@ -21,7 +21,13 @@ export type GroupNameDialogProps = {
 // local state via `key` on the caller's side (same convention
 // ConfirmAmountModal already uses) — this component doesn't try to
 // resync mid-session if the prop changes under it.
-export function GroupNameDialog({ isOpen, title, initialName, onConfirm, onCancel }: GroupNameDialogProps) {
+export function GroupNameDialog({
+  isOpen,
+  title,
+  initialName,
+  onConfirm,
+  onCancel,
+}: GroupNameDialogProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialName);
 
@@ -40,7 +46,12 @@ export function GroupNameDialog({ isOpen, title, initialName, onConfirm, onCance
           disabled={!name.trim()}
           style={styles.actionButton}
         />
-        <Button label={t('common.cancel')} variant="secondary" onPress={onCancel} style={styles.actionButton} />
+        <Button
+          label={t('common.cancel')}
+          variant="secondary"
+          onPress={onCancel}
+          style={styles.actionButton}
+        />
       </View>
     </Dialog>
   );

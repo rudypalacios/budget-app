@@ -11,7 +11,13 @@ import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useSessionStore } from './session';
 import { useUserSettingsStore } from './user-settings';
-import type { ArchivableState, BudgetRecommendation, CurrencyCode, ExpenseRecord, RecurringExpense } from '@/types/firestore';
+import type {
+  ArchivableState,
+  BudgetRecommendation,
+  CurrencyCode,
+  ExpenseRecord,
+  RecurringExpense,
+} from '@/types/firestore';
 
 const store = createCollectionStore<RecurringExpense>('recurringExpenses');
 
@@ -85,12 +91,16 @@ type EditableRecurringExpenseFields = Pick<
 // changed it, trimmedPatch.exchangeRateToDefault is the just-submitted value
 // directly (no read needed); otherwise it's an unrelated, previously-settled
 // field, so a store read for it carries no staleness risk here.
-export async function updateRecurringExpense(id: string, patch: Partial<EditableRecurringExpenseFields>) {
+export async function updateRecurringExpense(
+  id: string,
+  patch: Partial<EditableRecurringExpenseFields>,
+) {
   const trimmedPatch = patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch;
   await store.update(id, trimmedPatch);
   if (trimmedPatch.amount !== undefined) {
     const definition = store.useStore.getState().items.find((item) => item.id === id);
-    const exchangeRateToDefault = trimmedPatch.exchangeRateToDefault ?? definition?.exchangeRateToDefault ?? 1;
+    const exchangeRateToDefault =
+      trimmedPatch.exchangeRateToDefault ?? definition?.exchangeRateToDefault ?? 1;
     await recomputeBudgetRecommendation(id, trimmedPatch.amount * exchangeRateToDefault);
   }
 }
@@ -107,7 +117,8 @@ export function archiveRecurringExpense(id: string) {
 
 export function trashRecurringExpense(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
-  if (!definition) throw new Error(`recurringExpenses store: trashRecurringExpense(${id}) — not found`);
+  if (!definition)
+    throw new Error(`recurringExpenses store: trashRecurringExpense(${id}) — not found`);
   const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
   return store.update(
     id,
@@ -120,7 +131,9 @@ export function trashRecurringExpense(id: string) {
 export function restoreRecurringExpense(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
   if (!definition?.trashedFromState) {
-    throw new Error(`recurringExpenses store: restoreRecurringExpense(${id}) — not currently trashed`);
+    throw new Error(
+      `recurringExpenses store: restoreRecurringExpense(${id}) — not currently trashed`,
+    );
   }
   return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
 }
@@ -162,7 +175,9 @@ export async function recomputeBudgetRecommendation(
 
   const budgetRecommendation = computeBudgetRecommendation({
     paidInstanceAmounts: paidInstances.map((instance) => instance.amountInDefaultCurrency),
-    budgetedAmount: budgetedAmountInDefaultCurrencyOverride ?? definition.amount * definition.exchangeRateToDefault,
+    budgetedAmount:
+      budgetedAmountInDefaultCurrencyOverride ??
+      definition.amount * definition.exchangeRateToDefault,
     now: new Date(),
     previousStatus: definition.budgetRecommendation.status,
     dismissedAtAverageAmount: definition.budgetRecommendation.dismissedAtAverageAmount,
@@ -179,7 +194,9 @@ export async function recomputeBudgetRecommendation(
 export async function recomputeStaleBudgetRecommendations(): Promise<void> {
   const staleIds = store.useStore
     .getState()
-    .items.filter((item) => item.lifecycleState === 'active' && item.budgetRecommendation.status === 'stale')
+    .items.filter(
+      (item) => item.lifecycleState === 'active' && item.budgetRecommendation.status === 'stale',
+    )
     .map((item) => item.id);
 
   await Promise.all(staleIds.map((id) => recomputeBudgetRecommendation(id)));

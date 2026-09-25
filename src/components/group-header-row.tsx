@@ -37,9 +37,12 @@ export function GroupHeaderRow<T extends GroupableItem>({
         onPress={() => onToggleExpanded(section.groupId)}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        accessibilityLabel={t(expanded ? 'recurringGroups.hideMembers' : 'recurringGroups.showMembers', {
-          name: section.name,
-        })}
+        accessibilityLabel={t(
+          expanded ? 'recurringGroups.hideMembers' : 'recurringGroups.showMembers',
+          {
+            name: section.name,
+          },
+        )}
         style={styles.groupHeader}
       >
         <View style={styles.groupHeaderMain}>
@@ -49,7 +52,9 @@ export function GroupHeaderRow<T extends GroupableItem>({
           </ThemedText>
         </View>
         <View style={styles.groupHeaderAside}>
-          <ThemedText type="smallBold">{formatCurrency(section.subtotal, defaultCurrency)}</ThemedText>
+          <ThemedText type="smallBold">
+            {formatCurrency(section.subtotal, defaultCurrency)}
+          </ThemedText>
           <SymbolView
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
             size={14}

@@ -22,7 +22,13 @@ import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import type { PaymentRow } from '@/lib/payments-dashboard';
 import type { DashboardBucket, GroupSection } from '@/lib/recurring-groups';
 import { useCategoriesStore } from '@/store/categories';
-import { archiveExpense, setExpenseGroupId, setExpensePaid, setExpenseSkipped, trashExpense } from '@/store/expenses';
+import {
+  archiveExpense,
+  setExpenseGroupId,
+  setExpensePaid,
+  setExpenseSkipped,
+  trashExpense,
+} from '@/store/expenses';
 import { archiveIncome, setIncomeReceived, setIncomeSkipped, trashIncome } from '@/store/incomes';
 import { runRecurringGeneration } from '@/store/recurring-generation';
 import { useSessionStore } from '@/store/session';
@@ -132,7 +138,9 @@ export default function PaymentsScreen() {
   }
 
   function overflowItemsFor(row: PaymentRow): OverflowMenuItem[] {
-    const items: OverflowMenuItem[] = [{ label: t('common.edit'), onPress: () => router.push(editHref(row)) }];
+    const items: OverflowMenuItem[] = [
+      { label: t('common.edit'), onPress: () => router.push(editHref(row)) },
+    ];
     // Skip only makes sense on an unpaid recurring instance — one-time
     // records have no skipped field (data-model.md §12), and skipping
     // something already paid isn't a meaningful action.
@@ -200,7 +208,12 @@ export default function PaymentsScreen() {
     );
   }
 
-  function renderSection(title: string, bucket: DashboardBucket, emptyLabel: string, isOverdue = false) {
+  function renderSection(
+    title: string,
+    bucket: DashboardBucket,
+    emptyLabel: string,
+    isOverdue = false,
+  ) {
     const isEmpty = bucket.rows.length === 0 && bucket.groups.length === 0;
     return (
       <View style={styles.section}>

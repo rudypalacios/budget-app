@@ -12,7 +12,13 @@ export type IconButtonProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function IconButton({ name, onPress, accessibilityLabel, size = 18, style }: IconButtonProps) {
+export function IconButton({
+  name,
+  onPress,
+  accessibilityLabel,
+  size = 18,
+  style,
+}: IconButtonProps) {
   const theme = useTheme();
 
   return (

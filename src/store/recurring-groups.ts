@@ -39,7 +39,10 @@ export function trashRecurringGroup(id: string) {
   const group = store.useStore.getState().items.find((item) => item.id === id);
   if (!group) throw new Error(`recurringGroups store: trashRecurringGroup(${id}) — not found`);
   const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
-  return store.update(id, trashTransition(group.lifecycleState as ArchivableState, new Date(), trashRetentionDays));
+  return store.update(
+    id,
+    trashTransition(group.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
+  );
 }
 
 // Engine-only for now — no UI calls this yet, restore/purge get a real

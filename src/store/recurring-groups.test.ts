@@ -20,7 +20,9 @@ jest.mock('@/lib/firebase/firestore', () => ({
 
 let mockTrashRetentionDays = 30;
 jest.mock('@/store/user-settings', () => ({
-  useUserSettingsStore: { getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }) },
+  useUserSettingsStore: {
+    getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }),
+  },
 }));
 
 import {
@@ -68,7 +70,9 @@ describe('renameRecurringGroup', () => {
   it('updates the name (trimmed)', async () => {
     await renameRecurringGroup('g1', '  Streaming  ');
 
-    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/recurringGroups/g1', { name: 'Streaming' });
+    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/recurringGroups/g1', {
+      name: 'Streaming',
+    });
   });
 });
 
@@ -103,7 +107,14 @@ describe('trashRecurringGroup', () => {
 describe('restoreRecurringGroup', () => {
   it('restores to trashedFromState and clears trash fields', async () => {
     useRecurringGroupsStore.setState({
-      items: [{ id: 'g1', lifecycleState: 'trashed', trashedFromState: 'active', archivedAt: null } as never],
+      items: [
+        {
+          id: 'g1',
+          lifecycleState: 'trashed',
+          trashedFromState: 'active',
+          archivedAt: null,
+        } as never,
+      ],
     });
 
     await restoreRecurringGroup('g1');

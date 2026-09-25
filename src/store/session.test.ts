@@ -73,7 +73,10 @@ describe('signUpWithEmail', () => {
     });
 
     await expect(signUpWithEmail('a@b.com', 'password123')).resolves.toEqual({ ok: true });
-    expect(mockLinkWithCredential).toHaveBeenCalledWith(fakeAuth.currentUser, { email: 'a@b.com', password: 'password123' });
+    expect(mockLinkWithCredential).toHaveBeenCalledWith(fakeAuth.currentUser, {
+      email: 'a@b.com',
+      password: 'password123',
+    });
     expect(mockSignInWithEmailAndPassword).not.toHaveBeenCalled();
   });
 
@@ -111,7 +114,10 @@ describe('signInWithEmail', () => {
 describe('signInWithGoogle', () => {
   it('links the credential to the existing anonymous uid on success', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-id-token' } });
-    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
+    mockGetTokens.mockResolvedValue({
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
     mockLinkWithCredential.mockResolvedValue({
       user: { uid: 'anon-uid', email: 'a@b.com', isAnonymous: false },
     });
@@ -125,12 +131,19 @@ describe('signInWithGoogle', () => {
       accessToken: 'google-access-token',
     });
     expect(mockSignInWithCredential).not.toHaveBeenCalled();
-    expect(useSessionStore.getState()).toMatchObject({ uid: 'anon-uid', email: 'a@b.com', isAnonymous: false });
+    expect(useSessionStore.getState()).toMatchObject({
+      uid: 'anon-uid',
+      email: 'a@b.com',
+      isAnonymous: false,
+    });
   });
 
   it('falls back to a plain sign-in when the Google account is already linked elsewhere', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-id-token' } });
-    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
+    mockGetTokens.mockResolvedValue({
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/credential-already-in-use' });
     mockSignInWithCredential.mockResolvedValue({
       user: { uid: 'other-real-uid', email: 'a@b.com', isAnonymous: false },
@@ -155,7 +168,10 @@ describe('signInWithGoogle', () => {
 
   it('maps a thrown Firebase error to a user-facing message and preserves the code', async () => {
     mockGoogleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-id-token' } });
-    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
+    mockGetTokens.mockResolvedValue({
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/network-request-failed' });
 
     await expect(signInWithGoogle()).resolves.toEqual({
@@ -171,7 +187,10 @@ describe('signInWithGoogle', () => {
       type: 'success',
       data: { idToken: 'google-id-token', user: { email: 'a@b.com' } },
     });
-    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
+    mockGetTokens.mockResolvedValue({
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
     mockLinkWithCredential.mockRejectedValue({ code: 'auth/email-already-in-use' });
 
     await expect(signInWithGoogle()).resolves.toEqual({
@@ -193,8 +212,13 @@ describe('signInWithGoogle', () => {
       type: 'success',
       data: { idToken: 'google-id-token', user: { email: 'a@b.com' } },
     });
-    mockGetTokens.mockResolvedValue({ idToken: 'google-id-token', accessToken: 'google-access-token' });
-    mockLinkWithCredential.mockRejectedValue({ code: 'auth/account-exists-with-different-credential' });
+    mockGetTokens.mockResolvedValue({
+      idToken: 'google-id-token',
+      accessToken: 'google-access-token',
+    });
+    mockLinkWithCredential.mockRejectedValue({
+      code: 'auth/account-exists-with-different-credential',
+    });
 
     await expect(signInWithGoogle()).resolves.toEqual({
       ok: false,
@@ -217,7 +241,11 @@ describe('completeGoogleLink', () => {
     const pendingCredential = { idToken: 'google-id-token' };
     await expect(completeGoogleLink(pendingCredential)).resolves.toEqual({ ok: true });
     expect(mockLinkWithCredential).toHaveBeenCalledWith(fakeAuth.currentUser, pendingCredential);
-    expect(useSessionStore.getState()).toMatchObject({ uid: 'real-uid', email: 'a@b.com', isAnonymous: false });
+    expect(useSessionStore.getState()).toMatchObject({
+      uid: 'real-uid',
+      email: 'a@b.com',
+      isAnonymous: false,
+    });
   });
 
   it('maps a thrown Firebase error to a user-facing message and preserves the code', async () => {

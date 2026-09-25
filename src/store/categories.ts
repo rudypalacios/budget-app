@@ -84,9 +84,17 @@ export function addCategory(input: {
 
 export function updateCategory(
   id: string,
-  patch: Partial<Pick<Category, 'name' | 'type' | 'color' | 'icon' | 'order' | 'lifecycleState' | 'monthlyBudget'>>,
+  patch: Partial<
+    Pick<
+      Category,
+      'name' | 'type' | 'color' | 'icon' | 'order' | 'lifecycleState' | 'monthlyBudget'
+    >
+  >,
 ) {
-  return store.update(id, patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch);
+  return store.update(
+    id,
+    patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch,
+  );
 }
 
 export type DeleteCategoryResult = { ok: true } | { ok: false; blockingCount: number };

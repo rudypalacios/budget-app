@@ -9,14 +9,22 @@ export const subscribeCurrencies = store.subscribe;
 // Deterministic doc ID = the currency code (data-model.md §3a) — a given
 // currency can only ever be added once, and this call is idempotent the
 // same way recurring-instance generation's setAt calls are.
-export function addCurrency(code: CurrencyCode, exchangeRateToDefault: number, rateSource: RateSource) {
+export function addCurrency(
+  code: CurrencyCode,
+  exchangeRateToDefault: number,
+  rateSource: RateSource,
+) {
   return store.setAt(code, { exchangeRateToDefault, rateSource, status: 'ok' });
 }
 
 // Re-fetch/re-enter flow (currencies/[code]/edit.tsx) — always clears
 // 'stale' back to 'ok', since supplying a fresh rate is the only way a
 // stale currency becomes usable again.
-export function updateCurrencyRate(code: CurrencyCode, exchangeRateToDefault: number, rateSource: RateSource) {
+export function updateCurrencyRate(
+  code: CurrencyCode,
+  exchangeRateToDefault: number,
+  rateSource: RateSource,
+) {
   return store.update(code, { exchangeRateToDefault, rateSource, status: 'ok' });
 }
 

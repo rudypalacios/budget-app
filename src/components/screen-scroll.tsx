@@ -1,8 +1,21 @@
 import { type PropsWithChildren } from 'react';
-import { Platform, RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import Animated, { useAnimatedScrollHandler, type SharedValue } from 'react-native-reanimated';
 
-import { BottomTabInset, MaxContentWidth, Spacing, TopBarInset, WebBottomNavHeight } from '@/constants/theme';
+import {
+  BottomTabInset,
+  MaxContentWidth,
+  Spacing,
+  TopBarInset,
+  WebBottomNavHeight,
+} from '@/constants/theme';
 import { useIsCompactWebNav } from '@/hooks/use-nav-layout';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -40,7 +53,13 @@ function assignScrollOffset(target: SharedValue<number> | undefined, y: number) 
 // background on this outer wrapper — not the max-width column — matters:
 // putting it on the narrower column left the browser's own background
 // showing through on either side on wide viewports.
-export function ScreenScroll({ children, contentStyle, refreshing, onRefresh, scrollOffset }: ScreenScrollProps) {
+export function ScreenScroll({
+  children,
+  contentStyle,
+  refreshing,
+  onRefresh,
+  scrollOffset,
+}: ScreenScrollProps) {
   const theme = useTheme();
   const isCompactWebNav = useIsCompactWebNav();
   const scrollHandler = useAnimatedScrollHandler((event) => {
@@ -53,7 +72,8 @@ export function ScreenScroll({ children, contentStyle, refreshing, onRefresh, sc
   const insetStyle = {
     paddingTop: Spacing.four + (isCompactWebNav ? 0 : TopBarInset),
     paddingBottom:
-      Spacing.four + (Platform.OS === 'web' ? (isCompactWebNav ? WebBottomNavHeight : 0) : BottomTabInset),
+      Spacing.four +
+      (Platform.OS === 'web' ? (isCompactWebNav ? WebBottomNavHeight : 0) : BottomTabInset),
   };
 
   return (
@@ -65,7 +85,11 @@ export function ScreenScroll({ children, contentStyle, refreshing, onRefresh, sc
         scrollEventThrottle={16}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} tintColor={theme.tint} />
+            <RefreshControl
+              refreshing={refreshing ?? false}
+              onRefresh={onRefresh}
+              tintColor={theme.tint}
+            />
           ) : undefined
         }
       >

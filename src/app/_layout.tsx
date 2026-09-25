@@ -16,7 +16,11 @@ import { subscribeRecurringExpenses, useRecurringExpensesStore } from '@/store/r
 import { subscribeRecurringGroups } from '@/store/recurring-groups';
 import { subscribeRecurringIncomes, useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { bootstrapSession, subscribeAuthState, useSessionStore } from '@/store/session';
-import { seedDefaultUserSettings, subscribeUserSettings, useUserSettingsStore } from '@/store/user-settings';
+import {
+  seedDefaultUserSettings,
+  subscribeUserSettings,
+  useUserSettingsStore,
+} from '@/store/user-settings';
 
 SplashScreen.preventAutoHideAsync();
 

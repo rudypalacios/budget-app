@@ -3,7 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MinTouchTarget, Spacing, TopBarInset, WebBottomNavHeight } from '@/constants/theme';
+import {
+  BottomTabInset,
+  MinTouchTarget,
+  Spacing,
+  TopBarInset,
+  WebBottomNavHeight,
+} from '@/constants/theme';
 import { useIsCompactWebNav } from '@/hooks/use-nav-layout';
 import { useTheme } from '@/hooks/use-theme';
 import { hideToast, runToastAction, useToastStore } from '@/store/toast';
@@ -43,7 +49,12 @@ export function Toast() {
   // Informational toast: unchanged — tap anywhere to dismiss early.
   if (actions.length === 0) {
     return (
-      <Pressable onPress={hideToast} accessibilityRole="alert" accessibilityLiveRegion="polite" style={surface}>
+      <Pressable
+        onPress={hideToast}
+        accessibilityRole="alert"
+        accessibilityLiveRegion="polite"
+        style={surface}
+      >
         <ThemedText type="smallBold" style={{ color: theme.background }}>
           {message}
         </ThemedText>
@@ -54,7 +65,11 @@ export function Toast() {
   // Toast with actions (fase 7): stays until an action or ✕ is pressed, so
   // the message itself is no longer a dismiss target — only those are.
   return (
-    <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={[surface, styles.withActions]}>
+    <View
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+      style={[surface, styles.withActions]}
+    >
       <View style={styles.messageRow}>
         <ThemedText type="smallBold" style={[styles.message, { color: theme.background }]}>
           {message}
@@ -66,7 +81,11 @@ export function Toast() {
           accessibilityLabel={t('common.close')}
           style={styles.closeButton}
         >
-          <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={16} tintColor={theme.background} />
+          <SymbolView
+            name={{ ios: 'xmark', android: 'close', web: 'close' }}
+            size={16}
+            tintColor={theme.background}
+          />
         </Pressable>
       </View>
       <View style={styles.actions}>

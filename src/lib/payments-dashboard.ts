@@ -56,7 +56,8 @@ export function expenseToPaymentRow(expense: WithId<ExpenseRecord>): PaymentRow 
     paid: expense.paid,
     paidDate: expense.paidDate ? expense.paidDate.toDate() : null,
     skipped: expense.kind === 'recurringInstance' ? expense.skipped : false,
-    skippedAt: expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
+    skippedAt:
+      expense.kind === 'recurringInstance' && expense.skippedAt ? expense.skippedAt.toDate() : null,
     recurringGroupId: expense.recurringGroupId,
   };
 }
@@ -87,7 +88,8 @@ export function buildPaymentRows(
     paid: income.paid,
     paidDate: income.paidDate ? income.paidDate.toDate() : null,
     skipped: income.kind === 'recurringInstance' ? income.skipped : false,
-    skippedAt: income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
+    skippedAt:
+      income.kind === 'recurringInstance' && income.skippedAt ? income.skippedAt.toDate() : null,
     recurringGroupId: null,
   }));
 

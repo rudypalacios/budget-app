@@ -60,7 +60,9 @@ export default function SettingsScreen() {
 
 function SettingsForm({ settings }: { settings: UserSettings }) {
   const { t } = useTranslation();
-  const [currency, setCurrency] = useState<UserSettings['defaultCurrency']>(settings.defaultCurrency);
+  const [currency, setCurrency] = useState<UserSettings['defaultCurrency']>(
+    settings.defaultCurrency,
+  );
   const [language, setLanguage] = useState<UserSettings['language']>(settings.language);
   const [theme, setTheme] = useState<UserSettings['theme']>(settings.theme);
   const [remindersEnabled, setRemindersEnabled] = useState(settings.reminders.enabled);
@@ -79,9 +81,19 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
   const email = useSessionStore((state) => state.email);
   const isAnonymous = useSessionStore((state) => state.isAnonymous);
 
-  const archivedCount = collectArchivedRecords(expenses, incomes, recurringExpenses, recurringIncomes, categories)
-    .length;
-  const trashedCount = collectTrashedRecords(expenses, incomes, recurringExpenses, recurringIncomes).length;
+  const archivedCount = collectArchivedRecords(
+    expenses,
+    incomes,
+    recurringExpenses,
+    recurringIncomes,
+    categories,
+  ).length;
+  const trashedCount = collectTrashedRecords(
+    expenses,
+    incomes,
+    recurringExpenses,
+    recurringIncomes,
+  ).length;
 
   async function handleSave() {
     await updateUserSettings({
@@ -117,7 +129,11 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
         ) : (
           <Card style={styles.manageRow}>
             <ThemedText type="smallBold">{email}</ThemedText>
-            <Button label={t('common.signOut')} variant="ghost" onPress={signOutAndRestartAnonymous} />
+            <Button
+              label={t('common.signOut')}
+              variant="ghost"
+              onPress={signOutAndRestartAnonymous}
+            />
           </Card>
         )}
       </View>
@@ -144,7 +160,10 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
           <View style={styles.chipRow}>
             {THEMES.map((option) => (
               <Pressable key={option} onPress={() => setTheme(option)}>
-                <Chip label={t(THEME_LABEL_KEY[option])} tone={theme === option ? 'success' : 'neutral'} />
+                <Chip
+                  label={t(THEME_LABEL_KEY[option])}
+                  tone={theme === option ? 'success' : 'neutral'}
+                />
               </Pressable>
             ))}
           </View>
@@ -166,7 +185,9 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
           <Card style={styles.manageRow}>
             <View>
               <ThemedText type="smallBold">{t('settings.categories.manage')}</ThemedText>
-              <ThemedText type="caption">{t('settings.categories.count', { count: categories.length })}</ThemedText>
+              <ThemedText type="caption">
+                {t('settings.categories.count', { count: categories.length })}
+              </ThemedText>
             </View>
             <ThemedText themeColor="textSecondary">›</ThemedText>
           </Card>
@@ -258,7 +279,9 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
           <Card style={styles.manageRow}>
             <View>
               <ThemedText type="smallBold">{t('settings.data.archive')}</ThemedText>
-              <ThemedText type="caption">{t('settings.data.archiveCount', { count: archivedCount })}</ThemedText>
+              <ThemedText type="caption">
+                {t('settings.data.archiveCount', { count: archivedCount })}
+              </ThemedText>
             </View>
             <ThemedText themeColor="textSecondary">›</ThemedText>
           </Card>
@@ -272,7 +295,9 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
           <Card style={styles.manageRow}>
             <View>
               <ThemedText type="smallBold">{t('settings.data.trash')}</ThemedText>
-              <ThemedText type="caption">{t('settings.data.trashCount', { count: trashedCount })}</ThemedText>
+              <ThemedText type="caption">
+                {t('settings.data.trashCount', { count: trashedCount })}
+              </ThemedText>
             </View>
             <ThemedText themeColor="textSecondary">›</ThemedText>
           </Card>
@@ -290,7 +315,11 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
         // the common Facebook/GitHub convention of also having sign-out as
         // the last action on the page.
         <View style={styles.section}>
-          <Button label={t('common.signOut')} variant="ghost" onPress={signOutAndRestartAnonymous} />
+          <Button
+            label={t('common.signOut')}
+            variant="ghost"
+            onPress={signOutAndRestartAnonymous}
+          />
         </View>
       )}
     </ScreenScroll>

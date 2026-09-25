@@ -19,10 +19,19 @@ jest.mock('@/lib/firebase/firestore', () => ({
 
 let mockTrashRetentionDays = 30;
 jest.mock('@/store/user-settings', () => ({
-  useUserSettingsStore: { getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }) },
+  useUserSettingsStore: {
+    getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }),
+  },
 }));
 
-import { archiveIncome, purgeIncome, restoreIncome, subscribeIncomes, trashIncome, useIncomesStore } from './incomes';
+import {
+  archiveIncome,
+  purgeIncome,
+  restoreIncome,
+  subscribeIncomes,
+  trashIncome,
+  useIncomesStore,
+} from './incomes';
 /* eslint-enable import/first */
 
 beforeAll(() => {
@@ -33,7 +42,13 @@ beforeEach(() => {
   mockUpdateDoc.mockClear();
   mockDeleteDoc.mockClear();
   mockTrashRetentionDays = 30;
-  useIncomesStore.setState({ items: [], isLoading: false, error: null, fromCache: false, hasPendingWrites: false });
+  useIncomesStore.setState({
+    items: [],
+    isLoading: false,
+    error: null,
+    fromCache: false,
+    hasPendingWrites: false,
+  });
 });
 
 describe('archiveIncome', () => {
@@ -42,7 +57,12 @@ describe('archiveIncome', () => {
 
     expect(mockUpdateDoc).toHaveBeenCalledWith(
       'users/test-uid/incomes/i1',
-      expect.objectContaining({ lifecycleState: 'archived', trashedFromState: null, trashedAt: null, purgeAt: null }),
+      expect.objectContaining({
+        lifecycleState: 'archived',
+        trashedFromState: null,
+        trashedAt: null,
+        purgeAt: null,
+      }),
     );
   });
 });
@@ -67,19 +87,33 @@ describe('trashIncome', () => {
 describe('restoreIncome', () => {
   it('restores to trashedFromState and clears trash fields', async () => {
     useIncomesStore.setState({
-      items: [{ id: 'i1', lifecycleState: 'trashed', trashedFromState: 'active', archivedAt: null } as never],
+      items: [
+        {
+          id: 'i1',
+          lifecycleState: 'trashed',
+          trashedFromState: 'active',
+          archivedAt: null,
+        } as never,
+      ],
     });
 
     await restoreIncome('i1');
 
     expect(mockUpdateDoc).toHaveBeenCalledWith(
       'users/test-uid/incomes/i1',
-      expect.objectContaining({ lifecycleState: 'active', trashedFromState: null, trashedAt: null, purgeAt: null }),
+      expect.objectContaining({
+        lifecycleState: 'active',
+        trashedFromState: null,
+        trashedAt: null,
+        purgeAt: null,
+      }),
     );
   });
 
   it('throws when the record is not currently trashed', () => {
-    useIncomesStore.setState({ items: [{ id: 'i1', lifecycleState: 'active', trashedFromState: null } as never] });
+    useIncomesStore.setState({
+      items: [{ id: 'i1', lifecycleState: 'active', trashedFromState: null } as never],
+    });
 
     expect(() => restoreIncome('i1')).toThrow();
   });

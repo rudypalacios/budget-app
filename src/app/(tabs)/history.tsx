@@ -97,7 +97,13 @@ type HistoryMonthGroupProps = {
   defaultExpanded: boolean;
 };
 
-function HistoryMonthGroup({ month, rows, categories, defaultCurrency, defaultExpanded }: HistoryMonthGroupProps) {
+function HistoryMonthGroup({
+  month,
+  rows,
+  categories,
+  defaultCurrency,
+  defaultExpanded,
+}: HistoryMonthGroupProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -108,7 +114,9 @@ function HistoryMonthGroup({ month, rows, categories, defaultCurrency, defaultEx
         onPress={() => setExpanded((value) => !value)}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        accessibilityLabel={t(expanded ? 'history.collapseMonth' : 'history.expandMonth', { month })}
+        accessibilityLabel={t(expanded ? 'history.collapseMonth' : 'history.expandMonth', {
+          month,
+        })}
         style={styles.groupHeader}
       >
         <SectionHeader title={month} style={styles.groupHeaderTitle} />
@@ -136,10 +144,17 @@ function HistoryMonthGroup({ month, rows, categories, defaultCurrency, defaultEx
                     type="smallBold"
                     // Skipped rows stay neutral, same convention as the
                     // Payments screen — see src/app/(tabs)/index.tsx.
-                    themeColor={row.skipped ? 'text' : row.direction === 'income' ? 'success' : 'danger'}
+                    themeColor={
+                      row.skipped ? 'text' : row.direction === 'income' ? 'success' : 'danger'
+                    }
                   >
                     {row.direction === 'income' ? '+' : '-'}
-                    {formatCurrencyWithConversion(row.amount, row.currency, row.amountInDefaultCurrency, defaultCurrency)}
+                    {formatCurrencyWithConversion(
+                      row.amount,
+                      row.currency,
+                      row.amountInDefaultCurrency,
+                      defaultCurrency,
+                    )}
                   </ThemedText>
                 </View>
                 {index < rows.length - 1 && <Divider style={styles.divider} />}

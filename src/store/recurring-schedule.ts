@@ -103,7 +103,12 @@ export function computeIncomeOccurrenceDates(
 ): Date[] {
   if (definition.frequency === 'monthly') {
     const dayOfMonth = definition.dayOfMonth ?? definition.startDate.getDate();
-    return computeMonthlyOccurrenceDates(dayOfMonth, definition.startDate, lastGeneratedDate, throughInclusive);
+    return computeMonthlyOccurrenceDates(
+      dayOfMonth,
+      definition.startDate,
+      lastGeneratedDate,
+      throughInclusive,
+    );
   }
 
   const stepDays = definition.frequency === 'weekly' ? 7 : 14;

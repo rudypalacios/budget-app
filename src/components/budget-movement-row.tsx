@@ -43,9 +43,17 @@ export function BudgetMovementRow({ expense, defaultCurrency }: BudgetMovementRo
           {/* An icon, not a chip: it says "recurring" without a second chip
               crowding the row (the paid/pending chip is the one that changes). */}
           {expense.kind === 'recurringInstance' && (
-            <View accessible accessibilityRole="image" accessibilityLabel={t('budget.detail.movementRecurring')}>
+            <View
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={t('budget.detail.movementRecurring')}
+            >
               <SymbolView
-                name={{ ios: 'arrow.triangle.2.circlepath', android: 'autorenew', web: 'autorenew' }}
+                name={{
+                  ios: 'arrow.triangle.2.circlepath',
+                  android: 'autorenew',
+                  web: 'autorenew',
+                }}
                 size={14}
                 tintColor={theme.textSecondary}
               />
@@ -64,7 +72,12 @@ export function BudgetMovementRow({ expense, defaultCurrency }: BudgetMovementRo
         </View>
       </View>
       <ThemedText type="small" style={styles.amount}>
-        {formatCurrencyWithConversion(amount, expense.currency, expense.amountInDefaultCurrency, defaultCurrency)}
+        {formatCurrencyWithConversion(
+          amount,
+          expense.currency,
+          expense.amountInDefaultCurrency,
+          defaultCurrency,
+        )}
       </ThemedText>
     </View>
   );

@@ -47,7 +47,10 @@ export function Select<T extends string>({ label, value, options, onChange }: Se
         accessibilityLabel={label}
         accessibilityValue={{ text: selected?.label }}
         accessibilityState={{ expanded: isOpen }}
-        style={[styles.field, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+        style={[
+          styles.field,
+          { borderColor: theme.border, backgroundColor: theme.backgroundElement },
+        ]}
       >
         <ThemedText>{selected?.label ?? t('common.selectPlaceholder')}</ThemedText>
         <ThemedText themeColor="textSecondary">{isOpen ? '▴' : '▾'}</ThemedText>
@@ -67,10 +70,15 @@ export function Select<T extends string>({ label, value, options, onChange }: Se
             accessibilityState={{ selected: option.value === value }}
             style={[
               styles.option,
-              { backgroundColor: hoveredValue === option.value ? theme.backgroundSelected : 'transparent' },
+              {
+                backgroundColor:
+                  hoveredValue === option.value ? theme.backgroundSelected : 'transparent',
+              },
             ]}
           >
-            <ThemedText themeColor={option.value === value ? 'tint' : 'text'}>{option.label}</ThemedText>
+            <ThemedText themeColor={option.value === value ? 'tint' : 'text'}>
+              {option.label}
+            </ThemedText>
           </Pressable>
         ))}
       </FloatingPanel>

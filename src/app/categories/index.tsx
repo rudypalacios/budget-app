@@ -84,7 +84,13 @@ export default function CategoriesScreen() {
 
       <Card style={styles.card}>
         {categories.map((category, index) => {
-          const itemCount = countCategoryItems(category.id, expenses, incomes, recurringExpenses, recurringIncomes);
+          const itemCount = countCategoryItems(
+            category.id,
+            expenses,
+            incomes,
+            recurringExpenses,
+            recurringIncomes,
+          );
           // Item count, plus the budgeted amount when one's set — e.g.
           // "12 items · Budget: Q 500.00" or just "12 items" for a
           // budgetless category. Previously a bare "(12 · Q 500.00)" with
@@ -114,7 +120,10 @@ export default function CategoriesScreen() {
                       {
                         label: t('common.edit'),
                         onPress: () =>
-                          router.push({ pathname: '/categories/[id]/edit', params: { id: category.id } }),
+                          router.push({
+                            pathname: '/categories/[id]/edit',
+                            params: { id: category.id },
+                          }),
                       },
                       {
                         label: t('common.deletePermanently'),
@@ -124,7 +133,9 @@ export default function CategoriesScreen() {
                   />
                   <View style={styles.switchRow}>
                     <ThemedText type="caption">
-                      {category.lifecycleState === 'active' ? t('categories.active') : t('categories.archived')}
+                      {category.lifecycleState === 'active'
+                        ? t('categories.active')
+                        : t('categories.archived')}
                     </ThemedText>
                     <Switch
                       value={category.lifecycleState === 'active'}
@@ -146,7 +157,11 @@ export default function CategoriesScreen() {
         })}
       </Card>
 
-      <Dialog isOpen={deleteTarget !== null} onClose={closeDeleteDialog} title={t('categories.confirmDeleteTitle')}>
+      <Dialog
+        isOpen={deleteTarget !== null}
+        onClose={closeDeleteDialog}
+        title={t('categories.confirmDeleteTitle')}
+      >
         {blockedCount !== null ? (
           <>
             <ThemedText>{t('categories.deleteBlocked', { count: blockedCount })}</ThemedText>
@@ -154,7 +169,9 @@ export default function CategoriesScreen() {
           </>
         ) : (
           <>
-            <ThemedText>{t('categories.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}</ThemedText>
+            <ThemedText>
+              {t('categories.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}
+            </ThemedText>
             <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
               <Button
                 label={t('categories.confirmDeleteButton')}

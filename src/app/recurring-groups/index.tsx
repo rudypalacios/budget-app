@@ -132,7 +132,10 @@ export default function RecurringGroupsScreen() {
                     accessibilityLabel={t('common.actionsFor', { name: group.name })}
                     items={[
                       { label: t('common.rename'), onPress: () => setRenameTarget(group) },
-                      { label: t('common.deletePermanently'), onPress: () => setDeleteTarget(group) },
+                      {
+                        label: t('common.deletePermanently'),
+                        onPress: () => setDeleteTarget(group),
+                      },
                     ]}
                   />
                   <View style={styles.switchRow}>
@@ -177,7 +180,9 @@ export default function RecurringGroupsScreen() {
         onClose={() => setDeleteTarget(null)}
         title={t('recurringGroups.confirmDeleteTitle')}
       >
-        <ThemedText>{t('recurringGroups.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}</ThemedText>
+        <ThemedText>
+          {t('recurringGroups.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}
+        </ThemedText>
         <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
           <Button
             label={t('common.deletePermanently')}

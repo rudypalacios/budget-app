@@ -88,7 +88,12 @@ export function AmountCurrencyField({
       </View>
       {options.length > 1 && (
         <View style={styles.currencyField}>
-          <Select label={currencyLabel} value={currency} options={options} onChange={onCurrencyChange} />
+          <Select
+            label={currencyLabel}
+            value={currency}
+            options={options}
+            onChange={onCurrencyChange}
+          />
         </View>
       )}
     </View>

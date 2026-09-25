@@ -97,9 +97,17 @@ export function PaymentRowItem({
             style={[isCompleted && styles.completedText]}
           >
             {row.direction === 'income' ? '+' : '-'}
-            {formatCurrencyWithConversion(row.amount, row.currency, row.amountInDefaultCurrency, defaultCurrency)}
+            {formatCurrencyWithConversion(
+              row.amount,
+              row.currency,
+              row.amountInDefaultCurrency,
+              defaultCurrency,
+            )}
           </ThemedText>
-          <OverflowMenu accessibilityLabel={t('common.actionsFor', { name: row.name })} items={overflowItems} />
+          <OverflowMenu
+            accessibilityLabel={t('common.actionsFor', { name: row.name })}
+            items={overflowItems}
+          />
         </View>
         <View style={styles.bottomLine}>
           {isCompleted ? (

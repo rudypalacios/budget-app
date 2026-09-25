@@ -11,14 +11,38 @@ import { useTheme } from '@/hooks/use-theme';
 // scannable and steers toward icons that read well at chip/list size,
 // grouped loosely food/home/transport/money/other rather than alphabetized.
 const EMOJI_OPTIONS = [
-  '🍔', '🛒', '☕', '🍿',
-  '🏠', '💡', '🔧', '🛠️',
-  '🚗', '⛽', '🚌', '✈️',
-  '💰', '📈', '📉', '🧾',
-  '🏥', '💊', '🏋️', '👶',
-  '👕', '🎬', '🎮', '⚽',
-  '📚', '🎓', '🎵', '📱',
-  '💻', '🎁', '🐶', '🐾',
+  '🍔',
+  '🛒',
+  '☕',
+  '🍿',
+  '🏠',
+  '💡',
+  '🔧',
+  '🛠️',
+  '🚗',
+  '⛽',
+  '🚌',
+  '✈️',
+  '💰',
+  '📈',
+  '📉',
+  '🧾',
+  '🏥',
+  '💊',
+  '🏋️',
+  '👶',
+  '👕',
+  '🎬',
+  '🎮',
+  '⚽',
+  '📚',
+  '🎓',
+  '🎵',
+  '📱',
+  '💻',
+  '🎁',
+  '🐶',
+  '🐾',
 ] as const;
 
 export type EmojiPickerProps = {
@@ -61,7 +85,10 @@ export function EmojiPicker({ label, value, onChange }: EmojiPickerProps) {
         accessibilityLabel={label}
         accessibilityValue={{ text: value ?? t('categories.form.iconNone') }}
         accessibilityState={{ expanded: isOpen }}
-        style={[styles.field, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+        style={[
+          styles.field,
+          { borderColor: theme.border, backgroundColor: theme.backgroundElement },
+        ]}
       >
         <ThemedText style={styles.previewText}>{value ?? '—'}</ThemedText>
         <ThemedText themeColor="textSecondary">{isOpen ? '▴' : '▾'}</ThemedText>
@@ -74,7 +101,10 @@ export function EmojiPicker({ label, value, onChange }: EmojiPickerProps) {
             accessibilityRole="button"
             accessibilityLabel={t('categories.form.iconNone')}
             accessibilityState={{ selected: value === null }}
-            style={[styles.cell, { backgroundColor: value === null ? theme.backgroundSelected : 'transparent' }]}
+            style={[
+              styles.cell,
+              { backgroundColor: value === null ? theme.backgroundSelected : 'transparent' },
+            ]}
           >
             <ThemedText themeColor="textSecondary">—</ThemedText>
           </Pressable>
@@ -85,7 +115,10 @@ export function EmojiPicker({ label, value, onChange }: EmojiPickerProps) {
               accessibilityRole="button"
               accessibilityLabel={emoji}
               accessibilityState={{ selected: emoji === value }}
-              style={[styles.cell, { backgroundColor: emoji === value ? theme.backgroundSelected : 'transparent' }]}
+              style={[
+                styles.cell,
+                { backgroundColor: emoji === value ? theme.backgroundSelected : 'transparent' },
+              ]}
             >
               <ThemedText style={styles.emojiText}>{emoji}</ThemedText>
             </Pressable>

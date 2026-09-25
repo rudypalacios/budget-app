@@ -27,7 +27,9 @@ export async function fetchExchangeRate(from: CurrencyCode, to: CurrencyCode): P
   }
 
   if (!response.ok) {
-    throw new ExchangeRateFetchError(`Exchange rate request failed with status ${response.status}.`);
+    throw new ExchangeRateFetchError(
+      `Exchange rate request failed with status ${response.status}.`,
+    );
   }
 
   const data = (await response.json()) as ExchangeRateApiResponse;
