@@ -1,4 +1,4 @@
-import { computeBudgetRecommendation, isRecommendationPending } from './budget-recommendation';
+import { canRevertRecommendation, computeBudgetRecommendation, isRecommendationPending } from './budget-recommendation';
 import type { RecurringExpense, Timestamp } from '@/types/firestore';
 
 function asDate(value: Timestamp | null): Date | null {
@@ -128,5 +128,44 @@ describe('isRecommendationPending', () => {
     for (const status of ['accepted', 'dismissed', 'stale'] as const) {
       expect(isRecommendationPending({ ...base, status } as RecurringExpense['budgetRecommendation'])).toBe(false);
     }
+  });
+});
+
+describe('canRevertRecommendation', () => {
+  const pending = {
+    rollingAverageAmount: 112,
+    sampleSize: 6,
+    computedAt: null,
+    suggestedBudgetedAmount: 112,
+    status: 'pending' as const,
+    dismissedAt: null,
+    dismissedAtAverageAmount: null,
+  };
+  const snapshot = { amount: 85, budgetRecommendation: pending };
+
+  it('allows undoing an accept while the definition still holds the accepted amount', () => {
+    const current = { amount: 112, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' as const } };
+    expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(true);
+  });
+
+  it('handles a foreign-currency accept (amount = suggested / rate)', () => {
+    const current = { amount: 112 / 7.7, exchangeRateToDefault: 7.7, budgetRecommendation: { ...pending, status: 'accepted' as const } };
+    expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(true);
+  });
+
+  it('refuses once the amount was edited after accepting', () => {
+    const current = { amount: 120, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' as const } };
+    expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(false);
+  });
+
+  it('refuses once a recompute changed the status', () => {
+    const current = { amount: 112, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'pending' as const } };
+    expect(canRevertRecommendation(current, snapshot, 'accepted')).toBe(false);
+  });
+
+  it('allows undoing a keep while the amount is unchanged', () => {
+    const current = { amount: 85, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'dismissed' as const } };
+    expect(canRevertRecommendation(current, snapshot, 'dismissed')).toBe(true);
+    expect(canRevertRecommendation({ ...current, amount: 90 }, snapshot, 'dismissed')).toBe(false);
   });
 });

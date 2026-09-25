@@ -94,3 +94,38 @@ export function computeBudgetRecommendation({
 export function isRecommendationPending(recommendation: BudgetRecommendation): boolean {
   return recommendation.status === 'pending' && recommendation.suggestedBudgetedAmount !== null;
 }
+
+export type RecommendationAction = 'accepted' | 'dismissed';
+
+// What Undo restores: the definition's amount and recommendation exactly as
+// they were before Accept/Keep (fase 7).
+export type RecommendationSnapshot = {
+  amount: number;
+  budgetRecommendation: BudgetRecommendation;
+};
+
+type RevertableDefinition = RecommendationSnapshot & { exchangeRateToDefault: number };
+
+// Undo is only safe if the definition still looks exactly like the action
+// left it. If anything moved it on since (a recompute, an edit from another
+// device), restoring the snapshot would overwrite that newer state — so the
+// undo quietly does nothing instead (spec phase 7, safety guard).
+export function canRevertRecommendation(
+  current: RevertableDefinition,
+  snapshot: RecommendationSnapshot,
+  action: RecommendationAction,
+): boolean {
+  if (current.budgetRecommendation.status !== action) return false;
+
+  if (action === 'dismissed') {
+    return current.amount === snapshot.amount;
+  }
+
+  // Accept set amount = suggested / exchangeRateToDefault (see
+  // acceptBudgetRecommendation); compare with a tolerance since that's a
+  // floating-point division.
+  const suggested = snapshot.budgetRecommendation.suggestedBudgetedAmount;
+  if (suggested === null) return false;
+  const acceptedAmount = suggested / current.exchangeRateToDefault;
+  return Math.abs(current.amount - acceptedAmount) < 1e-6;
+}

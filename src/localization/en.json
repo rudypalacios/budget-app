@@ -22,7 +22,8 @@
     "delete": "Delete",
     "restore": "Restore",
     "deletePermanently": "Delete permanently",
-    "rename": "Rename"
+    "rename": "Rename",
+    "close": "Close"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" moved to Archive",
@@ -255,8 +256,10 @@
       "message": "6-month avg {{average}} vs budgeted {{budgeted}}",
       "accept": "Update budget",
       "dismiss": "Keep current",
-      "accepted": "Updated {{name}}'s budget",
-      "dismissed": "Dismissed for {{name}}"
+      "accepted": "Budget for {{name}} updated to {{amount}} from next month.",
+      "dismissed": "Keeping the budget for {{name}}. We'll tell you if the average drifts further.",
+      "undo": "Undo",
+      "saveFailed": "Couldn't save the change. Please try again."
     }
   },
   "recurringIncome": {

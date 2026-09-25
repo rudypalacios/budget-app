@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,9 +7,13 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { WithId } from '@/lib/firebase/firestore.types';
-import { isRecommendationPending } from '@/lib/budget-recommendation';
+import { isRecommendationPending, type RecommendationSnapshot } from '@/lib/budget-recommendation';
 import { formatCurrency } from '@/lib/format-currency';
-import { acceptBudgetRecommendation, dismissBudgetRecommendation } from '@/store/recurring-expenses';
+import {
+  acceptBudgetRecommendation,
+  dismissBudgetRecommendation,
+  revertBudgetRecommendation,
+} from '@/store/recurring-expenses';
 import { showToast } from '@/store/toast';
 import { useUserSettingsStore } from '@/store/user-settings';
 import type { RecurringExpense } from '@/types/firestore';
@@ -33,14 +38,46 @@ export function BudgetRecommendationBadge({ definition }: BudgetRecommendationBa
     return null;
   }
 
-  async function handleAccept() {
-    await acceptBudgetRecommendation(definition.id);
-    showToast(t('recurringExpense.recommendation.accepted', { name: definition.name }));
+  const suggested = budgetRecommendation.suggestedBudgetedAmount;
+  // Taken before the action so Undo can restore exactly this (fase 7).
+  const snapshot: RecommendationSnapshot = { amount: definition.amount, budgetRecommendation };
+
+  // Writes aren't awaited (same reason as the Set budget sheet): Firestore
+  // only resolves on server ack, which never comes offline, and the local
+  // cache already reflects the change — so the toast shows immediately. A
+  // real rejection replaces it with an error toast.
+  function onWriteFailed() {
+    showToast(t('recurringExpense.recommendation.saveFailed'));
   }
 
-  async function handleDismiss() {
-    await dismissBudgetRecommendation(definition.id);
-    showToast(t('recurringExpense.recommendation.dismissed', { name: definition.name }));
+  function undo(action: 'accepted' | 'dismissed') {
+    revertBudgetRecommendation(definition.id, snapshot, action).catch(onWriteFailed);
+  }
+
+  function handleAccept() {
+    acceptBudgetRecommendation(definition.id).catch(onWriteFailed);
+    showToast(
+      t('recurringExpense.recommendation.accepted', {
+        name: definition.name,
+        amount: formatCurrency(suggested, defaultCurrency),
+      }),
+      {
+        actions: [
+          { label: t('recurringExpense.recommendation.undo'), onPress: () => undo('accepted') },
+          {
+            label: t('common.edit'),
+            onPress: () => router.push({ pathname: '/recurring-expenses/[id]/edit', params: { id: definition.id } }),
+          },
+        ],
+      },
+    );
+  }
+
+  function handleDismiss() {
+    dismissBudgetRecommendation(definition.id).catch(onWriteFailed);
+    showToast(t('recurringExpense.recommendation.dismissed', { name: definition.name }), {
+      actions: [{ label: t('recurringExpense.recommendation.undo'), onPress: () => undo('dismissed') }],
+    });
   }
 
   // Presupuesto redesign D14 (v9 look): a tinted warning box with both

@@ -36,6 +36,7 @@ import {
   purgeRecurringExpense,
   recomputeBudgetRecommendation,
   restoreRecurringExpense,
+  revertBudgetRecommendation,
   subscribeRecurringExpenses,
   trashRecurringExpense,
   useRecurringExpensesStore,
@@ -202,5 +203,28 @@ describe('acceptBudgetRecommendation', () => {
       'users/test-uid/recurringExpenses/r1',
       expect.objectContaining({ amount: 20 }),
     );
+  });
+});
+
+describe('revertBudgetRecommendation', () => {
+  const pending = { ...EMPTY_BUDGET_RECOMMENDATION, status: 'pending' as const, rollingAverageAmount: 112, suggestedBudgetedAmount: 112 };
+  const snapshot = { amount: 85, budgetRecommendation: pending };
+
+  it('restores the pre-accept amount and recommendation', async () => {
+    useRecurringExpensesStore.setState({
+      items: [{ id: 'r1', amount: 112, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' } } as never],
+    });
+
+    await expect(revertBudgetRecommendation('r1', snapshot, 'accepted')).resolves.toBe(true);
+    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/recurringExpenses/r1', expect.objectContaining({ amount: 85, budgetRecommendation: pending }));
+  });
+
+  it('writes nothing when the definition moved on since the action', async () => {
+    useRecurringExpensesStore.setState({
+      items: [{ id: 'r1', amount: 130, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' } } as never],
+    });
+
+    await expect(revertBudgetRecommendation('r1', snapshot, 'accepted')).resolves.toBe(false);
+    expect(mockUpdateDoc).not.toHaveBeenCalled();
   });
 });

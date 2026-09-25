@@ -1,5 +1,10 @@
 import { createCollectionStore } from './create-collection-store';
-import { computeBudgetRecommendation } from '@/lib/budget-recommendation';
+import {
+  canRevertRecommendation,
+  computeBudgetRecommendation,
+  type RecommendationAction,
+  type RecommendationSnapshot,
+} from '@/lib/budget-recommendation';
 import { firestoreClient } from '@/lib/firebase/firestore';
 import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
@@ -222,4 +227,23 @@ export function dismissBudgetRecommendation(id: string) {
       dismissedAtAverageAmount: definition.budgetRecommendation.rollingAverageAmount,
     },
   });
+}
+
+// Fase 7 Undo for Accept/Keep on a budget recommendation. Goes through
+// store.update directly because updateRecurringExpense only takes
+// user-editable fields, and budgetRecommendation isn't one. Returns false
+// (and writes nothing) when canRevertRecommendation says the definition has
+// moved on since the action.
+export function revertBudgetRecommendation(
+  id: string,
+  snapshot: RecommendationSnapshot,
+  action: RecommendationAction,
+): Promise<boolean> {
+  const current = store.useStore.getState().items.find((item) => item.id === id);
+  if (!current || !canRevertRecommendation(current, snapshot, action)) {
+    return Promise.resolve(false);
+  }
+  return store
+    .update(id, { amount: snapshot.amount, budgetRecommendation: snapshot.budgetRecommendation })
+    .then(() => true);
 }
