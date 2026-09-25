@@ -15,7 +15,12 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isRecommendationPending } from '@/lib/budget-recommendation';
-import { budgetPercent, projectedTotal, type BudgetStatus, type CategoryMovements } from '@/lib/budget-status';
+import {
+  budgetPercent,
+  projectedTotal,
+  type BudgetStatus,
+  type CategoryMovements,
+} from '@/lib/budget-status';
 import { categoryDisplayName } from '@/lib/category-display';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { formatCurrency } from '@/lib/format-currency';
@@ -41,10 +46,11 @@ export type CategoryBudgetCardProps = {
   suggestedBudget: number | null;
 };
 
-const STATUS_CHIP: Partial<Record<BudgetStatus, { labelKey: string; tone: 'danger' | 'warning' }>> = {
-  over: { labelKey: 'budget.overBudgetChip', tone: 'danger' },
-  mayExceed: { labelKey: 'budget.mayExceedChip', tone: 'warning' },
-};
+const STATUS_CHIP: Partial<Record<BudgetStatus, { labelKey: string; tone: 'danger' | 'warning' }>> =
+  {
+    over: { labelKey: 'budget.overBudgetChip', tone: 'danger' },
+    mayExceed: { labelKey: 'budget.mayExceedChip', tone: 'warning' },
+  };
 
 const A11Y_STATUS_KEY: Partial<Record<BudgetStatus, string>> = {
   over: 'budget.a11y.statusOver',
@@ -92,7 +98,12 @@ export function CategoryBudgetCard({
   return (
     // v9: an over-budget card is outlined in the danger color too, so it
     // stands out in the list without relying on the chip/bar alone.
-    <Card style={[styles.categoryCard, status === 'over' && { borderWidth: 1, borderColor: theme.danger }]}>
+    <Card
+      style={[
+        styles.categoryCard,
+        status === 'over' && { borderWidth: 1, borderColor: theme.danger },
+      ]}
+    >
       <Pressable
         onPress={() => setExpanded((value) => !value)}
         accessibilityRole="button"
@@ -108,7 +119,9 @@ export function CategoryBudgetCard({
           <View style={styles.faceAmounts}>
             <ThemedText type="smallBold">{format(actual)}</ThemedText>
             <ThemedText type="caption">
-              {budgeted === null ? t('budget.noBudgetSet') : t('budget.ofBudgeted', { amount: format(budgeted) })}
+              {budgeted === null
+                ? t('budget.noBudgetSet')
+                : t('budget.ofBudgeted', { amount: format(budgeted) })}
             </ThemedText>
           </View>
           <SymbolView
@@ -177,7 +190,14 @@ type CategoryStatusLinesProps = {
 // §5.6 points 1-2: one status line, plus a projection line whenever
 // something is still pending this cycle. Whole lines are colored (not just
 // the amount) — agreed simplification to avoid <Trans> markup.
-function CategoryStatusLines({ status, budgeted, actual, pending, percent, format }: CategoryStatusLinesProps) {
+function CategoryStatusLines({
+  status,
+  budgeted,
+  actual,
+  pending,
+  percent,
+  format,
+}: CategoryStatusLinesProps) {
   const { t } = useTranslation();
 
   if (budgeted === null) {
@@ -206,7 +226,9 @@ function CategoryStatusLines({ status, budgeted, actual, pending, percent, forma
           {t('budget.detail.exact')}
         </ThemedText>
       ) : (
-        <ThemedText type="caption">{t('budget.detail.remaining', { amount: format(budgeted - actual), percent })}</ThemedText>
+        <ThemedText type="caption">
+          {t('budget.detail.remaining', { amount: format(budgeted - actual), percent })}
+        </ThemedText>
       )}
       {pending > 0 && (
         <ThemedText type="caption" themeColor={projected > budgeted ? 'warning' : 'textSecondary'}>
@@ -238,7 +260,11 @@ type MovementsSectionProps = {
 // which used to repeat them. A pending budget recommendation, the one
 // actionable thing that section had, now sits right under the movement it
 // comes from.
-function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: MovementsSectionProps) {
+function MovementsSection({
+  movements,
+  recurringDefinitions,
+  defaultCurrency,
+}: MovementsSectionProps) {
   const { t } = useTranslation();
   const [showAll, setShowAll] = useState(false);
 
@@ -248,7 +274,9 @@ function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: 
   const visible = showAll ? all : all.slice(0, MOVEMENTS_PREVIEW_COUNT);
   const hasMore = all.length > MOVEMENTS_PREVIEW_COUNT;
 
-  const definitionsById = new Map(recurringDefinitions.map((definition) => [definition.id, definition]));
+  const definitionsById = new Map(
+    recurringDefinitions.map((definition) => [definition.id, definition]),
+  );
   // A definition can have more than one instance in a cycle (e.g. biweekly);
   // its recommendation is shown once, under the first visible one.
   const recommendationShownFor = new Set<string>();
@@ -258,7 +286,9 @@ function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: 
       <ThemedText type="smallBold">{t('budget.detail.movements')}</ThemedText>
       {visible.map((expense, index) => {
         const definition =
-          expense.kind === 'recurringInstance' ? definitionsById.get(expense.recurringExpenseId) : undefined;
+          expense.kind === 'recurringInstance'
+            ? definitionsById.get(expense.recurringExpenseId)
+            : undefined;
         const showRecommendation =
           definition !== undefined &&
           isRecommendationPending(definition.budgetRecommendation) &&
@@ -275,7 +305,11 @@ function MovementsSection({ movements, recurringDefinitions, defaultCurrency }: 
       })}
       {hasMore && (
         <Button
-          label={showAll ? t('budget.detail.showLess') : t('budget.detail.showAll', { count: all.length })}
+          label={
+            showAll
+              ? t('budget.detail.showLess')
+              : t('budget.detail.showAll', { count: all.length })
+          }
           variant="ghost"
           onPress={() => setShowAll((value) => !value)}
         />

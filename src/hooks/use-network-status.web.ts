@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 // fromCache alone (which can false-positive during a cold-start listener
 // attachment while genuinely online).
 export function useNetworkStatus(): boolean {
-  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine,
+  );
 
   useEffect(() => {
     function update() {

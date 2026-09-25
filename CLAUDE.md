@@ -361,10 +361,6 @@ actually resolved.)_
   `Switch` for paid (see the Switch/Checkbox entry below). Owner plans a
   Dashboard redesign that adopts the icon and a checkbox; left as is until
   then.
-- **Repo-wide Prettier drift** — `npm run format:check` fails on ~90 files
-  (mostly lines over the 100-char `printWidth`), accumulated since Stage 2;
-  no CI enforces it. Cosmetic only; planned as one separate formatting-only
-  PR. `.claude/design/` is excluded via `.prettierignore`.
 - **`ActionSheet` (`src/components/ui/action-sheet.tsx`, Presupuesto redesign
   fase 2) verified on web only** — the user currently only has web access
   (Vercel preview). Unverified on iOS/Android: the `KeyboardAvoidingView`

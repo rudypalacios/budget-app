@@ -3,7 +3,12 @@ import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lif
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
-import type { ArchivableState, CurrencyCode, RecurringIncome, RecurringIncomeFrequency } from '@/types/firestore';
+import type {
+  ArchivableState,
+  CurrencyCode,
+  RecurringIncome,
+  RecurringIncomeFrequency,
+} from '@/types/firestore';
 
 const store = createCollectionStore<RecurringIncome>('recurringIncomes');
 
@@ -56,7 +61,10 @@ type EditableRecurringIncomeFields = Pick<
 >;
 
 export function updateRecurringIncome(id: string, patch: Partial<EditableRecurringIncomeFields>) {
-  return store.update(id, patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch);
+  return store.update(
+    id,
+    patch.name !== undefined ? { ...patch, name: trimName(patch.name) } : patch,
+  );
 }
 
 // FR-4a/4b/4e (data-model.md §7) — see the matching comment on
@@ -67,7 +75,8 @@ export function archiveRecurringIncome(id: string) {
 
 export function trashRecurringIncome(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
-  if (!definition) throw new Error(`recurringIncomes store: trashRecurringIncome(${id}) — not found`);
+  if (!definition)
+    throw new Error(`recurringIncomes store: trashRecurringIncome(${id}) — not found`);
   const trashRetentionDays = useUserSettingsStore.getState().data?.trashRetentionDays ?? 30;
   return store.update(
     id,
@@ -80,7 +89,9 @@ export function trashRecurringIncome(id: string) {
 export function restoreRecurringIncome(id: string) {
   const definition = store.useStore.getState().items.find((item) => item.id === id);
   if (!definition?.trashedFromState) {
-    throw new Error(`recurringIncomes store: restoreRecurringIncome(${id}) — not currently trashed`);
+    throw new Error(
+      `recurringIncomes store: restoreRecurringIncome(${id}) — not currently trashed`,
+    );
   }
   return store.update(id, restoreTransition(definition.trashedFromState, definition.archivedAt));
 }

@@ -44,7 +44,13 @@ export function ActionSheet({ isOpen, onClose, title, children }: ActionSheetPro
   const { height: windowHeight } = useWindowDimensions();
 
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose} aria-label={title}>
+    <Modal
+      visible={isOpen}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      aria-label={title}
+    >
       <Pressable
         style={[StyleSheet.absoluteFill, styles.backdrop]}
         onPress={onClose}

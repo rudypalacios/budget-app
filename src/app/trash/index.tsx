@@ -84,7 +84,9 @@ export default function TrashScreen() {
 
   async function handleConfirmRestore() {
     if (!uid || !restoreTargets || restoreTargets.length === 0) return;
-    await Promise.all(restoreTargets.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)));
+    await Promise.all(
+      restoreTargets.map((record) => restoreLifecycleRecord(record.recordType, record.id, uid)),
+    );
     showToast(
       restoreTargets.length === 1
         ? t('lifecycle.restored', { name: restoreTargets[0].name })
@@ -96,7 +98,11 @@ export default function TrashScreen() {
 
   async function handleConfirmPurge() {
     if (!purgeTargets || purgeTargets.length === 0) return;
-    await Promise.all(purgeTargets.map((target) => purgeLifecycleRecord(target.recordType as TrashableType, target.id)));
+    await Promise.all(
+      purgeTargets.map((target) =>
+        purgeLifecycleRecord(target.recordType as TrashableType, target.id),
+      ),
+    );
     showToast(
       purgeTargets.length === 1
         ? t('trash.permanentlyDeleted', { name: purgeTargets[0].name })
@@ -115,9 +121,15 @@ export default function TrashScreen() {
       ) : (
         <>
           <View style={styles.bulkBar}>
-            <Checkbox checked={allSelected} onValueChange={toggleSelectAll} accessibilityLabel={t('lifecycle.selectAll')} />
+            <Checkbox
+              checked={allSelected}
+              onValueChange={toggleSelectAll}
+              accessibilityLabel={t('lifecycle.selectAll')}
+            />
             <ThemedText type="caption">
-              {selectedKeys.size > 0 ? t('lifecycle.selectedCount', { count: selectedKeys.size }) : t('lifecycle.selectAll')}
+              {selectedKeys.size > 0
+                ? t('lifecycle.selectedCount', { count: selectedKeys.size })
+                : t('lifecycle.selectAll')}
             </ThemedText>
             {selectedKeys.size > 0 && (
               <View style={styles.bulkActions}>
@@ -158,7 +170,10 @@ export default function TrashScreen() {
                         </ThemedText>
                       </View>
                       {remainingDays !== null && (
-                        <ThemedText type="caption" themeColor={remainingDays <= 0 ? 'danger' : 'textSecondary'}>
+                        <ThemedText
+                          type="caption"
+                          themeColor={remainingDays <= 0 ? 'danger' : 'textSecondary'}
+                        >
                           {remainingDays <= 0
                             ? t('trash.purgesToday')
                             : t('trash.daysUntilPurge', { count: remainingDays })}

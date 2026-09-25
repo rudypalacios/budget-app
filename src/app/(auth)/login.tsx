@@ -110,7 +110,10 @@ export default function LoginScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('auth.accessibility.logIn')}
           >
-            <Chip label={t('auth.modeChip.logIn')} tone={form.mode === 'signIn' ? 'success' : 'neutral'} />
+            <Chip
+              label={t('auth.modeChip.logIn')}
+              tone={form.mode === 'signIn' ? 'success' : 'neutral'}
+            />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -120,7 +123,10 @@ export default function LoginScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('auth.accessibility.signUp')}
           >
-            <Chip label={t('auth.modeChip.signUp')} tone={form.mode === 'signUp' ? 'success' : 'neutral'} />
+            <Chip
+              label={t('auth.modeChip.signUp')}
+              tone={form.mode === 'signUp' ? 'success' : 'neutral'}
+            />
           </Pressable>
         </View>
       )}
@@ -129,7 +135,9 @@ export default function LoginScreen() {
         <ThemedText accessibilityRole="alert">{t('auth.resetConfirmation')}</ThemedText>
       ) : (
         <View style={styles.form}>
-          {googleLinkPrompt ? <ThemedText accessibilityRole="alert">{googleLinkPrompt}</ThemedText> : null}
+          {googleLinkPrompt ? (
+            <ThemedText accessibilityRole="alert">{googleLinkPrompt}</ThemedText>
+          ) : null}
 
           <TextField
             label={t('auth.email')}
@@ -188,7 +196,11 @@ export default function LoginScreen() {
                 <Divider style={styles.dividerLine} />
               </View>
 
-              <Button label={t('auth.continueWithGoogle')} variant="secondary" onPress={handleGoogleSignIn} />
+              <Button
+                label={t('auth.continueWithGoogle')}
+                variant="secondary"
+                onPress={handleGoogleSignIn}
+              />
 
               {googleError ? (
                 <ThemedText themeColor="danger" accessibilityRole="alert">

@@ -33,8 +33,15 @@ export type GroupBucketName = 'overdue' | 'upcoming' | 'completed';
 // definition is never itself "paid", so this bucket concept only makes
 // sense for actual payment rows, which is exactly what the Dashboard's
 // three-bucket layout needs it for.
-export function groupBucket(members: PaymentRow[], referenceDate: Date = new Date()): GroupBucketName {
-  const startOfToday = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+export function groupBucket(
+  members: PaymentRow[],
+  referenceDate: Date = new Date(),
+): GroupBucketName {
+  const startOfToday = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+  );
   const unpaidMembers = members.filter((member) => !member.paid && !member.skipped);
   if (unpaidMembers.length === 0) return 'completed';
   return unpaidMembers.some((member) => member.date < startOfToday) ? 'overdue' : 'upcoming';
@@ -99,12 +106,18 @@ export function buildDashboardSections(
   // filter is defensive — it keeps a future store bug from accidentally
   // folding an income row into a header rather than relying solely on the
   // field staying unset.
-  const allRows = [...buckets.overdueUnpaid, ...buckets.upcomingUnpaid, ...buckets.completedThisCycle].filter(
-    (row) => row.direction === 'expense',
-  );
+  const allRows = [
+    ...buckets.overdueUnpaid,
+    ...buckets.upcomingUnpaid,
+    ...buckets.completedThisCycle,
+  ].filter((row) => row.direction === 'expense');
   const { membersByGroupId, groupedRowIds } = gatherMembersByGroupId(allRows, activeGroups);
 
-  const sectionsByBucket: Record<GroupBucketName, GroupSection<PaymentRow>[]> = { overdue: [], upcoming: [], completed: [] };
+  const sectionsByBucket: Record<GroupBucketName, GroupSection<PaymentRow>[]> = {
+    overdue: [],
+    upcoming: [],
+    completed: [],
+  };
   for (const group of activeGroups) {
     const members = membersByGroupId.get(group.id);
     if (!members || members.length === 0) continue;
@@ -117,7 +130,10 @@ export function buildDashboardSections(
   }
 
   function dashboardBucket(rows: PaymentRow[], bucket: GroupBucketName): DashboardBucket {
-    return { rows: rows.filter((row) => !groupedRowIds.has(row.id)), groups: sectionsByBucket[bucket] };
+    return {
+      rows: rows.filter((row) => !groupedRowIds.has(row.id)),
+      groups: sectionsByBucket[bucket],
+    };
   }
 
   return {
@@ -142,7 +158,12 @@ export function groupRowsIntoSections<T extends GroupableItem>(
   for (const group of activeGroups) {
     const members = membersByGroupId.get(group.id);
     if (!members || members.length === 0) continue;
-    groups.push({ groupId: group.id, name: group.name, subtotal: computeGroupSubtotal(members), members });
+    groups.push({
+      groupId: group.id,
+      name: group.name,
+      subtotal: computeGroupSubtotal(members),
+      members,
+    });
   }
 
   return { rows: rows.filter((row) => !groupedRowIds.has(row.id)), groups };

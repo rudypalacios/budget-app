@@ -30,7 +30,9 @@ export default function QuickExpenseScreen() {
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter(
-    (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
+    (category) =>
+      category.lifecycleState === 'active' &&
+      (category.type === 'expense' || category.type === 'both'),
   );
 
   const [name, setName] = useState('');
@@ -42,7 +44,8 @@ export default function QuickExpenseScreen() {
   const [paid, setPaid] = useState(true);
 
   const parsedAmount = parseAmountInput(amount);
-  const isValid = !!name.trim() && !!categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const isValid =
+    !!name.trim() && !!categoryId && Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   async function handleSave() {
     // Always the default currency — this is deliberately the fast/minimal
@@ -81,16 +84,28 @@ export default function QuickExpenseScreen() {
         <Select
           label={t('common.category')}
           value={categoryId}
-          options={expenseCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
+          options={expenseCategories.map((category) => ({
+            value: category.id,
+            label: categoryDisplayName(category),
+          }))}
           onChange={setCategoryId}
         />
         <DatePicker label={t('quickExpense.date')} value={date} onChange={setDate} />
         <View style={styles.switchRow}>
-          <Switch value={paid} onValueChange={setPaid} accessibilityLabel={t('quickExpense.paid')} />
+          <Switch
+            value={paid}
+            onValueChange={setPaid}
+            accessibilityLabel={t('quickExpense.paid')}
+          />
           <ThemedText>{t('quickExpense.paid')}</ThemedText>
         </View>
         <View style={styles.actionRow}>
-          <Button label={t('common.save')} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+          <Button
+            label={t('common.save')}
+            onPress={handleSave}
+            disabled={!isValid}
+            style={styles.actionButton}
+          />
           <Button
             label={t('common.cancel')}
             variant="secondary"

@@ -33,7 +33,9 @@ export function useAuthForm() {
     setFormError(null);
 
     const trimmedEmail = email.trim();
-    const nextEmailError = isValidEmail(trimmedEmail) ? null : i18n.t('auth.validation.invalidEmail');
+    const nextEmailError = isValidEmail(trimmedEmail)
+      ? null
+      : i18n.t('auth.validation.invalidEmail');
     const nextPasswordError =
       mode !== 'reset' && password.length === 0 ? i18n.t('auth.validation.passwordRequired') : null;
     setEmailError(nextEmailError);
@@ -47,7 +49,9 @@ export function useAuthForm() {
     }
 
     const result =
-      mode === 'signUp' ? await signUpWithEmail(trimmedEmail, password) : await signInWithEmail(trimmedEmail, password);
+      mode === 'signUp'
+        ? await signUpWithEmail(trimmedEmail, password)
+        : await signInWithEmail(trimmedEmail, password);
 
     if (!result.ok) {
       // This email already belongs to a different, already-real account —

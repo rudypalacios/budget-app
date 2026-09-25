@@ -13,14 +13,25 @@ export type SectionHeaderProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function SectionHeader({ title, actionLabel, onActionPress, trailingText, style }: SectionHeaderProps) {
+export function SectionHeader({
+  title,
+  actionLabel,
+  onActionPress,
+  trailingText,
+  style,
+}: SectionHeaderProps) {
   return (
     <View style={[styles.row, style]}>
       <ThemedText type="default" style={styles.title}>
         {title}
       </ThemedText>
       {actionLabel && onActionPress ? (
-        <Pressable onPress={onActionPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={actionLabel}>
+        <Pressable
+          onPress={onActionPress}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+        >
           <ThemedText type="linkPrimary">{actionLabel}</ThemedText>
         </Pressable>
       ) : null}

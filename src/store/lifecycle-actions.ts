@@ -2,8 +2,16 @@ import { updateCategory } from './categories';
 import { purgeExpense, restoreExpense, trashExpense } from './expenses';
 import { purgeIncome, restoreIncome, trashIncome } from './incomes';
 import { runRecurringGeneration } from './recurring-generation';
-import { purgeRecurringExpense, restoreRecurringExpense, trashRecurringExpense } from './recurring-expenses';
-import { purgeRecurringIncome, restoreRecurringIncome, trashRecurringIncome } from './recurring-incomes';
+import {
+  purgeRecurringExpense,
+  restoreRecurringExpense,
+  trashRecurringExpense,
+} from './recurring-expenses';
+import {
+  purgeRecurringIncome,
+  restoreRecurringIncome,
+  trashRecurringIncome,
+} from './recurring-incomes';
 import type { LifecycleRecordType } from '@/lib/lifecycle-records';
 
 // Stage 17: dispatch layer for the Archive/Trash screens, which only know a
@@ -20,7 +28,11 @@ import type { LifecycleRecordType } from '@/lib/lifecycle-records';
 // period until the next app-foreground/launch/reconnect scan (same
 // immediate-generation call the "create a new definition" screens already
 // make — see recurring-generation.ts's top comment).
-export async function restoreLifecycleRecord(recordType: LifecycleRecordType, id: string, uid: string): Promise<void> {
+export async function restoreLifecycleRecord(
+  recordType: LifecycleRecordType,
+  id: string,
+  uid: string,
+): Promise<void> {
   switch (recordType) {
     case 'expense':
       await restoreExpense(id);
@@ -48,7 +60,10 @@ export async function restoreLifecycleRecord(recordType: LifecycleRecordType, id
 // record's current lifecycleState itself (always 'archived' for a caller
 // coming from the Archive screen) to stamp trashedFromState correctly, so
 // no extra state needs to be threaded through here.
-export async function trashLifecycleRecord(recordType: Exclude<LifecycleRecordType, 'category'>, id: string): Promise<void> {
+export async function trashLifecycleRecord(
+  recordType: Exclude<LifecycleRecordType, 'category'>,
+  id: string,
+): Promise<void> {
   switch (recordType) {
     case 'expense':
       await trashExpense(id);

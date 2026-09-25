@@ -68,7 +68,9 @@ export default function EditCurrencyScreen() {
 
   return (
     <ScreenScroll>
-      <ModalHeader title={t('currencies.editTitle', { currency: CURRENCY_LABEL_BY_CODE[code] ?? code })} />
+      <ModalHeader
+        title={t('currencies.editTitle', { currency: CURRENCY_LABEL_BY_CODE[code] ?? code })}
+      />
 
       <View style={styles.rateRow}>
         <View style={styles.rateField}>
@@ -84,7 +86,12 @@ export default function EditCurrencyScreen() {
             placeholder={t('currencyRate.ratePlaceholder')}
           />
         </View>
-        <Button label={t('currencyRate.fetchRate')} variant="secondary" onPress={handleFetchRate} disabled={!isOnline} />
+        <Button
+          label={t('currencyRate.fetchRate')}
+          variant="secondary"
+          onPress={handleFetchRate}
+          disabled={!isOnline}
+        />
       </View>
       {fetchError && (
         <ThemedText type="caption" themeColor="danger" accessibilityRole="alert">

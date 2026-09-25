@@ -1,5 +1,12 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Tabs, TabList, TabTrigger, TabSlot, TabListProps, TabTriggerSlotProps } from 'expo-router/ui';
+import {
+  Tabs,
+  TabList,
+  TabTrigger,
+  TabSlot,
+  TabListProps,
+  TabTriggerSlotProps,
+} from 'expo-router/ui';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View, StyleSheet } from 'react-native';
 
@@ -136,7 +143,10 @@ function WebBottomTabBar(props: TabListProps) {
   return (
     <View
       {...props}
-      style={[styles.bottomBarContainer, { backgroundColor: theme.background, borderTopColor: theme.border }]}
+      style={[
+        styles.bottomBarContainer,
+        { backgroundColor: theme.background, borderTopColor: theme.border },
+      ]}
     >
       <View style={styles.bottomBarInner}>{props.children}</View>
     </View>
@@ -151,11 +161,24 @@ function WebBottomTabButton({
 }: TabTriggerSlotProps & { icon: SymbolViewProps['name'] }) {
   const theme = useTheme();
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.bottomTabButton, pressed && styles.pressed]}>
-      <View style={[styles.bottomTabIcon, isFocused && { backgroundColor: theme.backgroundSelected }]}>
-        <SymbolView name={icon} size={22} tintColor={isFocused ? theme.text : theme.textSecondary} />
+    <Pressable
+      {...props}
+      style={({ pressed }) => [styles.bottomTabButton, pressed && styles.pressed]}
+    >
+      <View
+        style={[styles.bottomTabIcon, isFocused && { backgroundColor: theme.backgroundSelected }]}
+      >
+        <SymbolView
+          name={icon}
+          size={22}
+          tintColor={isFocused ? theme.text : theme.textSecondary}
+        />
       </View>
-      <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'} style={styles.bottomTabLabel}>
+      <ThemedText
+        type="small"
+        themeColor={isFocused ? 'text' : 'textSecondary'}
+        style={styles.bottomTabLabel}
+      >
         {children}
       </ThemedText>
     </Pressable>

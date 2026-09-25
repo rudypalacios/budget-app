@@ -20,7 +20,9 @@ jest.mock('@/lib/firebase/firestore', () => ({
 
 let mockTrashRetentionDays = 30;
 jest.mock('@/store/user-settings', () => ({
-  useUserSettingsStore: { getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }) },
+  useUserSettingsStore: {
+    getState: () => ({ data: { trashRetentionDays: mockTrashRetentionDays } }),
+  },
 }));
 
 // Avoids pulling in the real session.ts -> @/lib/firebase/auth -> the native
@@ -84,7 +86,9 @@ describe('archiveRecurringExpense', () => {
 
 describe('trashRecurringExpense', () => {
   it("captures the definition's current lifecycleState and reads trashRetentionDays from settings", async () => {
-    useRecurringExpensesStore.setState({ items: [{ id: 'r1', lifecycleState: 'active' } as never] });
+    useRecurringExpensesStore.setState({
+      items: [{ id: 'r1', lifecycleState: 'active' } as never],
+    });
 
     await trashRecurringExpense('r1');
 
@@ -102,7 +106,14 @@ describe('trashRecurringExpense', () => {
 describe('restoreRecurringExpense', () => {
   it('restores to trashedFromState and clears trash fields', async () => {
     useRecurringExpensesStore.setState({
-      items: [{ id: 'r1', lifecycleState: 'trashed', trashedFromState: 'active', archivedAt: null } as never],
+      items: [
+        {
+          id: 'r1',
+          lifecycleState: 'trashed',
+          trashedFromState: 'active',
+          archivedAt: null,
+        } as never,
+      ],
     });
 
     await restoreRecurringExpense('r1');
@@ -148,13 +159,18 @@ describe('recomputeBudgetRecommendation', () => {
         } as never,
       ],
     });
-    mockGetDocs.mockResolvedValue([{ amountInDefaultCurrency: 155.4 }, { amountInDefaultCurrency: 155.4 }]);
+    mockGetDocs.mockResolvedValue([
+      { amountInDefaultCurrency: 155.4 },
+      { amountInDefaultCurrency: 155.4 },
+    ]);
 
     await recomputeBudgetRecommendation('r1');
 
     expect(mockUpdateDoc).toHaveBeenCalledWith(
       'users/test-uid/recurringExpenses/r1',
-      expect.objectContaining({ budgetRecommendation: expect.objectContaining({ status: 'none' }) }),
+      expect.objectContaining({
+        budgetRecommendation: expect.objectContaining({ status: 'none' }),
+      }),
     );
   });
 
@@ -170,14 +186,20 @@ describe('recomputeBudgetRecommendation', () => {
         } as never,
       ],
     });
-    mockGetDocs.mockResolvedValue([{ amountInDefaultCurrency: 400 }, { amountInDefaultCurrency: 400 }]);
+    mockGetDocs.mockResolvedValue([
+      { amountInDefaultCurrency: 400 },
+      { amountInDefaultCurrency: 400 },
+    ]);
 
     await recomputeBudgetRecommendation('r1');
 
     expect(mockUpdateDoc).toHaveBeenCalledWith(
       'users/test-uid/recurringExpenses/r1',
       expect.objectContaining({
-        budgetRecommendation: expect.objectContaining({ status: 'pending', suggestedBudgetedAmount: 400 }),
+        budgetRecommendation: expect.objectContaining({
+          status: 'pending',
+          suggestedBudgetedAmount: 400,
+        }),
       }),
     );
   });
@@ -192,7 +214,11 @@ describe('acceptBudgetRecommendation', () => {
           amount: 20,
           currency: 'USD',
           exchangeRateToDefault: 7.7,
-          budgetRecommendation: { ...EMPTY_BUDGET_RECOMMENDATION, status: 'pending', suggestedBudgetedAmount: 154 },
+          budgetRecommendation: {
+            ...EMPTY_BUDGET_RECOMMENDATION,
+            status: 'pending',
+            suggestedBudgetedAmount: 154,
+          },
         } as never,
       ],
     });
@@ -207,21 +233,43 @@ describe('acceptBudgetRecommendation', () => {
 });
 
 describe('revertBudgetRecommendation', () => {
-  const pending = { ...EMPTY_BUDGET_RECOMMENDATION, status: 'pending' as const, rollingAverageAmount: 112, suggestedBudgetedAmount: 112 };
+  const pending = {
+    ...EMPTY_BUDGET_RECOMMENDATION,
+    status: 'pending' as const,
+    rollingAverageAmount: 112,
+    suggestedBudgetedAmount: 112,
+  };
   const snapshot = { amount: 85, budgetRecommendation: pending };
 
   it('restores the pre-accept amount and recommendation', async () => {
     useRecurringExpensesStore.setState({
-      items: [{ id: 'r1', amount: 112, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' } } as never],
+      items: [
+        {
+          id: 'r1',
+          amount: 112,
+          exchangeRateToDefault: 1,
+          budgetRecommendation: { ...pending, status: 'accepted' },
+        } as never,
+      ],
     });
 
     await expect(revertBudgetRecommendation('r1', snapshot, 'accepted')).resolves.toBe(true);
-    expect(mockUpdateDoc).toHaveBeenCalledWith('users/test-uid/recurringExpenses/r1', expect.objectContaining({ amount: 85, budgetRecommendation: pending }));
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      'users/test-uid/recurringExpenses/r1',
+      expect.objectContaining({ amount: 85, budgetRecommendation: pending }),
+    );
   });
 
   it('writes nothing when the definition moved on since the action', async () => {
     useRecurringExpensesStore.setState({
-      items: [{ id: 'r1', amount: 130, exchangeRateToDefault: 1, budgetRecommendation: { ...pending, status: 'accepted' } } as never],
+      items: [
+        {
+          id: 'r1',
+          amount: 130,
+          exchangeRateToDefault: 1,
+          budgetRecommendation: { ...pending, status: 'accepted' },
+        } as never,
+      ],
     });
 
     await expect(revertBudgetRecommendation('r1', snapshot, 'accepted')).resolves.toBe(false);

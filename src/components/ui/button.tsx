@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { ActivityIndicator, Keyboard, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { MinTouchTarget, Spacing } from '@/constants/theme';
@@ -32,7 +39,11 @@ export function Button({ label, onPress, variant = 'primary', disabled, style }:
           ? theme.danger
           : 'transparent';
   const textColor =
-    variant === 'primary' || variant === 'danger' ? theme.tintText : variant === 'secondary' ? theme.text : theme.tint;
+    variant === 'primary' || variant === 'danger'
+      ? theme.tintText
+      : variant === 'secondary'
+        ? theme.text
+        : theme.tint;
   const borderColor = variant === 'secondary' ? theme.border : 'transparent';
   const isDisabled = disabled || isPending;
 

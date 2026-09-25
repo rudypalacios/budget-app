@@ -51,9 +51,12 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 // babel-plugin-jest-hoist's rules for jest.mock factories) and exposes a
 // test-only escape hatch to simulate connectivity changes.
 jest.mock('@react-native-community/netinfo', () => {
-  let listener: ((state: { isConnected: boolean; isInternetReachable: boolean }) => void) | null = null;
+  let listener: ((state: { isConnected: boolean; isInternetReachable: boolean }) => void) | null =
+    null;
   return {
-    addEventListener: (cb: (state: { isConnected: boolean; isInternetReachable: boolean }) => void) => {
+    addEventListener: (
+      cb: (state: { isConnected: boolean; isInternetReachable: boolean }) => void,
+    ) => {
       listener = cb;
       return () => {
         listener = null;
@@ -65,11 +68,16 @@ jest.mock('@react-native-community/netinfo', () => {
   };
 });
 
-type MockNetInfo = { __triggerNetworkChange: (state: { isConnected: boolean; isInternetReachable: boolean }) => void };
+type MockNetInfo = {
+  __triggerNetworkChange: (state: { isConnected: boolean; isInternetReachable: boolean }) => void;
+};
 
 function setOnline(isConnected: boolean) {
   act(() => {
-    (NetInfo as unknown as MockNetInfo).__triggerNetworkChange({ isConnected, isInternetReachable: isConnected });
+    (NetInfo as unknown as MockNetInfo).__triggerNetworkChange({
+      isConnected,
+      isInternetReachable: isConnected,
+    });
   });
 }
 
@@ -78,7 +86,13 @@ function setOnline(isConnected: boolean) {
 // store's setState has its own generic CollectionState<T>, so these can't
 // be collapsed into a loop over a shared-type array.
 function resetToFullySynced() {
-  const synced = { items: [], isLoading: false, error: null, fromCache: false, hasPendingWrites: false };
+  const synced = {
+    items: [],
+    isLoading: false,
+    error: null,
+    fromCache: false,
+    hasPendingWrites: false,
+  };
   useCategoriesStore.setState(synced);
   useExpensesStore.setState(synced);
   useIncomesStore.setState(synced);

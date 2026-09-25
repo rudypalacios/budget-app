@@ -1,4 +1,9 @@
-import type { ExpenseRecord, IncomeRecord, RecurringExpense, RecurringIncome } from '@/types/firestore';
+import type {
+  ExpenseRecord,
+  IncomeRecord,
+  RecurringExpense,
+  RecurringIncome,
+} from '@/types/firestore';
 
 // Counts everything a user would consider "in this category" for the
 // categories admin list's "(count · budget)" caption — active (not
@@ -16,8 +21,12 @@ export function countCategoryItems(
   const isActiveInCategory = (item: { categoryId: string; lifecycleState: string }) =>
     item.categoryId === categoryId && item.lifecycleState === 'active';
 
-  const oneTimeExpenseCount = expenses.filter((item) => item.kind === 'oneTime' && isActiveInCategory(item)).length;
-  const oneTimeIncomeCount = incomes.filter((item) => item.kind === 'oneTime' && isActiveInCategory(item)).length;
+  const oneTimeExpenseCount = expenses.filter(
+    (item) => item.kind === 'oneTime' && isActiveInCategory(item),
+  ).length;
+  const oneTimeIncomeCount = incomes.filter(
+    (item) => item.kind === 'oneTime' && isActiveInCategory(item),
+  ).length;
   const recurringExpenseCount = recurringExpenses.filter(isActiveInCategory).length;
   const recurringIncomeCount = recurringIncomes.filter(isActiveInCategory).length;
 

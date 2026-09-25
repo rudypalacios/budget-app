@@ -1,4 +1,9 @@
-import { buildDashboardSections, computeGroupSubtotal, groupBucket, groupRowsIntoSections } from './recurring-groups';
+import {
+  buildDashboardSections,
+  computeGroupSubtotal,
+  groupBucket,
+  groupRowsIntoSections,
+} from './recurring-groups';
 import type { PaymentRow, PaymentRowGroups } from './payments-dashboard';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import type { RecurringGroup, Timestamp } from '@/types/firestore';
@@ -74,10 +79,7 @@ describe('groupBucket', () => {
   const referenceDate = new Date(2026, 6, 15);
 
   it('returns "completed" once every member is paid or skipped', () => {
-    const members = [
-      paymentRow({ id: 'a', paid: true }),
-      paymentRow({ id: 'b', skipped: true }),
-    ];
+    const members = [paymentRow({ id: 'a', paid: true }), paymentRow({ id: 'b', skipped: true })];
 
     expect(groupBucket(members, referenceDate)).toBe('completed');
   });
@@ -103,12 +105,22 @@ describe('buildDashboardSections', () => {
     return { overdueUnpaid: [], upcomingUnpaid: [], completedThisCycle: [] };
   }
 
-  it('folds a group\'s members into one header, removed from the plain rows list', () => {
+  it("folds a group's members into one header, removed from the plain rows list", () => {
     const buckets: PaymentRowGroups = {
       ...emptyBuckets(),
       upcomingUnpaid: [
-        paymentRow({ id: 'netflix', name: 'Netflix', recurringGroupId: 'g1', amountInDefaultCurrency: 50 }),
-        paymentRow({ id: 'disney', name: 'Disney+', recurringGroupId: 'g1', amountInDefaultCurrency: 30 }),
+        paymentRow({
+          id: 'netflix',
+          name: 'Netflix',
+          recurringGroupId: 'g1',
+          amountInDefaultCurrency: 50,
+        }),
+        paymentRow({
+          id: 'disney',
+          name: 'Disney+',
+          recurringGroupId: 'g1',
+          amountInDefaultCurrency: 30,
+        }),
         paymentRow({ id: 'standalone', name: 'Groceries', recurringGroupId: null }),
       ],
     };
@@ -117,7 +129,11 @@ describe('buildDashboardSections', () => {
 
     expect(sections.upcoming.rows.map((row) => row.id)).toEqual(['standalone']);
     expect(sections.upcoming.groups).toHaveLength(1);
-    expect(sections.upcoming.groups[0]).toMatchObject({ groupId: 'g1', name: 'Suscripciones', subtotal: 80 });
+    expect(sections.upcoming.groups[0]).toMatchObject({
+      groupId: 'g1',
+      name: 'Suscripciones',
+      subtotal: 80,
+    });
     expect(sections.upcoming.groups[0].members.map((m) => m.id)).toEqual(['netflix', 'disney']);
     expect(sections.overdue.groups).toHaveLength(0);
     expect(sections.completed.groups).toHaveLength(0);
@@ -136,10 +152,12 @@ describe('buildDashboardSections', () => {
     expect(sections.upcoming.groups).toHaveLength(0);
   });
 
-  it('gathers a group\'s members across buckets and places the header by their combined status', () => {
+  it("gathers a group's members across buckets and places the header by their combined status", () => {
     const buckets: PaymentRowGroups = {
       overdueUnpaid: [],
-      upcomingUnpaid: [paymentRow({ id: 'disney', recurringGroupId: 'g1', paid: false, date: farFuture })],
+      upcomingUnpaid: [
+        paymentRow({ id: 'disney', recurringGroupId: 'g1', paid: false, date: farFuture }),
+      ],
       completedThisCycle: [paymentRow({ id: 'netflix', recurringGroupId: 'g1', paid: true })],
     };
 
@@ -148,7 +166,10 @@ describe('buildDashboardSections', () => {
     // Disney still unpaid (and not overdue) -> the whole group sits in
     // "upcoming", carrying both members, not just the unpaid one.
     expect(sections.upcoming.groups).toHaveLength(1);
-    expect(sections.upcoming.groups[0].members.map((m) => m.id).sort()).toEqual(['disney', 'netflix']);
+    expect(sections.upcoming.groups[0].members.map((m) => m.id).sort()).toEqual([
+      'disney',
+      'netflix',
+    ]);
     expect(sections.completed.groups).toHaveLength(0);
   });
 
@@ -185,10 +206,20 @@ describe('buildDashboardSections', () => {
 // rather than re-testing groupBucket/computeGroupSubtotal, already covered
 // above via the shared gatherMembersByGroupId helper.
 describe('groupRowsIntoSections', () => {
-  it('folds a group\'s members into one section, removed from the plain rows list', () => {
+  it("folds a group's members into one section, removed from the plain rows list", () => {
     const rows = [
-      paymentRow({ id: 'netflix', name: 'Netflix', recurringGroupId: 'g1', amountInDefaultCurrency: 50 }),
-      paymentRow({ id: 'disney', name: 'Disney+', recurringGroupId: 'g1', amountInDefaultCurrency: 30 }),
+      paymentRow({
+        id: 'netflix',
+        name: 'Netflix',
+        recurringGroupId: 'g1',
+        amountInDefaultCurrency: 50,
+      }),
+      paymentRow({
+        id: 'disney',
+        name: 'Disney+',
+        recurringGroupId: 'g1',
+        amountInDefaultCurrency: 30,
+      }),
       paymentRow({ id: 'standalone', name: 'Groceries', recurringGroupId: null }),
     ];
 
@@ -223,13 +254,22 @@ describe('groupRowsIntoSections', () => {
       paymentRow({ id: 'netflix', recurringGroupId: 'g1', amountInDefaultCurrency: 50 }),
       paymentRow({ id: 'internet', recurringGroupId: 'g2', amountInDefaultCurrency: 40 }),
     ];
-    const groups = [recurringGroup({ id: 'g1', name: 'Suscripciones' }), recurringGroup({ id: 'g2', name: 'Servicios' })];
+    const groups = [
+      recurringGroup({ id: 'g1', name: 'Suscripciones' }),
+      recurringGroup({ id: 'g2', name: 'Servicios' }),
+    ];
 
     const result = groupRowsIntoSections(rows, groups);
 
     expect(result.rows).toHaveLength(0);
     expect(result.groups).toHaveLength(2);
-    expect(result.groups.find((g) => g.groupId === 'g1')).toMatchObject({ name: 'Suscripciones', subtotal: 50 });
-    expect(result.groups.find((g) => g.groupId === 'g2')).toMatchObject({ name: 'Servicios', subtotal: 40 });
+    expect(result.groups.find((g) => g.groupId === 'g1')).toMatchObject({
+      name: 'Suscripciones',
+      subtotal: 50,
+    });
+    expect(result.groups.find((g) => g.groupId === 'g2')).toMatchObject({
+      name: 'Servicios',
+      subtotal: 40,
+    });
   });
 });

@@ -16,10 +16,17 @@ import type { RecurringExpense } from '@/types/firestore';
 // only ("this group's combined monthly amount"), not a currency-conversion
 // display fix — the row's own amount is still shown via plain
 // formatCurrency below, unconverted, same as before this file existed.
-export type GroupableRecurringExpense = WithId<RecurringExpense> & { amountInDefaultCurrency: number };
+export type GroupableRecurringExpense = WithId<RecurringExpense> & {
+  amountInDefaultCurrency: number;
+};
 
-export function toGroupableRecurringExpense(definition: WithId<RecurringExpense>): GroupableRecurringExpense {
-  return { ...definition, amountInDefaultCurrency: definition.amount * definition.exchangeRateToDefault };
+export function toGroupableRecurringExpense(
+  definition: WithId<RecurringExpense>,
+): GroupableRecurringExpense {
+  return {
+    ...definition,
+    amountInDefaultCurrency: definition.amount * definition.exchangeRateToDefault,
+  };
 }
 
 type RecurringDefinitionRowItemProps = {
@@ -29,7 +36,10 @@ type RecurringDefinitionRowItemProps = {
 
 // The "Recurrentes" section's row content — name, due day, amount, and its
 // own Edit/Archive/Delete/Grupo… actions.
-export function RecurringDefinitionRowItem({ definition, overflowItems }: RecurringDefinitionRowItemProps) {
+export function RecurringDefinitionRowItem({
+  definition,
+  overflowItems,
+}: RecurringDefinitionRowItemProps) {
   const { t } = useTranslation();
 
   return (
@@ -43,7 +53,10 @@ export function RecurringDefinitionRowItem({ definition, overflowItems }: Recurr
           <ThemedText type="smallBold" themeColor="danger">
             {formatCurrency(definition.amount, definition.currency)}
           </ThemedText>
-          <OverflowMenu accessibilityLabel={t('common.actionsFor', { name: definition.name })} items={overflowItems} />
+          <OverflowMenu
+            accessibilityLabel={t('common.actionsFor', { name: definition.name })}
+            items={overflowItems}
+          />
         </View>
       </View>
       <BudgetRecommendationBadge definition={definition} />

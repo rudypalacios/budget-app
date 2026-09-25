@@ -306,7 +306,9 @@ describe('currencies: owner-only CRUD, no lifecycle machinery (Stage 11 redesign
 
   test('owner can update the rate (e.g. refreshing it)', async () => {
     await seed(path, baseDoc);
-    await assertSucceeds(updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 9.01, status: 'ok' }));
+    await assertSucceeds(
+      updateDoc(doc(ownerDb(), path), { exchangeRateToDefault: 9.01, status: 'ok' }),
+    );
   });
 
   test('owner can mark it stale (defaultCurrency-change batch write)', async () => {

@@ -111,7 +111,12 @@ function SetBudgetForm({
       )}
 
       <View style={styles.buttons}>
-        <Button label={t('common.cancel')} variant="secondary" onPress={onClose} style={styles.button} />
+        <Button
+          label={t('common.cancel')}
+          variant="secondary"
+          onPress={onClose}
+          style={styles.button}
+        />
         <Button label={t('common.save')} onPress={handleSave} style={styles.button} />
       </View>
     </>

@@ -44,7 +44,10 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="budget">
         <NativeTabs.Trigger.Label>{t('nav.budget')}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }} md="pie_chart" />
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }}
+          md="pie_chart"
+        />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="history">

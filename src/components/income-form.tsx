@@ -76,7 +76,9 @@ export function IncomeForm({
   const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
   const incomeCategories = categories.filter(
-    (category) => category.lifecycleState === 'active' && (category.type === 'income' || category.type === 'both'),
+    (category) =>
+      category.lifecycleState === 'active' &&
+      (category.type === 'income' || category.type === 'both'),
   );
 
   const [values, setValues] = useState<IncomeFormValues>(
@@ -124,7 +126,9 @@ export function IncomeForm({
         <TextField
           label={t('common.amountWithCurrency', { currency: values.currency })}
           value={values.amount}
-          onChangeText={(amount) => setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))}
+          onChangeText={(amount) =>
+            setValues((current) => ({ ...current, amount: sanitizeAmountInput(amount) }))
+          }
           keyboardType="decimal-pad"
           inputMode="decimal"
           placeholder={t('income.form.amountPlaceholder')}
@@ -143,7 +147,10 @@ export function IncomeForm({
       <Select
         label={t('common.category')}
         value={values.categoryId}
-        options={incomeCategories.map((category) => ({ value: category.id, label: categoryDisplayName(category) }))}
+        options={incomeCategories.map((category) => ({
+          value: category.id,
+          label: categoryDisplayName(category),
+        }))}
         onChange={(categoryId) => setValues((current) => ({ ...current, categoryId }))}
       />
 
@@ -172,8 +179,14 @@ export function IncomeForm({
           </ThemedText>
           <View style={styles.chipRow}>
             {FREQUENCIES.map((option) => (
-              <Pressable key={option} onPress={() => setValues((current) => ({ ...current, frequency: option }))}>
-                <Chip label={t(FREQUENCY_LABEL_KEY[option])} tone={values.frequency === option ? 'success' : 'neutral'} />
+              <Pressable
+                key={option}
+                onPress={() => setValues((current) => ({ ...current, frequency: option }))}
+              >
+                <Chip
+                  label={t(FREQUENCY_LABEL_KEY[option])}
+                  tone={values.frequency === option ? 'success' : 'neutral'}
+                />
               </Pressable>
             ))}
           </View>
@@ -212,7 +225,12 @@ export function IncomeForm({
       )}
 
       <View style={styles.actionRow}>
-        <Button label={submitLabel} onPress={handleSave} disabled={!isValid} style={styles.actionButton} />
+        <Button
+          label={submitLabel}
+          onPress={handleSave}
+          disabled={!isValid}
+          style={styles.actionButton}
+        />
         <Button
           label={t('common.cancel')}
           variant="secondary"

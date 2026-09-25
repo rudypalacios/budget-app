@@ -2,7 +2,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { ModalHeader } from '@/components/modal-header';
-import { RecurringIncomeForm, type RecurringIncomeFormValues } from '@/components/recurring-income-form';
+import {
+  RecurringIncomeForm,
+  type RecurringIncomeFormValues,
+} from '@/components/recurring-income-form';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { parseAmountInput } from '@/lib/currency-input';

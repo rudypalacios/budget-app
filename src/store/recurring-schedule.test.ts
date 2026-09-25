@@ -95,7 +95,7 @@ describe('computeMonthlyOccurrenceDates', () => {
   // created on the 9th) produced zero occurrences, because the old logic
   // compared the occurrence's exact date against "now" instead of against
   // the current calendar period (month).
-  it('generates the current month\'s occurrence even when its due day is later than today', () => {
+  it("generates the current month's occurrence even when its due day is later than today", () => {
     const startDate = new Date(2026, 6, 9); // created Jul 9
     const now = new Date(2026, 6, 9); // still Jul 9
     const dates = computeMonthlyOccurrenceDates(20, startDate, null, now); // due on the 20th

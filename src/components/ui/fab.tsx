@@ -1,7 +1,12 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Spacing, WebBottomNavHeight } from '@/constants/theme';
@@ -71,7 +76,12 @@ export function Fab({ label, icon, onPress, scrollOffset }: FabProps) {
   }
 
   const pressableStyle = useAnimatedStyle(() => {
-    const progress = interpolate(scrollOffset.value, [0, COLLAPSE_RANGE], [0, 1], Extrapolation.CLAMP);
+    const progress = interpolate(
+      scrollOffset.value,
+      [0, COLLAPSE_RANGE],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
     // Shrinks the gap after the label to 0 in lockstep with the label
     // itself, so the collapsed shape is exactly iconBox's own width — a
     // perfect circle, not a circle-plus-leftover-padding pill.
@@ -79,7 +89,12 @@ export function Fab({ label, icon, onPress, scrollOffset }: FabProps) {
   });
 
   const labelStyle = useAnimatedStyle(() => {
-    const progress = interpolate(scrollOffset.value, [0, COLLAPSE_RANGE], [0, 1], Extrapolation.CLAMP);
+    const progress = interpolate(
+      scrollOffset.value,
+      [0, COLLAPSE_RANGE],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
     return {
       width: (1 - progress) * (labelWidth + LABEL_WIDTH_BUFFER),
       opacity: 1 - progress,
@@ -91,13 +106,21 @@ export function Fab({ label, icon, onPress, scrollOffset }: FabProps) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[styles.fab, { backgroundColor: theme.tint, right: Spacing.three, bottom: bottomOffset }, pressableStyle]}
+      style={[
+        styles.fab,
+        { backgroundColor: theme.tint, right: Spacing.three, bottom: bottomOffset },
+        pressableStyle,
+      ]}
     >
       <View style={styles.iconBox}>
         <SymbolView name={icon} size={24} tintColor={theme.tintText} />
       </View>
       <Animated.View style={[styles.labelClip, labelStyle]}>
-        <ThemedText type="smallBold" numberOfLines={1} style={[styles.labelText, { color: theme.tintText }]}>
+        <ThemedText
+          type="smallBold"
+          numberOfLines={1}
+          style={[styles.labelText, { color: theme.tintText }]}
+        >
           {label}
         </ThemedText>
       </Animated.View>

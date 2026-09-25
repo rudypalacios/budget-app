@@ -22,14 +22,19 @@ const auth = getAuth(app);
 
 // Closing the popup without finishing, or a repeat click while one is still
 // open — treated the same as native's non-throwing cancellation, not an error.
-const GOOGLE_POPUP_CANCELLED_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request']);
+const GOOGLE_POPUP_CANCELLED_CODES = new Set([
+  'auth/popup-closed-by-user',
+  'auth/cancelled-popup-request',
+]);
 
 function toAuthUser(user: User): AuthUser {
   return { uid: user.uid, email: user.email, isAnonymous: user.isAnonymous };
 }
 
 function getErrorCode(error: unknown): string {
-  return typeof error === 'object' && error !== null && 'code' in error ? String((error as { code: unknown }).code) : '';
+  return typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code: unknown }).code)
+    : '';
 }
 
 export const authClient: AuthClient = {
@@ -103,10 +108,16 @@ export const authClient: AuthClient = {
       // completeGoogleLink. Firebase attaches enough of the popup's OAuth
       // exchange to this error's customData for credentialFromError to
       // reconstruct it, even though it couldn't be linked yet.
-      if (code === 'auth/email-already-in-use' || code === 'auth/account-exists-with-different-credential') {
+      if (
+        code === 'auth/email-already-in-use' ||
+        code === 'auth/account-exists-with-different-credential'
+      ) {
         const authError = error as AuthError;
         const pendingCredential = GoogleAuthProvider.credentialFromError(authError);
-        return { status: 'account-exists', conflict: { email: authError.customData?.email ?? null, pendingCredential } };
+        return {
+          status: 'account-exists',
+          conflict: { email: authError.customData?.email ?? null, pendingCredential },
+        };
       }
       throw error;
     }

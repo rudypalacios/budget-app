@@ -3,7 +3,7 @@ import { mapAuthErrorMessage } from './auth-errors';
 describe('mapAuthErrorMessage', () => {
   it('maps auth/email-already-in-use', () => {
     expect(mapAuthErrorMessage('auth/email-already-in-use')).toBe(
-      'An account with this email already exists.'
+      'An account with this email already exists.',
     );
   });
 
@@ -13,7 +13,7 @@ describe('mapAuthErrorMessage', () => {
 
   it('maps auth/weak-password', () => {
     expect(mapAuthErrorMessage('auth/weak-password')).toBe(
-      'Password must be at least 6 characters.'
+      'Password must be at least 6 characters.',
     );
   });
 
@@ -21,42 +21,42 @@ describe('mapAuthErrorMessage', () => {
     'maps %s to a generic incorrect-credentials message',
     (code) => {
       expect(mapAuthErrorMessage(code)).toBe('Incorrect email or password.');
-    }
+    },
   );
 
   it('maps auth/credential-already-in-use', () => {
     expect(mapAuthErrorMessage('auth/credential-already-in-use')).toBe(
-      'This email is already linked to another account.'
+      'This email is already linked to another account.',
     );
   });
 
   it('maps auth/too-many-requests', () => {
     expect(mapAuthErrorMessage('auth/too-many-requests')).toBe(
-      'Too many attempts. Please wait a moment and try again.'
+      'Too many attempts. Please wait a moment and try again.',
     );
   });
 
   it('maps auth/operation-not-allowed', () => {
     expect(mapAuthErrorMessage('auth/operation-not-allowed')).toBe(
-      'This sign-in method is not enabled for this app yet.'
+      'This sign-in method is not enabled for this app yet.',
     );
   });
 
   it('maps auth/network-request-failed', () => {
     expect(mapAuthErrorMessage('auth/network-request-failed')).toBe(
-      'Network error. Check your connection and try again.'
+      'Network error. Check your connection and try again.',
     );
   });
 
   it('maps auth/popup-blocked', () => {
     expect(mapAuthErrorMessage('auth/popup-blocked')).toBe(
-      'Your browser blocked the Google sign-in popup. Please allow popups for this site and try again.'
+      'Your browser blocked the Google sign-in popup. Please allow popups for this site and try again.',
     );
   });
 
   it('includes the raw code in the fallback message for unrecognized codes', () => {
     expect(mapAuthErrorMessage('auth/some-unknown-code')).toBe(
-      'Something went wrong (auth/some-unknown-code). Please try again.'
+      'Something went wrong (auth/some-unknown-code). Please try again.',
     );
   });
 

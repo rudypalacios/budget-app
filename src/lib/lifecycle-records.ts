@@ -14,7 +14,8 @@ import type {
 // src/store/lifecycle-actions.ts for the restore/purge dispatch that
 // actually calls the per-collection store functions).
 
-export type LifecycleRecordType = 'expense' | 'income' | 'recurringExpense' | 'recurringIncome' | 'category';
+export type LifecycleRecordType =
+  'expense' | 'income' | 'recurringExpense' | 'recurringIncome' | 'category';
 
 export type LifecycleRecord = {
   recordType: LifecycleRecordType;

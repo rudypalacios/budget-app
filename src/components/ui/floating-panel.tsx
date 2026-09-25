@@ -25,7 +25,13 @@ export type FloatingPanelProps = PropsWithChildren<{
 // portal with focus trapping, unlike Alert which is a no-op there) and a
 // true native overlay on iOS/Android — so it floats above content without
 // reflowing it, unlike an inline-expand list or a full route navigation.
-export function FloatingPanel({ isOpen, onClose, anchor, align = 'left', children }: FloatingPanelProps) {
+export function FloatingPanel({
+  isOpen,
+  onClose,
+  anchor,
+  align = 'left',
+  children,
+}: FloatingPanelProps) {
   const { t } = useTranslation();
   const theme = useTheme();
 
@@ -69,7 +75,12 @@ export function FloatingPanel({ isOpen, onClose, anchor, align = 'left', childre
           },
         ]}
       >
-        <View style={[styles.panelInner, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.panelInner,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}
+        >
           {children}
         </View>
       </View>

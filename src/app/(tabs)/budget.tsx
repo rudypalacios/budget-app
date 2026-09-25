@@ -33,7 +33,10 @@ import { formatCurrency } from '@/lib/format-currency';
 import { useCategoriesStore } from '@/store/categories';
 import { useExpensesStore } from '@/store/expenses';
 import { useIncomesStore } from '@/store/incomes';
-import { recomputeStaleBudgetRecommendations, useRecurringExpensesStore } from '@/store/recurring-expenses';
+import {
+  recomputeStaleBudgetRecommendations,
+  useRecurringExpensesStore,
+} from '@/store/recurring-expenses';
 import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function BudgetScreen() {
@@ -64,9 +67,13 @@ export default function BudgetScreen() {
   const summary = computeBudgetSummary({ expenses, incomes, cycleRange });
 
   const activeExpenseCategories = categories.filter(
-    (category) => category.lifecycleState === 'active' && (category.type === 'expense' || category.type === 'both'),
+    (category) =>
+      category.lifecycleState === 'active' &&
+      (category.type === 'expense' || category.type === 'both'),
   );
-  const activeRecurringExpenses = recurringExpenses.filter((definition) => definition.lifecycleState === 'active');
+  const activeRecurringExpenses = recurringExpenses.filter(
+    (definition) => definition.lifecycleState === 'active',
+  );
 
   // Skips categories with no activity and no budget set, to avoid clutter
   // from unused categories — a category appears once it has an explicit
@@ -111,7 +118,9 @@ export default function BudgetScreen() {
         pending={row.pending}
         status={row.status}
         defaultCurrency={defaultCurrency}
-        recurringExpensesInCategory={activeRecurringExpenses.filter((definition) => definition.categoryId === row.id)}
+        recurringExpensesInCategory={activeRecurringExpenses.filter(
+          (definition) => definition.categoryId === row.id,
+        )}
         movements={categoryMovements(expenses, row.id, cycleRange)}
         suggestedBudget={suggestCategoryBudget(expenses, row.id)}
       />
@@ -154,7 +163,11 @@ export default function BudgetScreen() {
 
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.settledBalance')}</ThemedText>
-            <ThemedText type="default" style={styles.resultValue} themeColor={summary.settled >= 0 ? 'success' : 'danger'}>
+            <ThemedText
+              type="default"
+              style={styles.resultValue}
+              themeColor={summary.settled >= 0 ? 'success' : 'danger'}
+            >
               {formatCurrency(summary.settled, defaultCurrency)}
             </ThemedText>
           </View>
@@ -165,7 +178,11 @@ export default function BudgetScreen() {
         <View style={styles.gridRow}>
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.pending')}</ThemedText>
-            <ThemedText type="smallBold" style={styles.figure} themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}>
+            <ThemedText
+              type="smallBold"
+              style={styles.figure}
+              themeColor={summary.stillToPay > 0 ? 'danger' : 'success'}
+            >
               {formatCurrency(summary.stillToPay, defaultCurrency)}
             </ThemedText>
           </View>
@@ -183,7 +200,11 @@ export default function BudgetScreen() {
 
           <View style={styles.cell}>
             <ThemedText type="caption">{t('budget.summary.projectedBalance')}</ThemedText>
-            <ThemedText type="default" style={styles.resultValue} themeColor={summary.projected >= 0 ? 'success' : 'danger'}>
+            <ThemedText
+              type="default"
+              style={styles.resultValue}
+              themeColor={summary.projected >= 0 ? 'success' : 'danger'}
+            >
               {formatCurrency(summary.projected, defaultCurrency)}
             </ThemedText>
           </View>
@@ -193,7 +214,11 @@ export default function BudgetScreen() {
 
         <View style={styles.footerRow}>
           <ThemedText type="caption">{t('budget.summary.overallBalance')}</ThemedText>
-          <ThemedText type="default" style={styles.footerValue} themeColor={summary.overall >= 0 ? 'success' : 'danger'}>
+          <ThemedText
+            type="default"
+            style={styles.footerValue}
+            themeColor={summary.overall >= 0 ? 'success' : 'danger'}
+          >
             {formatCurrency(summary.overall, defaultCurrency)}
           </ThemedText>
         </View>
@@ -201,7 +226,9 @@ export default function BudgetScreen() {
 
       <SectionHeader
         title={t('budget.categories')}
-        trailingText={needAttention > 0 ? t('budget.attention', { count: needAttention }) : undefined}
+        trailingText={
+          needAttention > 0 ? t('budget.attention', { count: needAttention }) : undefined
+        }
       />
 
       {rows.length === 0 ? (
@@ -283,7 +310,12 @@ function BudgetInfoSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
       </View>
 
       <View style={styles.infoButtons}>
-        <Button label={t('budget.info.openPanel')} variant="secondary" onPress={openDashboard} style={styles.infoButtonFlex} />
+        <Button
+          label={t('budget.info.openPanel')}
+          variant="secondary"
+          onPress={openDashboard}
+          style={styles.infoButtonFlex}
+        />
         <Button label={t('budget.info.close')} onPress={onClose} style={styles.infoButtonFlex} />
       </View>
     </ActionSheet>
