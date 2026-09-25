@@ -1,4 +1,5 @@
 import { getCurrentCycleRange, isWithinCycle, type CycleRange } from './cycle';
+import { robustAverage } from './estimate';
 import type { ExpenseRecord, IncomeRecord } from '@/types/firestore';
 
 // Pure budget-screen math (Presupuesto redesign §5) — kept separate from the
@@ -78,32 +79,6 @@ export function categoryMovements<T extends ExpenseRecord>(
 // as the per-recurring rolling average (FR-6a), not user-configurable.
 const SUGGESTION_WINDOW_MONTHS = 6;
 
-// Below this many months there's too little data to call any month an
-// outlier, so the suggestion is a plain average.
-const MIN_MONTHS_FOR_OUTLIER_FILTER = 4;
-
-// Tukey's fence multiplier — the standard 1.5 × IQR outlier rule.
-const TUKEY_FENCE = 1.5;
-
-function median(sorted: number[]): number {
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
-}
-
-// Tukey's rule: drop values outside [Q1 − 1.5·IQR, Q3 + 1.5·IQR]. Quartiles
-// are the medians of the lower and upper halves (the middle value excluded
-// when the count is odd) — the simple textbook method, fine for ≤ 6 values.
-export function withoutOutliers(values: number[]): number[] {
-  const sorted = [...values].sort((a, b) => a - b);
-  const half = Math.floor(sorted.length / 2);
-  const q1 = median(sorted.slice(0, half));
-  const q3 = median(sorted.slice(sorted.length - half));
-  const iqr = q3 - q1;
-  const low = q1 - TUKEY_FENCE * iqr;
-  const high = q3 + TUKEY_FENCE * iqr;
-  return values.filter((value) => value >= low && value <= high);
-}
-
 // D10: a category's suggested monthly budget is what it costs in a normal
 // month — every paid expense in it, one-time and recurring alike (a category
 // budget covers everything filed under it). Built from monthly totals over
@@ -145,8 +120,8 @@ export function suggestCategoryBudget(
       .reduce((sum, expense) => sum + expense.amountInDefaultCurrency, 0);
   });
 
-  const kept = months >= MIN_MONTHS_FOR_OUTLIER_FILTER ? withoutOutliers(monthlyTotals) : monthlyTotals;
-  const average = Math.round((kept.reduce((sum, total) => sum + total, 0) / kept.length) * 100) / 100;
+  // D12: the app's standard estimate (outlier months dropped, then averaged).
+  const average = Math.round(robustAverage(monthlyTotals)! * 100) / 100;
   return average > 0 ? average : null;
 }
 

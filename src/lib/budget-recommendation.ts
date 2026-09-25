@@ -1,3 +1,4 @@
+import { robustAverage } from './estimate';
 import { toTimestamp } from './timestamp';
 import {
   ROLLING_AVERAGE_DRIFT_FLOOR,
@@ -9,11 +10,6 @@ import {
 // Pure rolling-average/drift math for FR-6a-6d (docs/data-model.md §9),
 // kept separate from Firestore/store calls so it's directly unit-testable —
 // same split as src/lib/lifecycle-transitions.ts.
-
-function average(amounts: number[]): number | null {
-  if (amounts.length === 0) return null;
-  return amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
-}
 
 // FR-6b/6c: both the %-threshold and the floor must hold, so a small swing
 // on a small recurring bill (e.g. a $5 bill moving 15%, a $0.75 difference)
@@ -45,7 +41,9 @@ export function computeBudgetRecommendation({
   previousStatus,
   dismissedAtAverageAmount,
 }: ComputeBudgetRecommendationParams): BudgetRecommendation {
-  const rollingAverageAmount = average(paidInstanceAmounts);
+  // D12: the app's standard estimate — a single anomalous bill (e.g. a
+  // billing error) is excluded instead of triggering a false recommendation.
+  const rollingAverageAmount = robustAverage(paidInstanceAmounts);
   const sampleSize = paidInstanceAmounts.length;
 
   if (rollingAverageAmount === null || !hasDrifted(rollingAverageAmount, budgetedAmount)) {

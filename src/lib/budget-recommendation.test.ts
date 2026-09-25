@@ -23,6 +23,21 @@ describe('computeBudgetRecommendation', () => {
     expect(result.status).toBe('none');
   });
 
+  it('ignores a single anomalous bill instead of recommending a change (D12)', () => {
+    // 5 normal months at 300 plus one Q2,000 billing error: a plain average
+    // (583) would flag drift; the robust average stays at 300.
+    const result = computeBudgetRecommendation({
+      paidInstanceAmounts: [300, 300, 2000, 300, 300, 300],
+      budgetedAmount: 300,
+      now,
+      previousStatus: 'none',
+      dismissedAtAverageAmount: null,
+    });
+
+    expect(result.rollingAverageAmount).toBe(300);
+    expect(result.status).toBe('none');
+  });
+
   it('returns status none when the drift is below both thresholds', () => {
     // avg 205 vs budgeted 200: diff 5, well under the 20 floor.
     const result = computeBudgetRecommendation({
