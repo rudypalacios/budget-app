@@ -14,9 +14,10 @@ export type SuggestedBudgetRowProps = {
 };
 
 // "Suggested budget: X" plus an info button that expands a short, plain-
-// language explanation inline — shared by the Set/Adjust budget sheet and a
-// budgeted category's detail (D10/D13). Inline rather than another sheet:
-// in the sheet it would stack a second modal, which is clumsy on mobile.
+// language explanation inline, used by the Set/Adjust budget sheet (D10).
+// Inline rather than another sheet: that would stack a second modal on top
+// of the sheet, which is clumsy on mobile. Kept as its own small component
+// since it owns its expand/collapse state.
 export function SuggestedBudgetRow({ suggested, defaultCurrency }: SuggestedBudgetRowProps) {
   const { t } = useTranslation();
   const [isInfoOpen, setIsInfoOpen] = useState(false);

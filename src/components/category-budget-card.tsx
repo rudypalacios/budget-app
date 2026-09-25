@@ -6,7 +6,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BudgetMovementRow } from '@/components/budget-movement-row';
 import { BudgetRecommendationBadge } from '@/components/budget-recommendation-badge';
 import { SetBudgetSheet } from '@/components/set-budget-sheet';
-import { SuggestedBudgetRow } from '@/components/suggested-budget-row';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,11 +144,8 @@ export function CategoryBudgetCard({
           {/* D13: a budget is a goal, not a forecast — so no nagging banner
               at category level (the over-budget chip already warns, and a
               recurring bill's drift has its own recommendation, which would
-              otherwise double up here). Just the suggestion as a passive
-              reference, and the user decides whether to move the goal. */}
-          {budgeted !== null && suggestedBudget !== null && (
-            <SuggestedBudgetRow suggested={suggestedBudget} defaultCurrency={defaultCurrency} />
-          )}
+              otherwise double up here). The user decides when to move the
+              goal; the suggestion lives inside the Set/Adjust sheet only. */}
           <Button
             label={t(budgeted === null ? 'budget.setBudget' : 'budget.adjustBudget')}
             variant="secondary"
