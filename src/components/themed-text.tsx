@@ -45,31 +45,34 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   );
 }
 
+// Redesign typography (v9 prototype): regular 400 for body text and medium
+// 500 for emphasis — the prototype never goes bolder than 500. `title` is
+// the page title (22px), not a hero headline.
 const styles = StyleSheet.create({
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
+    fontWeight: 500,
   },
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontSize: 22,
+    fontWeight: 500,
+    lineHeight: 28,
   },
   subtitle: {
     fontSize: 32,
     lineHeight: 44,
-    fontWeight: 600,
+    fontWeight: 500,
   },
   link: {
     lineHeight: 30,
@@ -87,6 +90,6 @@ const styles = StyleSheet.create({
   caption: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: 500,
+    fontWeight: 400,
   },
 });

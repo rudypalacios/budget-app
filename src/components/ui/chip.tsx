@@ -14,6 +14,12 @@ export type ChipProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+const TONE_SURFACE = {
+  success: 'successSurface',
+  warning: 'warningSurface',
+  danger: 'dangerSurface',
+} as const;
+
 export function Chip({ label, tone = 'neutral', size = 'default', style }: ChipProps) {
   const theme = useTheme();
   const toneColor = tone === 'neutral' ? null : theme[tone];
@@ -27,10 +33,10 @@ export function Chip({ label, tone = 'neutral', size = 'default', style }: ChipP
         styles.chip,
         size === 'small' && styles.small,
         {
-          // Semantic tones use a translucent wash of the tone color as the
-          // fill (see Stage 4 design preview) rather than a new set of pale
-          // "container" tokens — one token per tone stays enough here.
-          backgroundColor: toneColor ? `${toneColor}22` : theme.backgroundSelected,
+          // Semantic tones sit on the palette's matching tint (the v9
+          // prototype's bg-* colors), which keeps the tone text readable.
+          backgroundColor:
+            tone === 'neutral' ? theme.backgroundSelected : theme[TONE_SURFACE[tone]],
           borderColor: toneColor ? 'transparent' : theme.border,
         },
         style,
@@ -60,6 +66,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
   },
   smallText: {
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
