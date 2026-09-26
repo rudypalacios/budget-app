@@ -5,10 +5,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ActionSheet } from '@/components/ui/action-sheet';
-import { Button } from '@/components/ui/button';
+import { SheetButtons } from '@/components/ui/sheet-buttons';
 import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { currencyDisplayName } from '@/lib/currency-display';
 
 import { OptionRow } from './option-row';
 
@@ -79,22 +80,16 @@ export function DefaultCurrencySheet({
             </View>
           ))}
         </View>
-        <View style={styles.buttons}>
-          <Button
-            label={t('common.cancel')}
-            variant="secondary"
-            onPress={() => setPendingCurrency(null)}
-            style={styles.button}
-          />
-          <Button
-            label={t('settings.general.currencyConfirm.confirm', { currency: pendingCurrency })}
-            // Danger-styled per the ajustes-v2 prototype: it's the one change
-            // on this screen that marks dependent data stale.
-            variant="danger"
-            onPress={handleConfirm}
-            style={styles.button}
-          />
-        </View>
+        <SheetButtons
+          onCancel={() => setPendingCurrency(null)}
+          confirmLabel={t('settings.general.currencyConfirm.confirm', {
+            currency: pendingCurrency,
+          })}
+          // Danger-styled per the ajustes-v2 prototype: it's the one change
+          // on this screen that marks dependent data stale.
+          confirmVariant="danger"
+          onConfirm={handleConfirm}
+        />
       </ActionSheet>
     );
   }
@@ -105,7 +100,7 @@ export function DefaultCurrencySheet({
         {SUPPORTED_CURRENCIES.map((currency) => (
           <OptionRow
             key={currency.code}
-            label={currency.label}
+            label={currencyDisplayName(currency.code, t)}
             isSelected={currency.code === currentCurrency}
             onPress={() => handlePick(currency.code)}
           />
@@ -126,14 +121,5 @@ const styles = StyleSheet.create({
   },
   consequenceText: {
     flex: 1,
-  },
-  buttons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  button: {
-    flexGrow: 1,
-    flexBasis: 140,
   },
 });

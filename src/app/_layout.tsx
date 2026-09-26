@@ -157,8 +157,6 @@ export default function RootLayout() {
         <Stack.Screen name="recurring-expenses/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring-incomes/[id]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="currencies/index" />
-        <Stack.Screen name="currencies/new" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="currencies/[code]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="archive/index" />
         <Stack.Screen name="trash/index" />
         <Stack.Screen name="recurring-groups/index" />

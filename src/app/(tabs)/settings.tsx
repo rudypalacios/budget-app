@@ -16,7 +16,7 @@ import { DefaultCurrencySheet } from '@/features/settings/default-currency-sheet
 import { LanguageSheet } from '@/features/settings/language-sheet';
 import { RemindersSection } from '@/features/settings/reminders-section';
 import { saveSettings } from '@/features/settings/save-settings';
-import { SegmentedControl } from '@/features/settings/segmented-control';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SettingsCard } from '@/features/settings/settings-card';
 import { SettingsRow } from '@/features/settings/settings-row';
 import { SettingsSectionTitle } from '@/features/settings/settings-section-title';
@@ -97,6 +97,7 @@ function SettingsContent({ settings }: { settings: UserSettings }) {
     recurringExpenses,
     recurringIncomes,
     categories,
+    recurringGroups,
   ).length;
   const trashedCount = collectTrashedRecords(
     expenses,

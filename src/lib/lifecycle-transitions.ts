@@ -17,6 +17,19 @@ export function archiveTransition(now: Date): TrashableLifecycle {
   };
 }
 
+// Archived -> active, straight from the Archive screen's Restore. Not the
+// same as restoreTransition below, which only undoes a trash (it relies on
+// trashedFromState, which an archived-but-never-trashed record doesn't have).
+export function unarchiveTransition(): TrashableLifecycle {
+  return {
+    lifecycleState: 'active',
+    trashedFromState: null,
+    archivedAt: null,
+    trashedAt: null,
+    purgeAt: null,
+  };
+}
+
 // `from` is the record's lifecycleState at the moment it's trashed (active
 // or archived) — captured as trashedFromState so restoreTransition knows
 // where to put it back (FR-4b). archivedAt is preserved only when trashing

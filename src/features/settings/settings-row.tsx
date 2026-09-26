@@ -16,16 +16,28 @@ export type SettingsRowProps = {
   title: string;
   // Secondary line under the title.
   subtitle?: ReactNode;
-  // Leading icon, drawn in the prototype's accent circle (`.cic`).
+  // Leading icon, drawn in the prototype's accent circle (`.cic`)…
   icon?: SymbolViewProps['name'];
+  // …or a short text in the same circle instead (a currency symbol, a
+  // category's emoji or initial).
+  leadingText?: string;
+  // Custom leading element instead of a circle (e.g. a selection checkbox).
+  leading?: ReactNode;
+  // Inline after the title (e.g. a "Default" or "Needs refresh" chip).
+  titleBadge?: ReactNode;
   // Right-aligned current value (e.g. "Q (GTQ)", "3 categories").
   value?: string;
   // Extra element after the value (e.g. a "2 need refresh" chip).
   badge?: ReactNode;
   // Trailing icon in place of the chevron (e.g. sign out's logout icon).
   trailingIcon?: SymbolViewProps['name'];
+  // Custom trailing element for a static row (e.g. its ⋮ actions button).
+  trailing?: ReactNode;
   // Omit for a static row (no chevron, not pressable).
   onPress?: () => void;
+  // Pressable rows show a chevron unless this is false (e.g. when the value
+  // already reads as the action, like "Edit rate").
+  showChevron?: boolean;
   // Screen-reader text when it should differ from title + value.
   accessibilityLabel?: string;
 };
@@ -37,23 +49,42 @@ export function SettingsRow({
   title,
   subtitle,
   icon,
+  leadingText,
+  leading,
+  titleBadge,
   value,
   badge,
   trailingIcon,
+  trailing,
   onPress,
+  showChevron = true,
   accessibilityLabel,
 }: SettingsRowProps) {
   const theme = useTheme();
 
   const content = (
     <>
-      {icon !== undefined && (
+      {leading}
+      {(icon !== undefined || leadingText !== undefined) && (
         <View style={[styles.iconCircle, { backgroundColor: theme.tintSurface }]}>
-          <SymbolView name={icon} size={18} tintColor={theme.tint} />
+          {icon !== undefined ? (
+            <SymbolView name={icon} size={18} tintColor={theme.tint} />
+          ) : (
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              {leadingText}
+            </ThemedText>
+          )}
         </View>
       )}
       <View style={styles.text}>
-        <ThemedText type="smallBold">{title}</ThemedText>
+        {titleBadge !== undefined ? (
+          <View style={styles.titleLine}>
+            <ThemedText type="smallBold">{title}</ThemedText>
+            {titleBadge}
+          </View>
+        ) : (
+          <ThemedText type="smallBold">{title}</ThemedText>
+        )}
         {typeof subtitle === 'string' ? (
           <ThemedText type="caption">{subtitle}</ThemedText>
         ) : (
@@ -70,7 +101,8 @@ export function SettingsRow({
           {badge}
         </View>
       )}
-      {onPress && (
+      {trailing}
+      {onPress && showChevron && (
         <SymbolView
           name={trailingIcon ?? CHEVRON}
           size={trailingIcon ? 18 : 16}
@@ -117,6 +149,12 @@ const styles = StyleSheet.create({
   },
   // The title keeps a floor width so a long value + badge wraps onto a
   // second line instead of breaking the title mid-word.
+  titleLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+  },
   text: {
     flex: 1,
     minWidth: 100,

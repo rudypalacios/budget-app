@@ -1,5 +1,10 @@
 import { createCollectionStore } from './create-collection-store';
-import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import {
+  archiveTransition,
+  restoreTransition,
+  trashTransition,
+  unarchiveTransition,
+} from '@/lib/lifecycle-transitions';
 import { trimName } from '@/lib/text-input';
 import { useUserSettingsStore } from './user-settings';
 import type { ArchivableState, RecurringGroup } from '@/types/firestore';
@@ -43,6 +48,12 @@ export function trashRecurringGroup(id: string) {
     id,
     trashTransition(group.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
   );
+}
+
+// Archive screen's Restore for an archived (never trashed) record — see
+// unarchiveTransition.
+export function unarchiveRecurringGroup(id: string) {
+  return store.update(id, unarchiveTransition());
 }
 
 // Engine-only for now — no UI calls this yet, restore/purge get a real

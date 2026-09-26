@@ -69,6 +69,7 @@ export default function EditCategoryScreen() {
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
         defaultCurrency={defaultCurrency}
+        otherNames={items.filter((item) => item.id !== id).map((item) => item.name)}
         suggestedMonthlyBudget={suggestedMonthlyBudget}
       />
     </ScreenScroll>

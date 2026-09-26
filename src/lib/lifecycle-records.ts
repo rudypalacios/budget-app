@@ -4,6 +4,7 @@ import type {
   ExpenseRecord,
   IncomeRecord,
   RecurringExpense,
+  RecurringGroup,
   RecurringIncome,
   Timestamp,
 } from '@/types/firestore';
@@ -15,7 +16,22 @@ import type {
 // actually calls the per-collection store functions).
 
 export type LifecycleRecordType =
-  'expense' | 'income' | 'recurringExpense' | 'recurringIncome' | 'category';
+  'expense' | 'income' | 'recurringExpense' | 'recurringIncome' | 'category' | 'recurringGroup';
+
+// The types that can go to the Trash. Categories never can (no trashed
+// state); recurring groups can't either since the Ajustes redesign — a
+// group is only deleted outright, and only while nothing references it
+// (see describeGroupUsage in recurring-groups.ts); one with history is
+// archived instead.
+export type TrashableRecordType = Exclude<LifecycleRecordType, 'category' | 'recurringGroup'>;
+
+export function isTrashableRecordType(type: LifecycleRecordType): type is TrashableRecordType {
+  return type !== 'category' && type !== 'recurringGroup';
+}
+
+export function isRecurringDefinitionType(type: LifecycleRecordType): boolean {
+  return type === 'recurringExpense' || type === 'recurringIncome';
+}
 
 export type LifecycleRecord = {
   recordType: LifecycleRecordType;
@@ -65,6 +81,7 @@ export function collectArchivedRecords(
   recurringExpenses: WithId<RecurringExpense>[],
   recurringIncomes: WithId<RecurringIncome>[],
   categories: WithId<Category>[],
+  recurringGroups: WithId<RecurringGroup>[] = [],
 ): LifecycleRecord[] {
   const records: LifecycleRecord[] = [
     ...expenses.filter(isArchived).map((item) => ({
@@ -100,6 +117,13 @@ export function collectArchivedRecords(
       id: item.id,
       name: item.name,
       statusDate: item.updatedAt.toDate(),
+      purgeAt: null,
+    })),
+    ...recurringGroups.filter(isArchived).map((item) => ({
+      recordType: 'recurringGroup' as const,
+      id: item.id,
+      name: item.name,
+      statusDate: archivedDate(item),
       purgeAt: null,
     })),
   ];

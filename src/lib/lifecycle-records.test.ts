@@ -235,6 +235,27 @@ describe('collectArchivedRecords', () => {
   it('returns an empty list when nothing is archived', () => {
     expect(collectArchivedRecords([], [], [], [], [])).toEqual([]);
   });
+
+  it('includes archived recurring groups, but not active ones', () => {
+    const archivedGroup = {
+      id: 'g1',
+      name: 'Tarjeta',
+      lifecycleState: 'archived',
+      archivedAt: fakeTimestamp(new Date('2026-05-01')),
+      updatedAt: fakeTimestamp(new Date('2026-05-02')),
+    } as never;
+    const activeGroup = { id: 'g2', name: 'Otra', lifecycleState: 'active' } as never;
+    const records = collectArchivedRecords([], [], [], [], [], [archivedGroup, activeGroup]);
+    expect(records).toEqual([
+      {
+        recordType: 'recurringGroup',
+        id: 'g1',
+        name: 'Tarjeta',
+        statusDate: new Date('2026-05-01'),
+        purgeAt: null,
+      },
+    ]);
+  });
 });
 
 describe('collectTrashedRecords', () => {

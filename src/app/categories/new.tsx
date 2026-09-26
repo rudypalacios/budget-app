@@ -6,12 +6,13 @@ import { ModalHeader } from '@/components/modal-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { normalizeMonthlyBudget } from '@/lib/budget-status';
 import { parseAmountInput } from '@/lib/currency-input';
-import { addCategory } from '@/store/categories';
+import { addCategory, useCategoriesStore } from '@/store/categories';
 import { useUserSettingsStore } from '@/store/user-settings';
 
 export default function NewCategoryScreen() {
   const { t } = useTranslation();
   const defaultCurrency = useUserSettingsStore((state) => state.data?.defaultCurrency ?? 'GTQ');
+  const categories = useCategoriesStore((state) => state.items);
 
   function handleSubmit(values: CategoryFormValues) {
     addCategory({
@@ -30,10 +31,11 @@ export default function NewCategoryScreen() {
     <ScreenScroll>
       <ModalHeader title={t('categories.addTitle')} />
       <CategoryForm
-        submitLabel={t('common.save')}
+        submitLabel={t('common.create')}
         onSubmit={handleSubmit}
         onCancel={() => router.back()}
         defaultCurrency={defaultCurrency}
+        otherNames={categories.map((category) => category.name)}
       />
     </ScreenScroll>
   );

@@ -17,20 +17,30 @@
     "appName": "Budget App",
     "actionsFor": "Actions for {{name}}",
     "amount": "Amount",
-    "remove": "Remove",
     "archive": "Archive",
     "delete": "Delete",
     "restore": "Restore",
     "deletePermanently": "Delete permanently",
     "rename": "Rename",
-    "close": "Close"
+    "close": "Close",
+    "discardTitle": "Discard changes?",
+    "discardMessage": "You have unsaved changes.",
+    "keepEditing": "Keep editing",
+    "discard": "Discard",
+    "create": "Create"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" moved to Archive",
     "movedToTrash": "\"{{name}}\" moved to Trash",
     "title": "Archive",
     "empty": "Nothing archived.",
-    "archivedOn": "Archived on {{date}}"
+    "archivedOn": "Archived on {{date}}",
+    "intro": "Archived items are hidden but keep their history. Archived recurring items stop generating.",
+    "restoreHint": "Becomes active again",
+    "moveToTrash": "Move to trash",
+    "moveToTrashHint_one": "Deleted in {{count}} day",
+    "moveToTrashHint_other": "Deleted in {{count}} days",
+    "recurringResumes": "Restored recurring items start generating their payments again."
   },
   "trash": {
     "title": "Trash",
@@ -46,7 +56,12 @@
     "permanentlyDeleted": "\"{{name}}\" permanently deleted",
     "bulkPermanentlyDeleted_one": "{{count}} item permanently deleted",
     "bulkPermanentlyDeleted_other": "{{count}} items permanently deleted",
-    "deleteSelectedPermanently": "Delete selected permanently"
+    "deleteSelectedPermanently": "Delete selected permanently",
+    "intro_one": "Deleted items are removed for good after {{count}} day. Until then you can restore them.",
+    "intro_other": "Deleted items are removed for good after {{count}} days. Until then you can restore them.",
+    "restoreHint": "Goes back where it was",
+    "purgeHint": "This can't be undone",
+    "cannotUndo": "This can't be undone."
   },
   "lifecycle": {
     "restored": "\"{{name}}\" restored",
@@ -68,8 +83,10 @@
       "income": "Income",
       "recurringExpense": "Recurring expense",
       "recurringIncome": "Recurring income",
-      "category": "Category"
-    }
+      "category": "Category",
+      "recurringGroup": "Recurring group"
+    },
+    "saveFailed": "Couldn't complete the action. Try again."
   },
   "nav": {
     "payments": "Dashboard",
@@ -166,15 +183,11 @@
     },
     "categories": {
       "title": "Categories",
-      "manage": "Manage categories",
       "count_one": "{{count}} category",
       "count_other": "{{count}} categories"
     },
     "currencies": {
       "title": "Currencies",
-      "manage": "Manage currencies",
-      "count_one": "{{count}} currency added",
-      "count_other": "{{count}} currencies added",
       "staleCount_one": "{{count}} needs refresh",
       "staleCount_other": "{{count}} need refresh",
       "addedCount_one": "{{count}} added",
@@ -182,7 +195,6 @@
     },
     "recurringGroups": {
       "title": "Recurring groups",
-      "manage": "Manage recurring groups",
       "count_one": "{{count}} group",
       "count_other": "{{count}} groups"
     },
@@ -196,7 +208,11 @@
       "leadDaysValue_other": "{{count}} days' notice",
       "leadDaysDecrease": "One day less",
       "leadDaysIncrease": "One day more",
-      "enableHint": "A heads-up before each due date."
+      "enableHint": "A heads-up before each due date.",
+      "timeOfDay": "Reminder time",
+      "noFixedTime": "No fixed time",
+      "timeChanged": "Reminders will arrive at {{time}}.",
+      "timeCleared": "Reminders won't have a fixed time."
     },
     "data": {
       "title": "Data",
@@ -204,8 +220,6 @@
       "archiveCount_one": "{{count}} archived item",
       "archiveCount_other": "{{count}} archived items",
       "trash": "Trash",
-      "trashCount_one": "{{count}} item in Trash",
-      "trashCount_other": "{{count}} items in Trash",
       "trashRetentionSheetTitle": "Trash retention",
       "trashRetentionOption_one": "{{count}} day",
       "trashRetentionOption_other": "{{count}} days",
@@ -311,19 +325,11 @@
   },
   "categories": {
     "title": "Categories",
-    "allCategories": "All categories",
     "addAction": "+ Add",
     "addTitle": "Add category",
     "editTitle": "Edit category",
     "notFoundTitle": "Category not found",
     "notFoundBody": "This category no longer exists.",
-    "active": "Active",
-    "archived": "Archived",
-    "markAs": "Mark {{name}} as {{state}}",
-    "state": {
-      "active": "active",
-      "archived": "archived"
-    },
     "confirmDeleteTitle": "Delete category permanently?",
     "confirmDeleteMessage": "\"{{name}}\" will be permanently deleted. This can't be undone.",
     "confirmDeleteButton": "Delete permanently",
@@ -344,7 +350,27 @@
       "monthlyBudget": "Monthly budget ({{currency}})",
       "monthlyBudgetPlaceholder": "0.00",
       "icon": "Icon (optional)",
-      "iconNone": "None"
+      "iconNone": "None",
+      "errors": {
+        "nameRequired": "Enter a name.",
+        "duplicateName": "A category with that name already exists.",
+        "negativeBudget": "The budget can't be negative."
+      }
+    },
+    "intro": "Categories group your expenses and income. The monthly budget is set here or on the Budget screen.",
+    "activeSection": "Active",
+    "archivedSection": "Archived",
+    "systemDefault": "Default",
+    "noBudget": "No budget",
+    "nowArchived": "\"{{name}}\" is now archived.",
+    "nowActive": "\"{{name}}\" is now active.",
+    "saveFailed": "Couldn't save the category. Try again.",
+    "actions": {
+      "editHint": "Name, type, budget and icon",
+      "archiveHint": "No longer offered when adding records",
+      "activate": "Activate",
+      "activateHint": "Offered again when adding records",
+      "deleteHint": "This can't be undone."
     }
   },
   "budget": {
@@ -460,16 +486,46 @@
   },
   "currencies": {
     "title": "Currencies",
-    "allCurrencies": "All currencies",
-    "addAction": "+ Add",
     "addTitle": "Add currency",
     "editTitle": "Update {{currency}} rate",
-    "notFoundTitle": "Currency not found",
-    "notFoundBody": "This currency is no longer configured.",
     "empty": "No currencies added yet.",
     "needsRefresh": "Needs refresh",
     "editRate": "Edit rate",
-    "allAdded": "Every supported currency has already been added."
+    "allAdded": "Every supported currency has already been added.",
+    "intro": "The configured rate is used to estimate pending expenses and new records. When you pay, you record what was actually charged, and past payments never change.",
+    "defaultLabel": "Default currency",
+    "rateLine": "1 {{code}} = {{rate}}",
+    "sourceManual": "Manual",
+    "sourceFetched": "Fetched",
+    "pendingUsage_one": "Used in {{count}} pending record",
+    "pendingUsage_other": "Used in {{count}} pending records",
+    "staleHint": "Update the rate to use it again.",
+    "editRateFor": "Edit rate for {{code}}",
+    "usageHint": "Used to estimate pending expenses and new records. Past payments don't change.",
+    "remove": "Remove currency",
+    "removed": "{{code}} removed.",
+    "added": "{{code}} added.",
+    "rateUpdated": "{{code}} rate updated. Past payments don't change.",
+    "saveFailed": "Couldn't save the currency. Try again.",
+    "addConfirm": "Add",
+    "names": {
+      "GTQ": "Guatemalan Quetzal",
+      "USD": "US Dollar",
+      "EUR": "Euro",
+      "MXN": "Mexican Peso",
+      "CAD": "Canadian Dollar",
+      "GBP": "British Pound",
+      "COP": "Colombian Peso",
+      "ARS": "Argentine Peso",
+      "CLP": "Chilean Peso",
+      "PEN": "Peruvian Sol",
+      "BRL": "Brazilian Real",
+      "DOP": "Dominican Peso",
+      "HNL": "Honduran Lempira",
+      "CRC": "Costa Rican Colón",
+      "PAB": "Panamanian Balboa"
+    },
+    "addButton": "+ Add currency"
   },
   "payments": {
     "title": "Dashboard",
@@ -518,19 +574,32 @@
     "hideMembers": "Hide {{name}} group members",
     "createFailed": "Couldn't create the group. Please try again.",
     "manageTitle": "Recurring groups",
-    "allGroups": "All groups",
-    "addAction": "+ Add",
     "empty": "No recurring groups yet.",
-    "active": "Active",
-    "archived": "Archived",
-    "state": {
-      "active": "active",
-      "archived": "archived"
-    },
-    "markAs": "Mark {{name}} as {{state}}",
     "renameTitle": "Rename group",
     "confirmDeleteTitle": "Delete group permanently?",
-    "confirmDeleteMessage": "\"{{name}}\" will be permanently deleted. Its members keep their own data and simply stop showing as grouped.",
-    "deleted": "\"{{name}}\" permanently deleted"
+    "confirmDeleteMessage": "\"{{name}}\" will be permanently deleted. No expense uses it, so no history is lost.",
+    "deleted": "\"{{name}}\" permanently deleted",
+    "intro": "A group only brings expenses together to see their total (for example, a card). Each expense keeps its own date, amount and status.",
+    "newGroupAction": "+ New group",
+    "newGroupTitle": "New group",
+    "created": "Group \"{{name}}\" created.",
+    "renamed": "Group \"{{name}}\" renamed.",
+    "nowArchived": "\"{{name}}\" is now archived.",
+    "nowActive": "\"{{name}}\" is now active.",
+    "saveFailed": "Couldn't save the group. Try again.",
+    "activeSection": "Active",
+    "archivedSection": "Archived",
+    "actionsFor": "Options for group {{name}}",
+    "expenseCount_one": "{{count}} expense",
+    "expenseCount_other": "{{count}} expenses",
+    "deleteBlocked_one": "Can't delete: it has history ({{count}} record). Archive it to keep it.",
+    "deleteBlocked_other": "Can't delete: it has history ({{count}} records). Archive it to keep it.",
+    "actions": {
+      "renameHint": "The name changes everywhere",
+      "archiveHint": "No longer offered; its expenses keep the group",
+      "activate": "Activate",
+      "activateHint": "Its expenses show grouped again",
+      "deleteHint": "No expense uses it. This can't be undone."
+    }
   }
 }
