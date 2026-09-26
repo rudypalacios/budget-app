@@ -1,5 +1,6 @@
 import {
   buildDashboardSections,
+  describeGroupUsage,
   computeGroupSubtotal,
   groupBucket,
   groupRowsIntoSections,
@@ -271,5 +272,75 @@ describe('groupRowsIntoSections', () => {
       name: 'Servicios',
       subtotal: 40,
     });
+  });
+});
+
+describe('describeGroupUsage', () => {
+  const definition = (overrides: Record<string, unknown> = {}) => ({
+    id: 'def-1',
+    name: 'Netflix',
+    lifecycleState: 'active',
+    recurringGroupId: 'g1',
+    ...overrides,
+  });
+  const expense = (overrides: Record<string, unknown> = {}) => ({
+    id: 'exp-1',
+    kind: 'oneTime' as const,
+    name: 'Comida variada',
+    lifecycleState: 'active',
+    recurringGroupId: 'g1',
+    recurringExpenseId: null,
+    ...overrides,
+  });
+
+  it('lists active definitions and one-time expenses in the group', () => {
+    const usage = describeGroupUsage('g1', [expense()], [definition()]);
+    expect(usage.memberNames).toEqual(['Netflix', 'Comida variada']);
+    expect(usage.referenceCount).toBe(2);
+  });
+
+  it("doesn't list a definition's instances again", () => {
+    const instances = [1, 2, 3].map((n) =>
+      expense({
+        id: `inst-${n}`,
+        kind: 'recurringInstance',
+        name: 'Netflix',
+        recurringExpenseId: 'def-1',
+      }),
+    );
+    const usage = describeGroupUsage('g1', instances, [definition()]);
+    expect(usage.memberNames).toEqual(['Netflix']);
+    expect(usage.referenceCount).toBe(4);
+  });
+
+  it('lists an instance assigned on its own once, however many months it has', () => {
+    const instances = [1, 2].map((n) =>
+      expense({
+        id: `inst-${n}`,
+        kind: 'recurringInstance',
+        name: 'Luz',
+        recurringExpenseId: 'def-2',
+      }),
+    );
+    expect(describeGroupUsage('g1', instances, []).memberNames).toEqual(['Luz']);
+  });
+
+  it('counts archived and trashed references as history but does not list them', () => {
+    const usage = describeGroupUsage(
+      'g1',
+      [expense({ lifecycleState: 'trashed' })],
+      [definition({ lifecycleState: 'archived' })],
+    );
+    expect(usage.memberNames).toEqual([]);
+    expect(usage.referenceCount).toBe(2);
+  });
+
+  it('ignores records in other groups or in none', () => {
+    const usage = describeGroupUsage(
+      'g1',
+      [expense({ recurringGroupId: 'g2' }), expense({ id: 'e2', recurringGroupId: null })],
+      [definition({ recurringGroupId: null })],
+    );
+    expect(usage).toEqual({ memberNames: [], referenceCount: 0 });
   });
 });

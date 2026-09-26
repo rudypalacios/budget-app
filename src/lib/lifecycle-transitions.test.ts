@@ -1,4 +1,9 @@
-import { archiveTransition, restoreTransition, trashTransition } from './lifecycle-transitions';
+import {
+  unarchiveTransition,
+  archiveTransition,
+  restoreTransition,
+  trashTransition,
+} from './lifecycle-transitions';
 import type { Timestamp } from '@/types/firestore';
 
 // toTimestamp() (src/lib/timestamp.ts) is a type-only cast — at runtime the
@@ -74,5 +79,17 @@ describe('restoreTransition', () => {
     expect(result.trashedFromState).toBeNull();
     expect(result.trashedAt).toBeNull();
     expect(result.purgeAt).toBeNull();
+  });
+});
+
+describe('unarchiveTransition', () => {
+  it('returns an archived record to active and clears every lifecycle timestamp', () => {
+    expect(unarchiveTransition()).toEqual({
+      lifecycleState: 'active',
+      trashedFromState: null,
+      archivedAt: null,
+      trashedAt: null,
+      purgeAt: null,
+    });
   });
 });

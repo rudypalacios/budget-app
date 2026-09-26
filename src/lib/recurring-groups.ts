@@ -168,3 +168,66 @@ export function groupRowsIntoSections<T extends GroupableItem>(
 
   return { rows: rows.filter((row) => !groupedRowIds.has(row.id)), groups };
 }
+
+export type GroupUsage = {
+  // What the group visibly holds today, for its row on the Recurring groups
+  // screen: active recurring definitions and one-time expenses assigned to
+  // it, plus active recurring instances assigned to it directly (not
+  // through their definition). Instances of a definition already listed
+  // don't add a second entry, so a monthly bill counts once, not once per
+  // month.
+  memberNames: string[];
+  // Every expense record or recurring definition pointing at the group, in
+  // any lifecycle state (active, archived, trashed-but-not-purged) — its
+  // history. Any at all means the group can't be deleted outright, only
+  // archived (Ajustes redesign, owner decision: never lose which expenses
+  // belonged to a group). Same rule as canDeleteCategory.
+  referenceCount: number;
+};
+
+type GroupReferenceExpense = {
+  id: string;
+  kind: 'oneTime' | 'recurringInstance';
+  name: string;
+  lifecycleState: string;
+  recurringGroupId: string | null;
+  recurringExpenseId: string | null;
+};
+
+type GroupReferenceDefinition = {
+  id: string;
+  name: string;
+  lifecycleState: string;
+  recurringGroupId: string | null;
+};
+
+export function describeGroupUsage(
+  groupId: string,
+  expenses: readonly GroupReferenceExpense[],
+  recurringExpenses: readonly GroupReferenceDefinition[],
+): GroupUsage {
+  const inGroupExpenses = expenses.filter((item) => item.recurringGroupId === groupId);
+  const inGroupDefinitions = recurringExpenses.filter((item) => item.recurringGroupId === groupId);
+
+  const activeDefinitions = inGroupDefinitions.filter((item) => item.lifecycleState === 'active');
+  const listedDefinitionIds = new Set(activeDefinitions.map((item) => item.id));
+  const memberNames = activeDefinitions.map((item) => item.name);
+
+  for (const expense of inGroupExpenses) {
+    if (expense.lifecycleState !== 'active') continue;
+    if (expense.kind === 'oneTime') {
+      memberNames.push(expense.name);
+      continue;
+    }
+    // An instance assigned on its own: list it once per definition.
+    const definitionKey = expense.recurringExpenseId ?? expense.id;
+    if (listedDefinitionIds.has(definitionKey)) continue;
+    listedDefinitionIds.add(definitionKey);
+    memberNames.push(expense.name);
+  }
+
+  return {
+    memberNames,
+    referenceCount: inGroupExpenses.length + inGroupDefinitions.length,
+  };
+}

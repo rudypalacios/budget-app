@@ -17,20 +17,30 @@
     "appName": "Budget App",
     "actionsFor": "Acciones para {{name}}",
     "amount": "Monto",
-    "remove": "Eliminar",
     "archive": "Archivar",
     "delete": "Eliminar",
     "restore": "Restaurar",
     "deletePermanently": "Eliminar permanentemente",
     "rename": "Renombrar",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "discardTitle": "¿Descartar cambios?",
+    "discardMessage": "Tienes cambios sin guardar.",
+    "keepEditing": "Seguir editando",
+    "discard": "Descartar",
+    "create": "Crear"
   },
   "archive": {
     "movedToArchive": "\"{{name}}\" se movió al archivo",
     "movedToTrash": "\"{{name}}\" se movió a la papelera",
     "title": "Archivo",
     "empty": "No hay nada archivado.",
-    "archivedOn": "Archivado el {{date}}"
+    "archivedOn": "Archivado el {{date}}",
+    "intro": "Lo archivado está oculto pero conserva su historial. Los recurrentes archivados dejan de generarse.",
+    "restoreHint": "Vuelve a estar activo",
+    "moveToTrash": "Mover a la papelera",
+    "moveToTrashHint_one": "Se elimina en {{count}} día",
+    "moveToTrashHint_other": "Se elimina en {{count}} días",
+    "recurringResumes": "Los recurrentes restaurados vuelven a generar sus pagos."
   },
   "trash": {
     "title": "Papelera",
@@ -46,7 +56,12 @@
     "permanentlyDeleted": "\"{{name}}\" eliminado permanentemente",
     "bulkPermanentlyDeleted_one": "{{count}} elemento eliminado permanentemente",
     "bulkPermanentlyDeleted_other": "{{count}} elementos eliminados permanentemente",
-    "deleteSelectedPermanently": "Eliminar seleccionados permanentemente"
+    "deleteSelectedPermanently": "Eliminar seleccionados permanentemente",
+    "intro_one": "Lo eliminado se borra para siempre pasado {{count}} día. Mientras tanto puedes restaurarlo.",
+    "intro_other": "Lo eliminado se borra para siempre pasados {{count}} días. Mientras tanto puedes restaurarlo.",
+    "restoreHint": "Vuelve a donde estaba",
+    "purgeHint": "No se puede deshacer",
+    "cannotUndo": "No se puede deshacer."
   },
   "lifecycle": {
     "restored": "\"{{name}}\" restaurado",
@@ -68,8 +83,10 @@
       "income": "Ingreso",
       "recurringExpense": "Gasto recurrente",
       "recurringIncome": "Ingreso recurrente",
-      "category": "Categoría"
-    }
+      "category": "Categoría",
+      "recurringGroup": "Grupo recurrente"
+    },
+    "saveFailed": "No se pudo completar la acción. Intenta de nuevo."
   },
   "nav": {
     "payments": "Panel",
@@ -166,15 +183,11 @@
     },
     "categories": {
       "title": "Categorías",
-      "manage": "Administrar categorías",
       "count_one": "{{count}} categoría",
       "count_other": "{{count}} categorías"
     },
     "currencies": {
       "title": "Monedas",
-      "manage": "Administrar monedas",
-      "count_one": "{{count}} moneda agregada",
-      "count_other": "{{count}} monedas agregadas",
       "staleCount_one": "{{count}} por actualizar",
       "staleCount_other": "{{count}} por actualizar",
       "addedCount_one": "{{count}} agregada",
@@ -182,7 +195,6 @@
     },
     "recurringGroups": {
       "title": "Grupos recurrentes",
-      "manage": "Administrar grupos recurrentes",
       "count_one": "{{count}} grupo",
       "count_other": "{{count}} grupos"
     },
@@ -196,7 +208,11 @@
       "leadDaysValue_other": "{{count}} días de anticipación",
       "leadDaysDecrease": "Un día menos",
       "leadDaysIncrease": "Un día más",
-      "enableHint": "Un aviso antes de cada vencimiento."
+      "enableHint": "Un aviso antes de cada vencimiento.",
+      "timeOfDay": "Hora del aviso",
+      "noFixedTime": "Sin hora fija",
+      "timeChanged": "Los avisos llegarán a las {{time}}.",
+      "timeCleared": "Los avisos no tendrán hora fija."
     },
     "data": {
       "title": "Datos",
@@ -204,8 +220,6 @@
       "archiveCount_one": "{{count}} elemento archivado",
       "archiveCount_other": "{{count}} elementos archivados",
       "trash": "Papelera",
-      "trashCount_one": "{{count}} elemento en la papelera",
-      "trashCount_other": "{{count}} elementos en la papelera",
       "trashRetentionSheetTitle": "Retención de la papelera",
       "trashRetentionOption_one": "{{count}} día",
       "trashRetentionOption_other": "{{count}} días",
@@ -311,19 +325,11 @@
   },
   "categories": {
     "title": "Categorías",
-    "allCategories": "Todas las categorías",
     "addAction": "+ Agregar",
     "addTitle": "Agregar categoría",
     "editTitle": "Editar categoría",
     "notFoundTitle": "Categoría no encontrada",
     "notFoundBody": "Esta categoría ya no existe.",
-    "active": "Activa",
-    "archived": "Archivada",
-    "markAs": "Marcar {{name}} como {{state}}",
-    "state": {
-      "active": "activa",
-      "archived": "archivada"
-    },
     "confirmDeleteTitle": "¿Eliminar categoría permanentemente?",
     "confirmDeleteMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
     "confirmDeleteButton": "Eliminar permanentemente",
@@ -344,7 +350,27 @@
       "monthlyBudget": "Presupuesto mensual ({{currency}})",
       "monthlyBudgetPlaceholder": "0.00",
       "icon": "Icono (opcional)",
-      "iconNone": "Ninguno"
+      "iconNone": "Ninguno",
+      "errors": {
+        "nameRequired": "Escribe un nombre.",
+        "duplicateName": "Ya existe una categoría con ese nombre.",
+        "negativeBudget": "El presupuesto no puede ser negativo."
+      }
+    },
+    "intro": "Las categorías agrupan tus gastos e ingresos. El presupuesto mensual se fija aquí o en la pantalla Presupuesto.",
+    "activeSection": "Activas",
+    "archivedSection": "Archivadas",
+    "systemDefault": "Predeterminada",
+    "noBudget": "Sin presupuesto",
+    "nowArchived": "«{{name}}» ahora está archivada.",
+    "nowActive": "«{{name}}» ahora está activa.",
+    "saveFailed": "No se pudo guardar la categoría. Intenta de nuevo.",
+    "actions": {
+      "editHint": "Nombre, tipo, presupuesto e icono",
+      "archiveHint": "Deja de ofrecerse al crear registros",
+      "activate": "Activar",
+      "activateHint": "Vuelve a ofrecerse al crear registros",
+      "deleteHint": "No se puede deshacer."
     }
   },
   "budget": {
@@ -460,16 +486,46 @@
   },
   "currencies": {
     "title": "Monedas",
-    "allCurrencies": "Todas las monedas",
-    "addAction": "+ Agregar",
     "addTitle": "Agregar moneda",
     "editTitle": "Actualizar tasa de {{currency}}",
-    "notFoundTitle": "Moneda no encontrada",
-    "notFoundBody": "Esta moneda ya no está configurada.",
     "empty": "Aún no hay monedas agregadas.",
     "needsRefresh": "Necesita actualización",
     "editRate": "Editar tasa",
-    "allAdded": "Ya se agregaron todas las monedas admitidas."
+    "allAdded": "Ya se agregaron todas las monedas admitidas.",
+    "intro": "La tasa configurada se usa para estimar gastos pendientes y registros nuevos. Al pagar registras lo realmente cobrado, y los pagos ya hechos nunca cambian.",
+    "defaultLabel": "Moneda predeterminada",
+    "rateLine": "1 {{code}} = {{rate}}",
+    "sourceManual": "Manual",
+    "sourceFetched": "Obtenida",
+    "pendingUsage_one": "Usada en {{count}} registro pendiente",
+    "pendingUsage_other": "Usada en {{count}} registros pendientes",
+    "staleHint": "Actualiza la tasa para usarla de nuevo.",
+    "editRateFor": "Editar tasa de {{code}}",
+    "usageHint": "Se usa para estimar gastos pendientes y registros nuevos. Los pagos ya hechos no cambian.",
+    "remove": "Quitar moneda",
+    "removed": "{{code}} se quitó.",
+    "added": "Moneda {{code}} agregada.",
+    "rateUpdated": "Tasa de {{code}} actualizada. Los pagos ya hechos no cambian.",
+    "saveFailed": "No se pudo guardar la moneda. Intenta de nuevo.",
+    "addConfirm": "Agregar",
+    "names": {
+      "GTQ": "Quetzal",
+      "USD": "Dólar estadounidense",
+      "EUR": "Euro",
+      "MXN": "Peso mexicano",
+      "CAD": "Dólar canadiense",
+      "GBP": "Libra esterlina",
+      "COP": "Peso colombiano",
+      "ARS": "Peso argentino",
+      "CLP": "Peso chileno",
+      "PEN": "Sol peruano",
+      "BRL": "Real brasileño",
+      "DOP": "Peso dominicano",
+      "HNL": "Lempira hondureño",
+      "CRC": "Colón costarricense",
+      "PAB": "Balboa panameño"
+    },
+    "addButton": "+ Agregar moneda"
   },
   "payments": {
     "title": "Panel",
@@ -518,19 +574,32 @@
     "hideMembers": "Ocultar los elementos del grupo {{name}}",
     "createFailed": "No se pudo crear el grupo. Inténtalo de nuevo.",
     "manageTitle": "Grupos recurrentes",
-    "allGroups": "Todos los grupos",
-    "addAction": "+ Agregar",
     "empty": "Todavía no hay grupos recurrentes.",
-    "active": "Activo",
-    "archived": "Archivado",
-    "state": {
-      "active": "activo",
-      "archived": "archivado"
-    },
-    "markAs": "Marcar {{name}} como {{state}}",
     "renameTitle": "Renombrar grupo",
     "confirmDeleteTitle": "¿Eliminar el grupo permanentemente?",
-    "confirmDeleteMessage": "\"{{name}}\" se eliminará permanentemente. Sus elementos conservan sus propios datos y simplemente dejan de mostrarse agrupados.",
-    "deleted": "\"{{name}}\" eliminado permanentemente"
+    "confirmDeleteMessage": "«{{name}}» se eliminará permanentemente. Ningún gasto lo usa, así que no se pierde historial.",
+    "deleted": "\"{{name}}\" eliminado permanentemente",
+    "intro": "Un grupo solo junta gastos para ver su total (por ejemplo, una tarjeta). Cada gasto sigue teniendo su propia fecha, monto y estado.",
+    "newGroupAction": "+ Nuevo grupo",
+    "newGroupTitle": "Nuevo grupo",
+    "created": "Grupo «{{name}}» creado.",
+    "renamed": "Grupo «{{name}}» renombrado.",
+    "nowArchived": "«{{name}}» ahora está archivado.",
+    "nowActive": "«{{name}}» ahora está activo.",
+    "saveFailed": "No se pudo guardar el grupo. Intenta de nuevo.",
+    "activeSection": "Activos",
+    "archivedSection": "Archivados",
+    "actionsFor": "Opciones del grupo {{name}}",
+    "expenseCount_one": "{{count}} gasto",
+    "expenseCount_other": "{{count}} gastos",
+    "deleteBlocked_one": "No se puede eliminar: tiene historial ({{count}} registro). Archívalo para conservarlo.",
+    "deleteBlocked_other": "No se puede eliminar: tiene historial ({{count}} registros). Archívalo para conservarlo.",
+    "actions": {
+      "renameHint": "El nombre cambia en todos lados",
+      "archiveHint": "Deja de ofrecerse; sus gastos conservan el grupo",
+      "activate": "Activar",
+      "activateHint": "Sus gastos vuelven a verse agrupados",
+      "deleteHint": "Ningún gasto lo usa. No se puede deshacer."
+    }
   }
 }

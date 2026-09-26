@@ -17,7 +17,7 @@ export function addCurrency(
   return store.setAt(code, { exchangeRateToDefault, rateSource, status: 'ok' });
 }
 
-// Re-fetch/re-enter flow (currencies/[code]/edit.tsx) — always clears
+// Re-fetch/re-enter flow (features/settings/currency-edit-sheet.tsx) — always clears
 // 'stale' back to 'ok', since supplying a fresh rate is the only way a
 // stale currency becomes usable again.
 export function updateCurrencyRate(

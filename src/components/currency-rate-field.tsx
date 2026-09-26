@@ -17,8 +17,8 @@ export type CurrencyRateFieldProps = {
   onCurrencyChange: (currency: CurrencyCode) => void;
   // The currency Select's own option list — passed in by the caller
   // rather than defaulting to the full SUPPORTED_CURRENCIES catalog,
-  // since the one remaining caller (currencies/new.tsx, Stage 11
-  // redesign) needs to exclude the default currency and whatever's
+  // since the one remaining caller (features/settings/currency-add-sheet.tsx)
+  // needs to exclude the default currency and whatever's
   // already been added.
   currencyOptions: readonly SelectOption<CurrencyCode>[];
   defaultCurrency: CurrencyCode;
@@ -34,9 +34,8 @@ export type CurrencyRateFieldProps = {
 };
 
 // Currency Select + rate entry/fetch — since the Stage 11 redesign, this
-// is exclusively the "add/refresh a configured currency" building block
-// used by src/app/currencies/new.tsx and [code]/edit.tsx
-// (docs/data-model.md §3a). It's no longer used by the transaction forms
+// is exclusively the "add a configured currency" building block used by
+// src/features/settings/currency-add-sheet.tsx (docs/data-model.md §3a). It's no longer used by the transaction forms
 // (ExpenseForm/IncomeForm/RecurringExpenseForm/RecurringIncomeForm),
 // which now use AmountCurrencyField instead and only ever pick from
 // already-configured currencies with no per-transaction rate entry.

@@ -13,7 +13,8 @@ export type SegmentedControlProps<T extends string> = {
 };
 
 // Equal-width button group with the active one filled in the accent color
-// (ajustes-v2 prototype's `.seg`) — used for the theme choice. The active
+// (ajustes-v2 prototype's `.seg`) — Settings' theme choice and the category
+// form's type. The active
 // state is also announced (accessibilityState.selected), not only colored.
 export function SegmentedControl<T extends string>({
   options,

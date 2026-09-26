@@ -1,6 +1,11 @@
 import { createCollectionStore } from './create-collection-store';
 import { firestoreClient } from '@/lib/firebase/firestore';
-import { archiveTransition, restoreTransition, trashTransition } from '@/lib/lifecycle-transitions';
+import {
+  archiveTransition,
+  restoreTransition,
+  trashTransition,
+  unarchiveTransition,
+} from '@/lib/lifecycle-transitions';
 import { toTimestamp } from '@/lib/timestamp';
 import { trimName } from '@/lib/text-input';
 import { recomputeBudgetRecommendation } from './recurring-expenses';
@@ -241,6 +246,12 @@ export function trashExpense(id: string) {
     id,
     trashTransition(expense.lifecycleState as ArchivableState, new Date(), trashRetentionDays),
   );
+}
+
+// Archive screen's Restore for an archived (never trashed) record — see
+// unarchiveTransition.
+export function unarchiveExpense(id: string) {
+  return store.update(id, unarchiveTransition());
 }
 
 // Engine-only for now (Stage 12) — no UI calls this yet, restore/purge get a

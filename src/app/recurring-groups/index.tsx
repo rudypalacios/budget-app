@@ -1,248 +1,231 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dialog } from '@/components/ui/dialog';
-import { Divider } from '@/components/ui/divider';
-import { GroupNameDialog } from '@/components/ui/group-name-dialog';
-import { OverflowMenu } from '@/components/ui/overflow-menu';
-import { SectionHeader } from '@/components/ui/section-header';
-import { Switch } from '@/components/ui/switch';
-import { TextField } from '@/components/ui/text-field';
-import { FormRowBreakpoint, Spacing } from '@/constants/theme';
+import { IconButton } from '@/components/ui/icon-button';
+import { SheetButtons } from '@/components/ui/sheet-buttons';
+import { Spacing } from '@/constants/theme';
+import { GroupActionsSheet } from '@/features/settings/group-actions-sheet';
+import { GroupNameSheet } from '@/features/settings/group-name-sheet';
+import { SettingsCard } from '@/features/settings/settings-card';
+import { SettingsRow } from '@/features/settings/settings-row';
+import { SettingsSectionTitle } from '@/features/settings/settings-section-title';
 import type { WithId } from '@/lib/firebase/firestore.types';
 import { goBack } from '@/lib/navigation';
+import { describeGroupUsage } from '@/lib/recurring-groups';
+import { useExpensesStore } from '@/store/expenses';
+import { useRecurringExpensesStore } from '@/store/recurring-expenses';
 import {
   addRecurringGroup,
   archiveRecurringGroup,
   purgeRecurringGroup,
   renameRecurringGroup,
-  restoreRecurringGroup,
   trashRecurringGroup,
+  unarchiveRecurringGroup,
   useRecurringGroupsStore,
 } from '@/store/recurring-groups';
 import { showToast } from '@/store/toast';
 import type { RecurringGroup } from '@/types/firestore';
 
-// Stage 18 redo (FR-21, data-model.md §11) — the "browse/rename/archive/
-// delete a group" screen this Known Issue flagged as missing: creating a
-// group inline from any "Grupo…" picker (recurring-group-field.tsx) always
-// worked, but there was nowhere to manage an existing one outside that
-// flow. Same list pattern as categories/index.tsx (active/archived toggle
-// + permanent-delete confirm Dialog) — RecurringGroup does carry a real
-// 'trashed' state (unlike Category), but this screen deliberately doesn't
-// expose it as a separate step: "Delete permanently" trashes then purges
-// in one action, since firestore.rules only allows purge from 'trashed'.
-// Deleting a group never touches its members' own recurringGroupId — a
-// member pointing at a since-deleted group id just isn't in
-// buildDashboardSections' activeGroups list, so it silently renders as a
-// plain ungrouped row (src/lib/recurring-groups.ts), same as an
-// archived/trashed group's members already do.
+type GroupSheet =
+  | { kind: 'create' }
+  | { kind: 'menu'; group: WithId<RecurringGroup> }
+  | { kind: 'rename'; group: WithId<RecurringGroup> }
+  | { kind: 'confirmDelete'; group: WithId<RecurringGroup> };
+
+const SECTIONS = [
+  { state: 'active', titleKey: 'recurringGroups.activeSection' },
+  { state: 'archived', titleKey: 'recurringGroups.archivedSection' },
+] as const;
+
+// Recurring groups admin (Stage 18 redo, FR-21, data-model.md §11), laid out
+// per the ajustes-v2 prototype: each group with its expense count and member
+// names, and a ⋮ menu for Rename / Archive / Delete.
+//
+// Deleting is only possible while no expense, in any state, points at the
+// group (see describeGroupUsage) — a group with history can only be
+// archived, so which expenses belonged to it is never lost. Archiving never
+// touches the members: they keep their recurringGroupId, just render
+// ungrouped while the group is archived (buildDashboardSections only groups
+// by active groups), and are grouped again once it's reactivated.
+//
+// Writes aren't awaited (Firestore resolves them only on server ack, which
+// never comes offline); a real rejection gets an error toast.
 export default function RecurringGroupsScreen() {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
-  const isNarrow = width < FormRowBreakpoint;
   const groups = useRecurringGroupsStore((state) => state.items).filter(
     (group) => group.lifecycleState !== 'trashed',
   );
+  const expenses = useExpensesStore((state) => state.items);
+  const recurringExpenses = useRecurringExpensesStore((state) => state.items);
 
-  const [isCreating, setIsCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [renameTarget, setRenameTarget] = useState<WithId<RecurringGroup> | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<WithId<RecurringGroup> | null>(null);
+  const [sheet, setSheet] = useState<GroupSheet | null>(null);
 
-  async function handleCreate() {
-    if (!newName.trim()) return;
-    await addRecurringGroup(newName);
-    setIsCreating(false);
-    setNewName('');
+  function closeSheet() {
+    setSheet(null);
   }
 
-  function toggleActive(group: WithId<RecurringGroup>) {
-    if (group.lifecycleState === 'active') {
-      archiveRecurringGroup(group.id);
-    } else {
-      restoreRecurringGroup(group.id);
-    }
+  function onWriteFailed() {
+    showToast(t('recurringGroups.saveFailed'));
   }
 
-  async function handleConfirmRename(name: string) {
-    if (!renameTarget || !name.trim()) return;
-    await renameRecurringGroup(renameTarget.id, name);
-    setRenameTarget(null);
+  function handleCreate(name: string) {
+    addRecurringGroup(name).catch(() => showToast(t('recurringGroups.createFailed')));
+    closeSheet();
+    showToast(t('recurringGroups.created', { name: name.trim() }));
   }
 
-  async function handleConfirmDelete() {
-    if (!deleteTarget) return;
-    await trashRecurringGroup(deleteTarget.id);
-    await purgeRecurringGroup(deleteTarget.id);
-    showToast(t('recurringGroups.deleted', { name: deleteTarget.name }));
-    setDeleteTarget(null);
+  function handleRename(group: WithId<RecurringGroup>, name: string) {
+    renameRecurringGroup(group.id, name).catch(onWriteFailed);
+    closeSheet();
+    showToast(t('recurringGroups.renamed', { name: name.trim() }));
+  }
+
+  function handleToggleActive(group: WithId<RecurringGroup>) {
+    const isActive = group.lifecycleState === 'active';
+    (isActive ? archiveRecurringGroup(group.id) : unarchiveRecurringGroup(group.id)).catch(
+      onWriteFailed,
+    );
+    closeSheet();
+    showToast(
+      t(isActive ? 'recurringGroups.nowArchived' : 'recurringGroups.nowActive', {
+        name: group.name,
+      }),
+    );
+  }
+
+  // firestore.rules only allow deleting a group that's already 'trashed',
+  // so this queues the trash update and then the delete. Both are queued
+  // locally in order and reach the server in that order, so neither needs
+  // awaiting — the delete sees the trashed state — and the pair survives
+  // the app being closed while offline.
+  function handleDelete(group: WithId<RecurringGroup>) {
+    Promise.resolve()
+      .then(() => {
+        const trashed = trashRecurringGroup(group.id);
+        const purged = purgeRecurringGroup(group.id);
+        return Promise.all([trashed, purged]);
+      })
+      .catch(onWriteFailed);
+    closeSheet();
+    showToast(t('recurringGroups.deleted', { name: group.name }));
+  }
+
+  function renderRow(group: WithId<RecurringGroup>) {
+    const usage = describeGroupUsage(group.id, expenses, recurringExpenses);
+    return (
+      <SettingsRow
+        key={group.id}
+        icon={{ ios: 'folder', android: 'folder', web: 'folder' }}
+        title={group.name}
+        subtitle={
+          <View>
+            <ThemedText type="caption">
+              {t('recurringGroups.expenseCount', { count: usage.memberNames.length })}
+            </ThemedText>
+            {usage.memberNames.length > 0 && (
+              <ThemedText type="caption">{usage.memberNames.join(', ')}</ThemedText>
+            )}
+          </View>
+        }
+        trailing={
+          <IconButton
+            name={{ ios: 'ellipsis', android: 'more_vert', web: 'more_vert' }}
+            onPress={() => setSheet({ kind: 'menu', group })}
+            accessibilityLabel={t('recurringGroups.actionsFor', { name: group.name })}
+          />
+        }
+      />
+    );
   }
 
   return (
     <ScreenScroll>
       <ScreenHeader title={t('recurringGroups.manageTitle')} onBack={() => goBack('/settings')} />
 
-      <SectionHeader
-        title={t('recurringGroups.allGroups')}
-        actionLabel={t('recurringGroups.addAction')}
-        onActionPress={() => setIsCreating(true)}
+      <ThemedText type="small" themeColor="textSecondary">
+        {t('recurringGroups.intro')}
+      </ThemedText>
+      <Button
+        label={t('recurringGroups.newGroupAction')}
+        onPress={() => setSheet({ kind: 'create' })}
+        style={styles.addButton}
       />
-
-      {isCreating && (
-        <Card style={styles.card}>
-          <TextField
-            label={t('recurringGroups.newGroupName')}
-            value={newName}
-            onChangeText={setNewName}
-            placeholder={t('recurringGroups.newGroupNamePlaceholder')}
-          />
-          <View style={styles.actionRow}>
-            <Button label={t('common.save')} onPress={handleCreate} disabled={!newName.trim()} />
-            <Button
-              label={t('common.cancel')}
-              variant="secondary"
-              onPress={() => {
-                setIsCreating(false);
-                setNewName('');
-              }}
-            />
-          </View>
-        </Card>
-      )}
 
       {groups.length === 0 ? (
         <ThemedText type="caption">{t('recurringGroups.empty')}</ThemedText>
       ) : (
-        <Card style={styles.card}>
-          {groups.map((group, index) => (
-            <View key={group.id}>
-              <View style={styles.row}>
-                <View style={styles.rowMain}>
-                  <ThemedText type="smallBold">{group.name}</ThemedText>
-                </View>
-                <View style={styles.rowAside}>
-                  <OverflowMenu
-                    accessibilityLabel={t('common.actionsFor', { name: group.name })}
-                    items={[
-                      { label: t('common.rename'), onPress: () => setRenameTarget(group) },
-                      {
-                        label: t('common.deletePermanently'),
-                        onPress: () => setDeleteTarget(group),
-                      },
-                    ]}
-                  />
-                  <View style={styles.switchRow}>
-                    <ThemedText type="caption">
-                      {group.lifecycleState === 'active'
-                        ? t('recurringGroups.active')
-                        : t('recurringGroups.archived')}
-                    </ThemedText>
-                    <Switch
-                      value={group.lifecycleState === 'active'}
-                      onValueChange={() => toggleActive(group)}
-                      accessibilityLabel={t('recurringGroups.markAs', {
-                        name: group.name,
-                        state:
-                          group.lifecycleState === 'active'
-                            ? t('recurringGroups.state.archived')
-                            : t('recurringGroups.state.active'),
-                      })}
-                    />
-                  </View>
-                </View>
-              </View>
-              {index < groups.length - 1 && <Divider style={styles.divider} />}
+        SECTIONS.map(({ state, titleKey }) => {
+          const inSection = groups.filter((group) => group.lifecycleState === state);
+          if (inSection.length === 0) return null;
+          return (
+            <View key={state} style={styles.section}>
+              <SettingsSectionTitle title={t(titleKey)} />
+              <SettingsCard>{inSection.map(renderRow)}</SettingsCard>
             </View>
-          ))}
-        </Card>
+          );
+        })
       )}
 
-      {renameTarget && (
-        <GroupNameDialog
-          key={renameTarget.id}
-          isOpen
-          title={t('recurringGroups.renameTitle')}
-          initialName={renameTarget.name}
-          onConfirm={handleConfirmRename}
-          onCancel={() => setRenameTarget(null)}
+      {sheet?.kind === 'create' && (
+        <GroupNameSheet
+          title={t('recurringGroups.newGroupTitle')}
+          initialName=""
+          confirmLabel={t('common.create')}
+          onConfirm={handleCreate}
+          onClose={closeSheet}
         />
       )}
-
-      <Dialog
-        isOpen={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        title={t('recurringGroups.confirmDeleteTitle')}
-      >
-        <ThemedText>
-          {t('recurringGroups.confirmDeleteMessage', { name: deleteTarget?.name ?? '' })}
-        </ThemedText>
-        <View style={[styles.dialogActions, isNarrow && styles.dialogActionsNarrow]}>
-          <Button
-            label={t('common.deletePermanently')}
-            variant="danger"
-            onPress={handleConfirmDelete}
-            style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
+      {sheet?.kind === 'rename' && (
+        <GroupNameSheet
+          key={sheet.group.id}
+          title={t('recurringGroups.renameTitle')}
+          initialName={sheet.group.name}
+          confirmLabel={t('common.save')}
+          onConfirm={(name) => handleRename(sheet.group, name)}
+          onClose={closeSheet}
+        />
+      )}
+      {sheet?.kind === 'menu' && (
+        <GroupActionsSheet
+          key={sheet.group.id}
+          group={sheet.group}
+          referenceCount={
+            describeGroupUsage(sheet.group.id, expenses, recurringExpenses).referenceCount
+          }
+          onRename={() => setSheet({ kind: 'rename', group: sheet.group })}
+          onToggleActive={() => handleToggleActive(sheet.group)}
+          onDelete={() => setSheet({ kind: 'confirmDelete', group: sheet.group })}
+          onClose={closeSheet}
+        />
+      )}
+      {sheet?.kind === 'confirmDelete' && (
+        <ActionSheet isOpen onClose={closeSheet} title={t('recurringGroups.confirmDeleteTitle')}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('recurringGroups.confirmDeleteMessage', { name: sheet.group.name })}
+          </ThemedText>
+          <SheetButtons
+            onCancel={closeSheet}
+            confirmLabel={t('common.deletePermanently')}
+            confirmVariant="danger"
+            onConfirm={() => handleDelete(sheet.group)}
           />
-          <Button
-            label={t('common.cancel')}
-            variant="secondary"
-            onPress={() => setDeleteTarget(null)}
-            style={isNarrow ? styles.dialogButtonNarrow : styles.dialogButton}
-          />
-        </View>
-      </Dialog>
+        </ActionSheet>
+      )}
     </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: Spacing.two,
+  addButton: {
+    alignSelf: 'flex-start',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: Spacing.two,
-    gap: Spacing.two,
-  },
-  rowMain: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  rowAside: {
-    gap: Spacing.one,
-    alignItems: 'flex-end',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  divider: {
-    marginVertical: Spacing.one,
-  },
-  dialogActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  dialogActionsNarrow: {
-    flexDirection: 'column',
-  },
-  dialogButton: {
-    flex: 1,
-  },
-  dialogButtonNarrow: {
-    width: '100%',
+  section: {
+    gap: Spacing.one + 2,
   },
 });
