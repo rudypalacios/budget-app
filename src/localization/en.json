@@ -147,7 +147,18 @@
         "light": "Light",
         "dark": "Dark",
         "system": "System"
-      }
+      },
+      "currencyConfirm": {
+        "title": "Change to {{currency}}",
+        "consequence1": "Your added currencies will be marked \"Needs refresh\" until you confirm their rate against {{currency}}.",
+        "consequence2": "Budget recommendations will be recalculated.",
+        "consequence3": "Your past payments and records don't change: they keep their original amount and rate.",
+        "confirm": "Change to {{currency}}"
+      },
+      "currencyChanged": "Default currency: {{currency}}.",
+      "languageChanged": "Language: {{language}}.",
+      "searchLanguage": "Search language",
+      "noLanguageResults": "No results."
     },
     "categories": {
       "title": "Categories",
@@ -170,18 +181,29 @@
     "reminders": {
       "title": "Reminders",
       "enable": "Enable reminders",
-      "leadDays": "Lead days"
+      "leadDays": "Lead days",
+      "enabledOn": "Reminders turned on.",
+      "enabledOff": "Reminders turned off.",
+      "leadDaysValue_one": "{{count}} day's notice",
+      "leadDaysValue_other": "{{count}} days' notice",
+      "leadDaysDecrease": "One day less",
+      "leadDaysIncrease": "One day more"
     },
     "data": {
       "title": "Data",
-      "trashRetention": "Trash retention (days)",
       "archive": "Archive",
       "archiveCount_one": "{{count}} archived item",
       "archiveCount_other": "{{count}} archived items",
       "trash": "Trash",
       "trashCount_one": "{{count}} item in Trash",
-      "trashCount_other": "{{count}} items in Trash"
-    }
+      "trashCount_other": "{{count}} items in Trash",
+      "trashRetentionSheetTitle": "Trash retention",
+      "trashRetentionOption_one": "{{count}} day",
+      "trashRetentionOption_other": "{{count}} days",
+      "trashRetentionChanged_one": "Trash will keep deleted items for {{count}} day.",
+      "trashRetentionChanged_other": "Trash will keep deleted items for {{count}} days."
+    },
+    "saveFailed": "Couldn't save the change. Try again."
   },
   "expenses": {
     "title": "Expenses",

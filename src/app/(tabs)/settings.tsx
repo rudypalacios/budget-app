@@ -10,12 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Select } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { TextField } from '@/components/ui/text-field';
-import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
-import { Spacing } from '@/constants/theme';
+import { getCurrencySymbol } from '@/constants/currencies';
+import { getLanguageLabel } from '@/constants/languages';
+import { MinTouchTarget, Spacing } from '@/constants/theme';
+import { DefaultCurrencySheet } from '@/features/settings/default-currency-sheet';
+import { LanguageSheet } from '@/features/settings/language-sheet';
+import { RemindersSection } from '@/features/settings/reminders-section';
+import { saveSettings } from '@/features/settings/save-settings';
+import { SettingsRow } from '@/features/settings/settings-row';
+import { TrashRetentionSheet } from '@/features/settings/trash-retention-sheet';
 import { collectArchivedRecords, collectTrashedRecords } from '@/lib/lifecycle-records';
+import type { SupportedLanguage } from '@/localization/i18n';
 import { useCategoriesStore } from '@/store/categories';
 import { useCurrenciesStore } from '@/store/currencies';
 import { useExpensesStore } from '@/store/expenses';
@@ -24,13 +29,10 @@ import { useRecurringExpensesStore } from '@/store/recurring-expenses';
 import { useRecurringGroupsStore } from '@/store/recurring-groups';
 import { useRecurringIncomesStore } from '@/store/recurring-incomes';
 import { signOutAndRestartAnonymous, useSessionStore } from '@/store/session';
-import { updateUserSettings, useUserSettingsStore } from '@/store/user-settings';
+import { showToast } from '@/store/toast';
+import { useUserSettingsStore } from '@/store/user-settings';
 import type { UserSettings } from '@/types/firestore';
 
-const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-] as const;
 const THEMES = ['light', 'dark', 'system'] as const;
 const THEME_LABEL_KEY: Record<(typeof THEMES)[number], string> = {
   light: 'settings.general.themeOption.light',
@@ -38,16 +40,18 @@ const THEME_LABEL_KEY: Record<(typeof THEMES)[number], string> = {
   system: 'settings.general.themeOption.system',
 };
 
+type OpenSheet = 'currency' | 'language' | 'trashRetention' | null;
+
+// Every control writes the moment it changes — there is no Save button and
+// no unsaved state (Ajustes redesign, RN-AJU-1; this reverses Stage 10's
+// single-Save decision on purpose, see .claude/design/pages/02-ajustes.md
+// §1). The screen reads straight from the settings store, which the local
+// Firestore cache updates instantly, online or not.
 export default function SettingsScreen() {
   const { t } = useTranslation();
-  const isLoading = useUserSettingsStore((state) => state.isLoading);
   const settings = useUserSettingsStore((state) => state.data);
 
-  // Gated on the settings doc having loaded (or been seeded — see
-  // _layout.tsx) so SettingsForm's local draft state below initializes from
-  // real values exactly once, the same initialValues-on-mount pattern
-  // expense-form.tsx/category-form.tsx use.
-  if (isLoading || !settings) {
+  if (!settings) {
     return (
       <ScreenScroll>
         <ScreenHeader title={t('settings.title')} />
@@ -55,19 +59,12 @@ export default function SettingsScreen() {
     );
   }
 
-  return <SettingsForm settings={settings} />;
+  return <SettingsContent settings={settings} />;
 }
 
-function SettingsForm({ settings }: { settings: UserSettings }) {
+function SettingsContent({ settings }: { settings: UserSettings }) {
   const { t } = useTranslation();
-  const [currency, setCurrency] = useState<UserSettings['defaultCurrency']>(
-    settings.defaultCurrency,
-  );
-  const [language, setLanguage] = useState<UserSettings['language']>(settings.language);
-  const [theme, setTheme] = useState<UserSettings['theme']>(settings.theme);
-  const [remindersEnabled, setRemindersEnabled] = useState(settings.reminders.enabled);
-  const [leadDays, setLeadDays] = useState(String(settings.reminders.leadDays));
-  const [trashRetentionDays, setTrashRetentionDays] = useState(String(settings.trashRetentionDays));
+  const [openSheet, setOpenSheet] = useState<OpenSheet>(null);
 
   const categories = useCategoriesStore((state) => state.items);
   const addedCurrencies = useCurrenciesStore((state) => state.items);
@@ -95,18 +92,34 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
     recurringIncomes,
   ).length;
 
-  async function handleSave() {
-    await updateUserSettings({
-      defaultCurrency: currency,
-      language,
-      theme,
-      trashRetentionDays: Number(trashRetentionDays),
-      reminders: {
-        enabled: remindersEnabled,
-        leadDays: Number(leadDays),
-        timeOfDay: settings.reminders.timeOfDay,
-      },
-    });
+  function closeSheet() {
+    setOpenSheet(null);
+  }
+
+  function handleCurrencyConfirmed(currency: string) {
+    // updateUserSettings itself chains the currency side effects (mark added
+    // currencies + budget recommendations stale) — nothing extra here.
+    saveSettings({ defaultCurrency: currency });
+    showToast(t('settings.general.currencyChanged', { currency }));
+  }
+
+  function handleLanguageSelected(language: SupportedLanguage) {
+    // No i18n.changeLanguage() here: _layout.tsx already switches i18next
+    // whenever the persisted language changes, and the local cache applies
+    // this write immediately. The toast is rendered with `lng` so it reads in
+    // the newly chosen language, since that switch hasn't happened yet.
+    saveSettings({ language });
+    showToast(
+      t('settings.general.languageChanged', {
+        lng: language,
+        language: getLanguageLabel(language),
+      }),
+    );
+  }
+
+  function handleTrashRetentionSelected(days: number) {
+    saveSettings({ trashRetentionDays: days });
+    showToast(t('settings.data.trashRetentionChanged', { count: days }));
   }
 
   return (
@@ -116,19 +129,15 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
       <View style={styles.section}>
         <SectionHeader title={t('settings.account.title')} />
         {isAnonymous ? (
-          <Pressable
+          <SettingsRow
+            title={t('settings.account.createOrLogIn')}
             onPress={() => router.push('/(auth)/login' as Href)}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.account.createOrLogIn')}
-          >
-            <Card style={styles.manageRow}>
-              <ThemedText type="smallBold">{t('settings.account.createOrLogIn')}</ThemedText>
-              <ThemedText themeColor="textSecondary">›</ThemedText>
-            </Card>
-          </Pressable>
+          />
         ) : (
-          <Card style={styles.manageRow}>
-            <ThemedText type="smallBold">{email}</ThemedText>
+          <Card style={styles.accountRow}>
+            <ThemedText type="smallBold" style={styles.accountEmail}>
+              {email}
+            </ThemedText>
             <Button
               label={t('common.signOut')}
               variant="ghost"
@@ -140,188 +149,120 @@ function SettingsForm({ settings }: { settings: UserSettings }) {
 
       <View style={styles.section}>
         <SectionHeader title={t('settings.general.title')} />
+        <SettingsRow
+          title={t('settings.general.defaultCurrency')}
+          value={`${getCurrencySymbol(settings.defaultCurrency)} (${settings.defaultCurrency})`}
+          onPress={() => setOpenSheet('currency')}
+        />
+        <SettingsRow
+          title={t('settings.general.language')}
+          value={getLanguageLabel(settings.language)}
+          onPress={() => setOpenSheet('language')}
+        />
         <Card style={styles.card}>
-          <Select
-            label={t('settings.general.defaultCurrency')}
-            value={currency}
-            options={SUPPORTED_CURRENCIES.map((c) => ({ value: c.code, label: c.label }))}
-            onChange={setCurrency}
-          />
-          <Select
-            label={t('settings.general.language')}
-            value={language}
-            options={LANGUAGES}
-            onChange={setLanguage}
-          />
-
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            {t('settings.general.theme')}
-          </ThemedText>
+          <ThemedText type="smallBold">{t('settings.general.theme')}</ThemedText>
           <View style={styles.chipRow}>
-            {THEMES.map((option) => (
-              <Pressable key={option} onPress={() => setTheme(option)}>
-                <Chip
-                  label={t(THEME_LABEL_KEY[option])}
-                  tone={theme === option ? 'success' : 'neutral'}
-                />
-              </Pressable>
-            ))}
+            {THEMES.map((option) => {
+              const isSelected = settings.theme === option;
+              return (
+                // No toast for theme (RN-AJU-6): the whole screen re-themes
+                // instantly, which is its own confirmation.
+                <Pressable
+                  key={option}
+                  onPress={() => {
+                    if (!isSelected) saveSettings({ theme: option });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(THEME_LABEL_KEY[option])}
+                  accessibilityState={{ selected: isSelected }}
+                  style={styles.chipTarget}
+                >
+                  <Chip
+                    label={t(THEME_LABEL_KEY[option])}
+                    tone={isSelected ? 'success' : 'neutral'}
+                  />
+                </Pressable>
+              );
+            })}
           </View>
         </Card>
       </View>
 
       <View style={styles.section}>
         <SectionHeader title={t('settings.categories.title')} />
-        <Pressable
+        <SettingsRow
+          title={t('settings.categories.manage')}
+          caption={t('settings.categories.count', { count: categories.length })}
           // expo-router's typed-routes generator doesn't emit the collapsed
           // '/categories' alias for a plain (non-group) folder's index.tsx —
           // only the file-relative 'categories/index' form, which 404s at
           // runtime (verified: '/categories' -> 200, '/categories/index' ->
-          // 404). Cast around the incorrect type until upstream fixes this.
+          // 404). Cast around the incorrect type until upstream fixes this;
+          // the same applies to every sub-screen route below.
           onPress={() => router.push('/categories' as Href)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.categories.manage')}
-        >
-          <Card style={styles.manageRow}>
-            <View>
-              <ThemedText type="smallBold">{t('settings.categories.manage')}</ThemedText>
-              <ThemedText type="caption">
-                {t('settings.categories.count', { count: categories.length })}
-              </ThemedText>
-            </View>
-            <ThemedText themeColor="textSecondary">›</ThemedText>
-          </Card>
-        </Pressable>
+        />
       </View>
 
       <View style={styles.section}>
         <SectionHeader title={t('settings.currencies.title')} />
-        <Pressable
-          // Same expo-router typed-routes workaround as the Categories
-          // section above — see its comment for why the cast is needed.
+        <SettingsRow
+          title={t('settings.currencies.manage')}
+          caption={t('settings.currencies.count', { count: addedCurrencies.length })}
           onPress={() => router.push('/currencies' as Href)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.currencies.manage')}
-        >
-          <Card style={styles.manageRow}>
-            <View>
-              <ThemedText type="smallBold">{t('settings.currencies.manage')}</ThemedText>
-              <ThemedText type="caption">
-                {t('settings.currencies.count', { count: addedCurrencies.length })}
-              </ThemedText>
-            </View>
-            <ThemedText themeColor="textSecondary">›</ThemedText>
-          </Card>
-        </Pressable>
+        />
       </View>
 
       <View style={styles.section}>
         <SectionHeader title={t('settings.recurringGroups.title')} />
-        <Pressable
-          // Same expo-router typed-routes workaround as the Categories/
-          // Currencies manage rows above.
+        <SettingsRow
+          title={t('settings.recurringGroups.manage')}
+          caption={t('settings.recurringGroups.count', { count: recurringGroups.length })}
           onPress={() => router.push('/recurring-groups' as Href)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.recurringGroups.manage')}
-        >
-          <Card style={styles.manageRow}>
-            <View>
-              <ThemedText type="smallBold">{t('settings.recurringGroups.manage')}</ThemedText>
-              <ThemedText type="caption">
-                {t('settings.recurringGroups.count', { count: recurringGroups.length })}
-              </ThemedText>
-            </View>
-            <ThemedText themeColor="textSecondary">›</ThemedText>
-          </Card>
-        </Pressable>
+        />
       </View>
 
       <View style={styles.section}>
         <SectionHeader title={t('settings.reminders.title')} />
-        <Card style={styles.card}>
-          <View style={styles.switchRow}>
-            <Switch
-              value={remindersEnabled}
-              onValueChange={setRemindersEnabled}
-              accessibilityLabel={t('settings.reminders.enable')}
-            />
-            <ThemedText>{t('settings.reminders.enable')}</ThemedText>
-          </View>
-          {remindersEnabled && (
-            <TextField
-              label={t('settings.reminders.leadDays')}
-              value={leadDays}
-              onChangeText={setLeadDays}
-              keyboardType="number-pad"
-            />
-          )}
-        </Card>
+        <RemindersSection reminders={settings.reminders} />
       </View>
 
       <View style={styles.section}>
         <SectionHeader title={t('settings.data.title')} />
-        <Card style={styles.card}>
-          <TextField
-            label={t('settings.data.trashRetention')}
-            value={trashRetentionDays}
-            onChangeText={setTrashRetentionDays}
-            keyboardType="number-pad"
-          />
-        </Card>
-
-        <Pressable
-          // Same expo-router typed-routes workaround as the Categories/
-          // Currencies manage rows above.
+        <SettingsRow
+          title={t('settings.data.trashRetentionSheetTitle')}
+          value={t('settings.data.trashRetentionOption', { count: settings.trashRetentionDays })}
+          onPress={() => setOpenSheet('trashRetention')}
+        />
+        <SettingsRow
+          title={t('settings.data.archive')}
+          caption={t('settings.data.archiveCount', { count: archivedCount })}
           onPress={() => router.push('/archive' as Href)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.data.archive')}
-        >
-          <Card style={styles.manageRow}>
-            <View>
-              <ThemedText type="smallBold">{t('settings.data.archive')}</ThemedText>
-              <ThemedText type="caption">
-                {t('settings.data.archiveCount', { count: archivedCount })}
-              </ThemedText>
-            </View>
-            <ThemedText themeColor="textSecondary">›</ThemedText>
-          </Card>
-        </Pressable>
-
-        <Pressable
+        />
+        <SettingsRow
+          title={t('settings.data.trash')}
+          caption={t('settings.data.trashCount', { count: trashedCount })}
           onPress={() => router.push('/trash' as Href)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.data.trash')}
-        >
-          <Card style={styles.manageRow}>
-            <View>
-              <ThemedText type="smallBold">{t('settings.data.trash')}</ThemedText>
-              <ThemedText type="caption">
-                {t('settings.data.trashCount', { count: trashedCount })}
-              </ThemedText>
-            </View>
-            <ThemedText themeColor="textSecondary">›</ThemedText>
-          </Card>
-        </Pressable>
+        />
       </View>
 
-      <View style={styles.section}>
-        <Button label={t('common.save')} onPress={handleSave} />
-      </View>
-
-      {!isAnonymous && (
-        // Duplicated here deliberately: the Account-card action above is for
-        // discoverability (found live that a single Sign Out at the very
-        // bottom of a long page was too easy to miss), while this one keeps
-        // the common Facebook/GitHub convention of also having sign-out as
-        // the last action on the page.
-        <View style={styles.section}>
-          <Button
-            label={t('common.signOut')}
-            variant="ghost"
-            onPress={signOutAndRestartAnonymous}
-          />
-        </View>
-      )}
+      <DefaultCurrencySheet
+        isOpen={openSheet === 'currency'}
+        onClose={closeSheet}
+        currentCurrency={settings.defaultCurrency}
+        onConfirm={handleCurrencyConfirmed}
+      />
+      <LanguageSheet
+        isOpen={openSheet === 'language'}
+        onClose={closeSheet}
+        currentLanguage={settings.language}
+        onSelect={handleLanguageSelected}
+      />
+      <TrashRetentionSheet
+        isOpen={openSheet === 'trashRetention'}
+        onClose={closeSheet}
+        currentDays={settings.trashRetentionDays}
+        onSelect={handleTrashRetentionSelected}
+      />
     </ScreenScroll>
   );
 }
@@ -331,21 +272,27 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   card: {
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
+  // Pads the chip's hit area up to the 44pt minimum without enlarging the
+  // chip itself.
+  chipTarget: {
+    minHeight: MinTouchTarget,
+    justifyContent: 'center',
   },
-  manageRow: {
+  accountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  accountEmail: {
+    flexShrink: 1,
   },
 });

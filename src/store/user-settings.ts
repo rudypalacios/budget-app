@@ -42,8 +42,12 @@ export type UpdateUserSettingsInput = Partial<
   Pick<UserSettings, 'defaultCurrency' | 'language' | 'theme' | 'trashRetentionDays' | 'reminders'>
 >;
 
-// The Save-button entry point (settings.tsx) — persists the whole form at
-// once, per the Stage 6b decision note (one Save button, no autosave).
+// Called on every individual Settings change (settings.tsx, via
+// features/settings/save-settings.ts) — each control writes immediately,
+// per the Ajustes redesign (.claude/design/pages/02-ajustes.md §1), which
+// replaced Stage 10's single-Save-button decision. Only the fields in
+// `patch` are written; a defaultCurrency change also marks dependent data
+// stale below.
 export async function updateUserSettings(patch: UpdateUserSettingsInput) {
   const current = useUserSettingsStore.getState().data;
   const currencyChanged =

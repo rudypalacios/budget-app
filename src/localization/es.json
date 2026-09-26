@@ -147,7 +147,18 @@
         "light": "Claro",
         "dark": "Oscuro",
         "system": "Sistema"
-      }
+      },
+      "currencyConfirm": {
+        "title": "Cambiar a {{currency}}",
+        "consequence1": "Tus monedas agregadas quedarán como \"Necesita actualización\" hasta que confirmes su tasa hacia {{currency}}.",
+        "consequence2": "Las recomendaciones de presupuesto se recalcularán.",
+        "consequence3": "Tus pagos y registros anteriores no cambian: conservan su monto y su tasa de entonces.",
+        "confirm": "Cambiar a {{currency}}"
+      },
+      "currencyChanged": "Moneda predeterminada: {{currency}}.",
+      "languageChanged": "Idioma: {{language}}.",
+      "searchLanguage": "Buscar idioma",
+      "noLanguageResults": "Sin resultados."
     },
     "categories": {
       "title": "Categorías",
@@ -170,18 +181,29 @@
     "reminders": {
       "title": "Recordatorios",
       "enable": "Activar recordatorios",
-      "leadDays": "Días de anticipación"
+      "leadDays": "Días de anticipación",
+      "enabledOn": "Recordatorios activados.",
+      "enabledOff": "Recordatorios desactivados.",
+      "leadDaysValue_one": "{{count}} día de anticipación",
+      "leadDaysValue_other": "{{count}} días de anticipación",
+      "leadDaysDecrease": "Un día menos",
+      "leadDaysIncrease": "Un día más"
     },
     "data": {
       "title": "Datos",
-      "trashRetention": "Retención de la papelera (días)",
       "archive": "Archivo",
       "archiveCount_one": "{{count}} elemento archivado",
       "archiveCount_other": "{{count}} elementos archivados",
       "trash": "Papelera",
       "trashCount_one": "{{count}} elemento en la papelera",
-      "trashCount_other": "{{count}} elementos en la papelera"
-    }
+      "trashCount_other": "{{count}} elementos en la papelera",
+      "trashRetentionSheetTitle": "Retención de la papelera",
+      "trashRetentionOption_one": "{{count}} día",
+      "trashRetentionOption_other": "{{count}} días",
+      "trashRetentionChanged_one": "La papelera conservará lo eliminado {{count}} día.",
+      "trashRetentionChanged_other": "La papelera conservará lo eliminado {{count}} días."
+    },
+    "saveFailed": "No se pudo guardar el cambio. Intenta de nuevo."
   },
   "expenses": {
     "title": "Gastos",
