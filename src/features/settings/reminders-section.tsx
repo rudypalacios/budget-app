@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Card } from '@/components/ui/card';
-import { IconButton } from '@/components/ui/icon-button';
 import { Switch } from '@/components/ui/switch';
-import { Spacing } from '@/constants/theme';
+import { MinTouchTarget, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { createDebouncedWriter } from '@/lib/debounce';
 import { showToast } from '@/store/toast';
 import { useUserSettingsStore } from '@/store/user-settings';
 import type { UserSettings } from '@/types/firestore';
 
 import { saveSettings } from './save-settings';
+import { SettingsCard } from './settings-card';
 
 // A bounded range instead of free text (RN-AJU-3), so write-on-change never
 // persists a half-typed value.
@@ -28,6 +28,7 @@ export type RemindersSectionProps = {
 
 export function RemindersSection({ reminders }: RemindersSectionProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   // The stepper's number updates on every tap from local state; only the
   // Firestore write is debounced (§4.5).
@@ -71,9 +72,12 @@ export function RemindersSection({ reminders }: RemindersSectionProps) {
   }
 
   return (
-    <Card style={styles.card}>
+    <SettingsCard>
       <View style={styles.row}>
-        <ThemedText style={styles.label}>{t('settings.reminders.enable')}</ThemedText>
+        <View style={styles.text}>
+          <ThemedText type="smallBold">{t('settings.reminders.enable')}</ThemedText>
+          <ThemedText type="caption">{t('settings.reminders.enableHint')}</ThemedText>
+        </View>
         <Switch
           value={reminders.enabled}
           onValueChange={handleEnabledChange}
@@ -83,13 +87,16 @@ export function RemindersSection({ reminders }: RemindersSectionProps) {
 
       {reminders.enabled && (
         <View style={styles.row}>
-          <ThemedText style={styles.label}>{t('settings.reminders.leadDays')}</ThemedText>
+          <ThemedText type="smallBold" style={styles.text}>
+            {t('settings.reminders.leadDays')}
+          </ThemedText>
           <View style={styles.stepper}>
-            <IconButton
-              name={{ ios: 'minus', android: 'remove', web: 'remove' }}
+            <StepperButton
+              glyph="−"
               onPress={() => step(-1)}
               disabled={leadDays <= MIN_LEAD_DAYS}
               accessibilityLabel={t('settings.reminders.leadDaysDecrease')}
+              borderColor={theme.border}
             />
             <ThemedText
               type="smallBold"
@@ -101,41 +108,91 @@ export function RemindersSection({ reminders }: RemindersSectionProps) {
             >
               {leadDays}
             </ThemedText>
-            <IconButton
-              name={{ ios: 'plus', android: 'add', web: 'add' }}
+            <StepperButton
+              glyph="+"
               onPress={() => step(1)}
               disabled={leadDays >= MAX_LEAD_DAYS}
               accessibilityLabel={t('settings.reminders.leadDaysIncrease')}
+              borderColor={theme.border}
             />
           </View>
         </View>
       )}
-    </Card>
+    </SettingsCard>
+  );
+}
+
+type StepperButtonProps = {
+  glyph: string;
+  onPress: () => void;
+  disabled: boolean;
+  accessibilityLabel: string;
+  borderColor: string;
+};
+
+// The prototype's bordered −/+ squares (`.stp button`).
+function StepperButton({
+  glyph,
+  onPress,
+  disabled,
+  accessibilityLabel,
+  borderColor,
+}: StepperButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      style={({ pressed }) => [
+        styles.stepperButton,
+        { borderColor },
+        pressed && styles.pressed,
+        disabled && styles.disabled,
+      ]}
+    >
+      <ThemedText type="default">{glyph}</ThemedText>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: Spacing.three,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: 10,
+    minHeight: 56,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
   },
-  label: {
+  text: {
     flex: 1,
     minWidth: 140,
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.one + 2,
+  },
+  stepperButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Fixed width so the buttons don't shift between 9 and 10.
   stepperValue: {
     minWidth: 28,
     textAlign: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  disabled: {
+    opacity: 0.35,
   },
 });

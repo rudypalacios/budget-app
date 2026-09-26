@@ -136,7 +136,8 @@
     "title": "Settings",
     "account": {
       "title": "Account",
-      "createOrLogIn": "Create account / Log in"
+      "createOrLogIn": "Create account / Log in",
+      "anonymousHint": "Your data is only on this device for now."
     },
     "general": {
       "title": "General",
@@ -160,6 +161,9 @@
       "searchLanguage": "Search language",
       "noLanguageResults": "No results."
     },
+    "manage": {
+      "title": "Manage"
+    },
     "categories": {
       "title": "Categories",
       "manage": "Manage categories",
@@ -170,7 +174,11 @@
       "title": "Currencies",
       "manage": "Manage currencies",
       "count_one": "{{count}} currency added",
-      "count_other": "{{count}} currencies added"
+      "count_other": "{{count}} currencies added",
+      "staleCount_one": "{{count}} needs refresh",
+      "staleCount_other": "{{count}} need refresh",
+      "addedCount_one": "{{count}} added",
+      "addedCount_other": "{{count}} added"
     },
     "recurringGroups": {
       "title": "Recurring groups",
@@ -187,7 +195,8 @@
       "leadDaysValue_one": "{{count}} day's notice",
       "leadDaysValue_other": "{{count}} days' notice",
       "leadDaysDecrease": "One day less",
-      "leadDaysIncrease": "One day more"
+      "leadDaysIncrease": "One day more",
+      "enableHint": "A heads-up before each due date."
     },
     "data": {
       "title": "Data",
@@ -201,7 +210,9 @@
       "trashRetentionOption_one": "{{count}} day",
       "trashRetentionOption_other": "{{count}} days",
       "trashRetentionChanged_one": "Trash will keep deleted items for {{count}} day.",
-      "trashRetentionChanged_other": "Trash will keep deleted items for {{count}} days."
+      "trashRetentionChanged_other": "Trash will keep deleted items for {{count}} days.",
+      "trashItemCount_one": "{{count}} item",
+      "trashItemCount_other": "{{count}} items"
     },
     "saveFailed": "Couldn't save the change. Try again."
   },

@@ -1,3 +1,4 @@
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -7,6 +8,7 @@ import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
 import { SUPPORTED_CURRENCIES } from '@/constants/currencies';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 import { OptionRow } from './option-row';
 
@@ -37,6 +39,7 @@ export function DefaultCurrencySheet({
   onConfirm,
 }: DefaultCurrencySheetProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [pendingCurrency, setPendingCurrency] = useState<string | null>(null);
 
   function close() {
@@ -64,9 +67,16 @@ export function DefaultCurrencySheet({
       <ActionSheet isOpen={isOpen} onClose={close} title={title}>
         <View style={styles.consequences}>
           {CONSEQUENCE_KEYS.map((key) => (
-            <ThemedText key={key} type="small">
-              {`• ${t(key, { currency: pendingCurrency })}`}
-            </ThemedText>
+            <View key={key} style={styles.consequence}>
+              <SymbolView
+                name={{ ios: 'checkmark', android: 'check', web: 'check' }}
+                size={16}
+                tintColor={theme.textSecondary}
+              />
+              <ThemedText type="small" style={styles.consequenceText}>
+                {t(key, { currency: pendingCurrency })}
+              </ThemedText>
+            </View>
           ))}
         </View>
         <View style={styles.buttons}>
@@ -78,6 +88,9 @@ export function DefaultCurrencySheet({
           />
           <Button
             label={t('settings.general.currencyConfirm.confirm', { currency: pendingCurrency })}
+            // Danger-styled per the ajustes-v2 prototype: it's the one change
+            // on this screen that marks dependent data stale.
+            variant="danger"
             onPress={handleConfirm}
             style={styles.button}
           />
@@ -104,7 +117,15 @@ export function DefaultCurrencySheet({
 
 const styles = StyleSheet.create({
   consequences: {
-    gap: Spacing.two,
+    gap: Spacing.one,
+  },
+  consequence: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.one + 2,
+  },
+  consequenceText: {
+    flex: 1,
   },
   buttons: {
     flexDirection: 'row',

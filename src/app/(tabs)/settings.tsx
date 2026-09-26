@@ -1,24 +1,28 @@
 import { router, type Href } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
+import type { SyncStatus } from '@/components/sync-status-indicator';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
-import { SectionHeader } from '@/components/ui/section-header';
 import { getCurrencySymbol } from '@/constants/currencies';
 import { getLanguageLabel } from '@/constants/languages';
-import { MinTouchTarget, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { DefaultCurrencySheet } from '@/features/settings/default-currency-sheet';
 import { LanguageSheet } from '@/features/settings/language-sheet';
 import { RemindersSection } from '@/features/settings/reminders-section';
 import { saveSettings } from '@/features/settings/save-settings';
+import { SegmentedControl } from '@/features/settings/segmented-control';
+import { SettingsCard } from '@/features/settings/settings-card';
 import { SettingsRow } from '@/features/settings/settings-row';
+import { SettingsSectionTitle } from '@/features/settings/settings-section-title';
 import { TrashRetentionSheet } from '@/features/settings/trash-retention-sheet';
+import { useSyncStatus } from '@/hooks/use-sync-status';
+import { useTheme } from '@/hooks/use-theme';
 import { collectArchivedRecords, collectTrashedRecords } from '@/lib/lifecycle-records';
 import type { SupportedLanguage } from '@/localization/i18n';
 import { useCategoriesStore } from '@/store/categories';
@@ -38,6 +42,12 @@ const THEME_LABEL_KEY: Record<(typeof THEMES)[number], string> = {
   light: 'settings.general.themeOption.light',
   dark: 'settings.general.themeOption.dark',
   system: 'settings.general.themeOption.system',
+};
+
+const SYNC_STATUS_LABEL_KEY: Record<SyncStatus, string> = {
+  synced: 'syncStatus.synced',
+  pending: 'syncStatus.syncing',
+  offline: 'syncStatus.offline',
 };
 
 type OpenSheet = 'currency' | 'language' | 'trashRetention' | null;
@@ -68,6 +78,9 @@ function SettingsContent({ settings }: { settings: UserSettings }) {
 
   const categories = useCategoriesStore((state) => state.items);
   const addedCurrencies = useCurrenciesStore((state) => state.items);
+  const staleCurrencyCount = addedCurrencies.filter(
+    (currency) => currency.status === 'stale',
+  ).length;
   const expenses = useExpensesStore((state) => state.items);
   const incomes = useIncomesStore((state) => state.items);
   const recurringExpenses = useRecurringExpensesStore((state) => state.items);
@@ -127,122 +140,132 @@ function SettingsContent({ settings }: { settings: UserSettings }) {
       <ScreenHeader title={t('settings.title')} />
 
       <View style={styles.section}>
-        <SectionHeader title={t('settings.account.title')} />
+        <SettingsSectionTitle title={t('settings.account.title')} />
         {isAnonymous ? (
-          <SettingsRow
-            title={t('settings.account.createOrLogIn')}
-            onPress={() => router.push('/(auth)/login' as Href)}
-          />
+          <SettingsCard>
+            <SettingsRow
+              title={t('settings.account.createOrLogIn')}
+              subtitle={t('settings.account.anonymousHint')}
+              onPress={() => router.push('/(auth)/login' as Href)}
+            />
+          </SettingsCard>
         ) : (
-          <Card style={styles.accountRow}>
-            <ThemedText type="smallBold" style={styles.accountEmail}>
-              {email}
-            </ThemedText>
-            <Button
-              label={t('common.signOut')}
-              variant="ghost"
+          <SettingsCard>
+            <SettingsRow
+              icon={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }}
+              title={email ?? ''}
+              subtitle={<AccountSyncLine />}
+            />
+            {/* Signs out directly, as before this redesign (doc §4.1: no
+                behavior change) — the prototype's extra confirm sheet is not
+                adopted. */}
+            <SettingsRow
+              title={t('common.signOut')}
+              trailingIcon={{
+                ios: 'rectangle.portrait.and.arrow.right',
+                android: 'logout',
+                web: 'logout',
+              }}
               onPress={signOutAndRestartAnonymous}
             />
-          </Card>
+          </SettingsCard>
         )}
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title={t('settings.general.title')} />
-        <SettingsRow
-          title={t('settings.general.defaultCurrency')}
-          value={`${getCurrencySymbol(settings.defaultCurrency)} (${settings.defaultCurrency})`}
-          onPress={() => setOpenSheet('currency')}
-        />
-        <SettingsRow
-          title={t('settings.general.language')}
-          value={getLanguageLabel(settings.language)}
-          onPress={() => setOpenSheet('language')}
-        />
-        <Card style={styles.card}>
-          <ThemedText type="smallBold">{t('settings.general.theme')}</ThemedText>
-          <View style={styles.chipRow}>
-            {THEMES.map((option) => {
-              const isSelected = settings.theme === option;
-              return (
-                // No toast for theme (RN-AJU-6): the whole screen re-themes
-                // instantly, which is its own confirmation.
-                <Pressable
-                  key={option}
-                  onPress={() => {
-                    if (!isSelected) saveSettings({ theme: option });
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={t(THEME_LABEL_KEY[option])}
-                  accessibilityState={{ selected: isSelected }}
-                  style={styles.chipTarget}
-                >
-                  <Chip
-                    label={t(THEME_LABEL_KEY[option])}
-                    tone={isSelected ? 'success' : 'neutral'}
-                  />
-                </Pressable>
-              );
-            })}
+        <SettingsSectionTitle title={t('settings.general.title')} />
+        <SettingsCard>
+          <SettingsRow
+            title={t('settings.general.defaultCurrency')}
+            value={`${getCurrencySymbol(settings.defaultCurrency)} (${settings.defaultCurrency})`}
+            onPress={() => setOpenSheet('currency')}
+          />
+          <SettingsRow
+            title={t('settings.general.language')}
+            value={getLanguageLabel(settings.language)}
+            onPress={() => setOpenSheet('language')}
+          />
+          <View style={styles.themeRow}>
+            <ThemedText type="smallBold">{t('settings.general.theme')}</ThemedText>
+            {/* No toast for theme (RN-AJU-6): the whole screen re-themes
+                instantly, which is its own confirmation. */}
+            <SegmentedControl
+              options={THEMES.map((option) => ({
+                value: option,
+                label: t(THEME_LABEL_KEY[option]),
+              }))}
+              value={settings.theme}
+              onChange={(theme) => saveSettings({ theme })}
+            />
           </View>
-        </Card>
+        </SettingsCard>
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title={t('settings.categories.title')} />
-        <SettingsRow
-          title={t('settings.categories.manage')}
-          caption={t('settings.categories.count', { count: categories.length })}
-          // expo-router's typed-routes generator doesn't emit the collapsed
-          // '/categories' alias for a plain (non-group) folder's index.tsx —
-          // only the file-relative 'categories/index' form, which 404s at
-          // runtime (verified: '/categories' -> 200, '/categories/index' ->
-          // 404). Cast around the incorrect type until upstream fixes this;
-          // the same applies to every sub-screen route below.
-          onPress={() => router.push('/categories' as Href)}
-        />
+        <SettingsSectionTitle title={t('settings.manage.title')} />
+        <SettingsCard>
+          <SettingsRow
+            icon={{ ios: 'dollarsign.circle', android: 'paid', web: 'paid' }}
+            title={t('settings.currencies.title')}
+            value={t('settings.currencies.addedCount', { count: addedCurrencies.length })}
+            badge={
+              staleCurrencyCount > 0 ? (
+                <Chip
+                  size="small"
+                  tone="warning"
+                  label={t('settings.currencies.staleCount', { count: staleCurrencyCount })}
+                />
+              ) : undefined
+            }
+            // expo-router's typed-routes generator doesn't emit the collapsed
+            // '/currencies' alias for a plain (non-group) folder's index.tsx —
+            // only the file-relative 'currencies/index' form, which 404s at
+            // runtime (verified: '/categories' -> 200, '/categories/index' ->
+            // 404). Cast around the incorrect type until upstream fixes this;
+            // the same applies to every sub-screen route below.
+            onPress={() => router.push('/currencies' as Href)}
+          />
+          <SettingsRow
+            icon={{ ios: 'wrench.and.screwdriver', android: 'build', web: 'build' }}
+            title={t('settings.categories.title')}
+            value={t('settings.categories.count', { count: categories.length })}
+            onPress={() => router.push('/categories' as Href)}
+          />
+          <SettingsRow
+            icon={{ ios: 'folder', android: 'folder', web: 'folder' }}
+            title={t('settings.recurringGroups.title')}
+            value={t('settings.recurringGroups.count', { count: recurringGroups.length })}
+            onPress={() => router.push('/recurring-groups' as Href)}
+          />
+        </SettingsCard>
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title={t('settings.currencies.title')} />
-        <SettingsRow
-          title={t('settings.currencies.manage')}
-          caption={t('settings.currencies.count', { count: addedCurrencies.length })}
-          onPress={() => router.push('/currencies' as Href)}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader title={t('settings.recurringGroups.title')} />
-        <SettingsRow
-          title={t('settings.recurringGroups.manage')}
-          caption={t('settings.recurringGroups.count', { count: recurringGroups.length })}
-          onPress={() => router.push('/recurring-groups' as Href)}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader title={t('settings.reminders.title')} />
+        <SettingsSectionTitle title={t('settings.reminders.title')} />
         <RemindersSection reminders={settings.reminders} />
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title={t('settings.data.title')} />
-        <SettingsRow
-          title={t('settings.data.trashRetentionSheetTitle')}
-          value={t('settings.data.trashRetentionOption', { count: settings.trashRetentionDays })}
-          onPress={() => setOpenSheet('trashRetention')}
-        />
-        <SettingsRow
-          title={t('settings.data.archive')}
-          caption={t('settings.data.archiveCount', { count: archivedCount })}
-          onPress={() => router.push('/archive' as Href)}
-        />
-        <SettingsRow
-          title={t('settings.data.trash')}
-          caption={t('settings.data.trashCount', { count: trashedCount })}
-          onPress={() => router.push('/trash' as Href)}
-        />
+        <SettingsSectionTitle title={t('settings.data.title')} />
+        <SettingsCard>
+          <SettingsRow
+            title={t('settings.data.trashRetentionSheetTitle')}
+            value={t('settings.data.trashRetentionOption', { count: settings.trashRetentionDays })}
+            onPress={() => setOpenSheet('trashRetention')}
+          />
+          <SettingsRow
+            icon={{ ios: 'archivebox', android: 'archive', web: 'archive' }}
+            title={t('settings.data.archive')}
+            value={t('settings.data.archiveCount', { count: archivedCount })}
+            onPress={() => router.push('/archive' as Href)}
+          />
+          <SettingsRow
+            icon={{ ios: 'trash', android: 'delete', web: 'delete' }}
+            title={t('settings.data.trash')}
+            value={t('settings.data.trashItemCount', { count: trashedCount })}
+            onPress={() => router.push('/trash' as Href)}
+          />
+        </SettingsCard>
       </View>
 
       <DefaultCurrencySheet
@@ -267,32 +290,40 @@ function SettingsContent({ settings }: { settings: UserSettings }) {
   );
 }
 
+// The account row's second line: the real sync status (useSyncStatus, the
+// same source as the header indicator), with the prototype's check icon once
+// synced.
+function AccountSyncLine() {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const status = useSyncStatus();
+
+  return (
+    <View style={styles.syncLine}>
+      {status === 'synced' && (
+        <SymbolView
+          name={{ ios: 'checkmark.circle', android: 'check_circle', web: 'check_circle' }}
+          size={13}
+          tintColor={theme.textSecondary}
+        />
+      )}
+      <ThemedText type="caption">{t(SYNC_STATUS_LABEL_KEY[status])}</ThemedText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   section: {
-    gap: Spacing.two,
+    gap: Spacing.one + 2,
   },
-  card: {
-    gap: Spacing.two,
+  themeRow: {
+    gap: Spacing.one + 2,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  // Pads the chip's hit area up to the 44pt minimum without enlarging the
-  // chip itself.
-  chipTarget: {
-    minHeight: MinTouchTarget,
-    justifyContent: 'center',
-  },
-  accountRow: {
+  syncLine: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  accountEmail: {
-    flexShrink: 1,
+    gap: Spacing.one,
   },
 });

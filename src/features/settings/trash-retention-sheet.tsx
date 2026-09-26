@@ -36,6 +36,7 @@ export function TrashRetentionSheet({
             key={days}
             label={t('settings.data.trashRetentionOption', { count: days })}
             isSelected={days === currentDays}
+            indicator="radio"
             onPress={() => {
               if (days !== currentDays) onSelect(days);
               onClose();

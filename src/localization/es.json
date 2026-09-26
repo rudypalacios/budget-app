@@ -136,7 +136,8 @@
     "title": "Ajustes",
     "account": {
       "title": "Cuenta",
-      "createOrLogIn": "Crear cuenta / Iniciar sesión"
+      "createOrLogIn": "Crear cuenta / Iniciar sesión",
+      "anonymousHint": "Tus datos hoy solo están en este dispositivo."
     },
     "general": {
       "title": "General",
@@ -160,6 +161,9 @@
       "searchLanguage": "Buscar idioma",
       "noLanguageResults": "Sin resultados."
     },
+    "manage": {
+      "title": "Administrar"
+    },
     "categories": {
       "title": "Categorías",
       "manage": "Administrar categorías",
@@ -170,7 +174,11 @@
       "title": "Monedas",
       "manage": "Administrar monedas",
       "count_one": "{{count}} moneda agregada",
-      "count_other": "{{count}} monedas agregadas"
+      "count_other": "{{count}} monedas agregadas",
+      "staleCount_one": "{{count}} por actualizar",
+      "staleCount_other": "{{count}} por actualizar",
+      "addedCount_one": "{{count}} agregada",
+      "addedCount_other": "{{count}} agregadas"
     },
     "recurringGroups": {
       "title": "Grupos recurrentes",
@@ -187,7 +195,8 @@
       "leadDaysValue_one": "{{count}} día de anticipación",
       "leadDaysValue_other": "{{count}} días de anticipación",
       "leadDaysDecrease": "Un día menos",
-      "leadDaysIncrease": "Un día más"
+      "leadDaysIncrease": "Un día más",
+      "enableHint": "Un aviso antes de cada vencimiento."
     },
     "data": {
       "title": "Datos",
@@ -201,7 +210,9 @@
       "trashRetentionOption_one": "{{count}} día",
       "trashRetentionOption_other": "{{count}} días",
       "trashRetentionChanged_one": "La papelera conservará lo eliminado {{count}} día.",
-      "trashRetentionChanged_other": "La papelera conservará lo eliminado {{count}} días."
+      "trashRetentionChanged_other": "La papelera conservará lo eliminado {{count}} días.",
+      "trashItemCount_one": "{{count}} elemento",
+      "trashItemCount_other": "{{count}} elementos"
     },
     "saveFailed": "No se pudo guardar el cambio. Intenta de nuevo."
   },
