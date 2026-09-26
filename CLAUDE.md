@@ -330,6 +330,23 @@ actually resolved.)_
   `useState` placeholders that didn't persist at all — but worth flagging
   since a user editing them in Settings now sees a value that *saves*
   successfully with no visible effect.
+- **No account recovery beyond "Forgot password"** (noted during the Ajustes
+  redesign) — the login screen's password-reset email
+  (`requestPasswordReset`, `src/store/session.ts`) is the only recovery path.
+  Missing: (a) an **anonymous** account can't be recovered at all — its data
+  lives only under that device's anonymous uid, so losing or resetting the
+  device loses it (linking a real credential is the only safeguard); (b) a
+  signed-in user can't change their email or password from Settings. Needs
+  its own stage.
+- **Totals mix currencies after a default-currency change** (noted during the
+  Ajustes redesign) — changing `defaultCurrency` correctly leaves every
+  existing record untouched (RN-AJU-8), but each record's
+  `amountInDefaultCurrency` was computed against the default at the time it
+  was entered, so after a switch the Budget tab's sums add old-default and
+  new-default amounts together. Likewise `Category.monthlyBudget` is a plain
+  number with no currency of its own, so after a switch it reads in the new
+  currency. Only matters if the default is changed with data already
+  entered; not addressed yet.
 - **Web add/edit modal renders as full-page navigation, not a dialog overlay**
   — `presentation: 'modal'` (Stage 5) gives native a real slide-up/swipe-to-dismiss
   modal, but on web, `expo-router`'s Stack navigation replaces the page outright
@@ -389,7 +406,12 @@ actually resolved.)_
   modal — post-Stage-13 review) — this entry stays open since
   discard-changes-on-Cancel itself still isn't built, but a future pass can
   compose it on top of `Dialog` instead of inventing the primitive from
-  scratch.
+  scratch. **Partially resolved (Ajustes redesign, fase 2a):** the category
+  form now asks via `DiscardChangesSheet`
+  (`src/components/ui/discard-changes-sheet.tsx`, built on `ActionSheet`)
+  when Cancel is tapped with unsaved changes. Still open: the Expense/Income/
+  recurring forms don't use it yet, and on every form the native swipe-down
+  or hardware back (and browser back on web) still dismiss without asking.
 - **Anonymous auth is per-device/per-browser-profile, no cross-device sync
   yet** (Stage 6) — `bootstrapSession` signs in anonymously with no linked
   credential, so each device/browser profile gets its own separate uid and
